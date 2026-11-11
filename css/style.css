@@ -1,0 +1,110 @@
+/* 引入你在 variables.css 中定義的變數 */
+@import url('variables.css');
+
+/* 基礎重置與排版設定 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans TC', "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
+    background-color: var(--color-bg-light);
+    color: var(--color-text-main);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+}
+
+/* 導覽列 */
+.site-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+#main-nav a {
+    text-decoration: none;
+    color: var(--color-text-main);
+    margin: 0 var(--spacing-sm);
+    transition: color var(--transition-speed);
+}
+
+#main-nav a:hover {
+    color: var(--color-text-muted);
+}
+
+/* 品牌形象橫幅 */
+.hero-banner {
+    height: 400px;
+    background-color: var(--color-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+}
+
+/* 商品 Grid 系統 */
+.grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+/* 商品卡片 */
+.product-card {
+    background: #fff;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 350px; /* 給骨架屏與實際卡片一個預設高度 */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.product-image {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+}
+
+.product-info {
+    padding: var(--spacing-md);
+    text-align: center;
+}
+
+/* 頁尾 */
+.site-footer {
+    text-align: center;
+    padding: var(--spacing-lg);
+    background-color: var(--color-primary);
+    color: #fff;
+}
+
+/* --- 狀態類別 (繼承你的設定) --- */
+body.cart-disabled .cart-icon,
+body.cart-disabled .btn-add-to-cart {
+    display: none !important;
+}
+
+/* 載入中骨架屏動畫 */
+@keyframes loading {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+.loading-state {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border: none;
+}
