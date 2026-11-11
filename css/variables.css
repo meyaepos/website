@@ -1,0 +1,30 @@
+/* /css/variables.css - 核心視覺變數 */
+:root {
+  /* 品牌色彩 */
+  --color-primary: #D9D2C5;
+  --color-text-main: #333333;
+  --color-text-muted: #888888;
+  --color-bg-light: #FAFAFA;
+  
+  /* 排版間距 */
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 32px;
+  
+  /* 轉場動畫 */
+  --transition-speed: 0.3s ease;
+}
+
+/* /css/style.css - 功能性狀態類別 */
+/* 當 GAS 傳回 cart_enabled: false 時，JS 會將此 class 加到 body */
+body.cart-disabled .cart-icon,
+body.cart-disabled .btn-add-to-cart {
+  display: none !important;
+}
+
+/* 載入中骨架屏 (Skeleton Loading) 狀態 */
+.loading-state {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
