@@ -3,53 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>錦葳健康美學中心 - 韓系極簡</title>
-    <!-- 載入 Google 字體 Noto Sans TC -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- 載入樣式表 -->
-    <link rel="stylesheet" href="./css/variables.css">
-    <link rel="stylesheet" href="./css/style.css">
+    <title>is Meya - Minimal and Chic</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="loading-state"> <!-- 預設載入狀態 -->
+    
     <!-- 導覽列 -->
-    <header class="site-header">
-        <div class="logo">
-            <!-- 稍後可替換為 /assets/images/logo.png -->
-            <h1>Brand Logo</h1>
-        </div>
-        <nav id="main-nav">
-            <!-- JS 動態產生導覽列 -->
+    <header class="header">
+        <div class="logo">is Meya</div>
+        <nav class="nav-links">
+            <a href="#">新品上市</a>
+            <a href="#">所有商品</a>
+            <a href="#">聯絡我們</a>
         </nav>
+        <!-- 購物車圖示 (受 GAS 設定控制顯示/隱藏) -->
         <div class="cart-icon">
-            🛒 購物車
+            🛒 <span class="cart-text">Cart</span>
         </div>
     </header>
 
-    <!-- 品牌形象橫幅 -->
-    <section class="hero-banner">
-        <!-- 稍後可放入背景圖或 /assets/images/hero.jpg -->
-        <h2>極簡．優雅．新生活</h2>
-    </section>
+    <!-- 骨架屏 (載入中顯示) -->
+    <div id="loader" class="loader">
+        <p>優雅載入中，請稍候...</p>
+    </div>
 
-    <!-- 商品列表區塊 -->
-    <main class="container">
-        <div id="product-grid" class="grid-layout">
-            <!-- 預設顯示 4 個載入中骨架屏 -->
-            <div class="product-card loading-state"></div>
-            <div class="product-card loading-state"></div>
-            <div class="product-card loading-state"></div>
-            <div class="product-card loading-state"></div>
-        </div>
+    <!-- 主內容區 -->
+    <main id="app-content" style="display: none;">
+        <!-- 品牌視覺 -->
+        <section class="hero">
+            <h1>點亮生活裡的每個細節</h1>
+            <p>Minimal and chic Korean style</p>
+        </section>
+
+        <!-- 商品列表 -->
+        <section class="curated-jewelry">
+            <h2>精選飾品 Curated Jewelry</h2>
+            <div id="product-grid" class="grid-container">
+                <!-- JS 將在此動態注入商品卡片 -->
+            </div>
+        </section>
     </main>
 
     <!-- 頁尾 -->
-    <footer class="site-footer">
-        <p id="free-shipping-text">全館滿額享免運</p>
-        <p>&copy; 2026 Brand Name. All rights reserved.</p>
+    <footer class="footer">
+        <p id="free-shipping-text">全館滿 NT$XXXX 享免運服務。</p>
+        <p>Copyright © 2026 is Meya. All rights reserved.</p>
     </footer>
 
-    <!-- 載入 JS 邏輯 -->
-    <script src="./js/config.js"></script>
-    <script src="./js/app.js"></script>
+    <!-- 核心邏輯 -->
+    <script src="app.js"></script>
 </body>
 </html>
