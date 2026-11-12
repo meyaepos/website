@@ -3,54 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>is Meya - Minimal and Chic</title>
+    <title>is Meya - 韓系極簡優雅飾品</title>
     <link rel="stylesheet" href="style.css">
+    <!-- 未來這裡將引入 LINE LIFF SDK -->
 </head>
-<body class="loading-state"> <!-- 預設載入狀態 -->
+<body class="loading-state">
     
-    <!-- 導覽列 -->
+    <!-- 頂部導覽列 (100% 模仿 is Meya 結構) -->
     <header class="header">
-        <div class="logo">is Meya</div>
+        <!-- 建議將舊站 Logo 下載後放在此路徑 -->
+        <div class="logo">
+            <img src="./assets/images/logo.png" alt="is Meya" onerror="this.outerHTML='<span class=\'text-logo\'>is Meya</span>'">
+        </div>
         <nav class="nav-links">
             <a href="#">新品上市</a>
             <a href="#">所有商品</a>
+            <a href="#">精選飾品</a>
             <a href="#">聯絡我們</a>
         </nav>
-        <!-- 購物車圖示 (受 GAS 設定控制顯示/隱藏) -->
-        <div class="cart-icon">
-            🛒 <span class="cart-text">Cart</span>
+        <div class="header-actions">
+            <!-- 預留會員登入按鈕 -->
+            <button id="btn-login" class="btn-icon">👤 會員登入</button>
+            <div class="cart-icon">🛒</div>
         </div>
     </header>
 
-    <!-- 骨架屏 (載入中顯示) -->
+    <!-- 骨架屏載入提示 -->
     <div id="loader" class="loader">
-        <p>優雅載入中，請稍候...</p>
+        <div class="spinner"></div>
+        <p>優雅載入中...</p>
     </div>
 
     <!-- 主內容區 -->
     <main id="app-content" style="display: none;">
-        <!-- 品牌視覺 -->
+        <!-- 主視覺橫幅 (Hero Banner) -->
         <section class="hero">
-            <h1>點亮生活裡的每個細節</h1>
-            <p>Minimal and chic Korean style</p>
+            <div class="hero-content">
+                <h1>點亮生活裡的每個細節</h1>
+                <p>在細微處，遇見最美的自己。</p>
+                <p class="subtitle">Minimal and chic Korean style</p>
+            </div>
         </section>
 
-        <!-- 商品列表 -->
+        <!-- 精選飾品區 (動態載入) -->
         <section class="curated-jewelry">
-            <h2>精選飾品 Curated Jewelry</h2>
+            <h2 class="section-title">精選飾品 Curated Jewelry</h2>
+            <div class="divider"></div>
             <div id="product-grid" class="grid-container">
-                <!-- JS 將在此動態注入商品卡片 -->
+                <!-- 商品卡片由 JS 動態生成 -->
+            </div>
+        </section>
+
+        <!-- 品牌保證區塊 -->
+        <section class="features">
+            <div class="feature-item">
+                <h3>免運優惠</h3>
+                <p id="free-shipping-text">全館滿 NT$1,000 享免運服務。</p>
+            </div>
+            <div class="feature-item">
+                <h3>用心製作</h3>
+                <p>以你與地球的需求為出發，精心打造每一件飾品。</p>
+            </div>
+            <div class="feature-item">
+                <h3>歡迎蒞臨</h3>
+                <p>我們設有實體門市，等你來逛逛。</p>
             </div>
         </section>
     </main>
 
     <!-- 頁尾 -->
     <footer class="footer">
-        <p id="free-shipping-text">全館滿 NT$XXXX 享免運服務。</p>
-        <p>Copyright © 2026 is Meya. All rights reserved.</p>
+        <div class="footer-info">
+            <p><strong>CUSTOMER SERVICE</strong></p>
+            <p>04-2258-9779</p>
+            <p>E-mail｜meyalady1@gmail.com</p>
+            <p>Address｜台中市南屯區大墩12街642號</p>
+            <p>MON.~SUN. 09:00 - 18:00</p>
+            <p>統編｜93428866</p>
+        </div>
+        <div class="footer-copyright">
+            <p>Copyright © 2026 is Meya. All rights reserved. Designed by YourBrand.</p>
+        </div>
     </footer>
 
-    <!-- 核心邏輯 -->
     <script src="app.js"></script>
 </body>
 </html>
