@@ -1,110 +1,73 @@
-/* 引入你在 variables.css 中定義的變數 */
-@import url('variables.css');
-
-/* 基礎重置與排版設定 */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* ==========================================
+   CSS 變數：色彩與間距設定 (完美繼承品牌質感)
+   ========================================== */
+:root {
+    --color-primary: #D9D2C5; /* 奶茶/淺杏色 */
+    --color-text-dark: #333333; /* 極簡深灰 */
+    --color-bg-light: #FAFAFA;
+    --color-white: #FFFFFF;
+    --font-main: "Noto Sans TC", sans-serif;
 }
 
 body {
-    font-family: 'Noto Sans TC', "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
+    font-family: var(--font-main);
+    margin: 0;
+    padding: 0;
     background-color: var(--color-bg-light);
-    color: var(--color-text-main);
-    line-height: 1.6;
+    color: var(--color-text-dark);
 }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: var(--spacing-lg);
-}
-
-/* 導覽列 */
-.site-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-md) var(--spacing-lg);
-    background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-#main-nav a {
-    text-decoration: none;
-    color: var(--color-text-main);
-    margin: 0 var(--spacing-sm);
-    transition: color var(--transition-speed);
-}
-
-#main-nav a:hover {
-    color: var(--color-text-muted);
-}
-
-/* 品牌形象橫幅 */
-.hero-banner {
-    height: 400px;
-    background-color: var(--color-primary);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #fff;
-}
-
-/* 商品 Grid 系統 */
-.grid-layout {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: var(--spacing-lg);
-    margin-top: var(--spacing-lg);
-}
-
-/* 商品卡片 */
-.product-card {
-    background: #fff;
-    border-radius: 4px;
-    overflow: hidden;
-    height: 350px; /* 給骨架屏與實際卡片一個預設高度 */
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-.product-image {
-    width: 100%;
-    height: 250px;
-    object-fit: cover;
-}
-
-.product-info {
-    padding: var(--spacing-md);
-    text-align: center;
-}
-
-/* 頁尾 */
-.site-footer {
-    text-align: center;
-    padding: var(--spacing-lg);
-    background-color: var(--color-primary);
-    color: #fff;
-}
-
-/* --- 狀態類別 (繼承你的設定) --- */
+/* ==========================================
+   資安防護與狀態切換：依據 GAS 參數動態隱藏
+   ========================================== */
+/* 若 GAS 傳回 cart_enabled: false，JS 會為 body 加上此 class，強制隱藏所有購物車元素 */
 body.cart-disabled .cart-icon,
 body.cart-disabled .btn-add-to-cart {
     display: none !important;
 }
 
-/* 載入中骨架屏動畫 */
-@keyframes loading {
-    0% { background-position: 100% 50%; }
-    100% { background-position: 0 50%; }
+/* ==========================================
+   排版設計
+   ========================================== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 5%;
+    background-color: var(--color-white);
+    border-bottom: 1px solid #EAEAEA;
 }
 
-.loading-state {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border: none;
+.logo { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
+.nav-links a { margin: 0 15px; text-decoration: none; color: var(--color-text-dark); }
+.hero { text-align: center; padding: 60px 20px; background-color: var(--color-primary); color: var(--color-text-dark); }
+
+.curated-jewelry { padding: 40px 5%; text-align: center; }
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
 }
+
+/* 商品卡片設計 */
+.product-card {
+    background: var(--color-white);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.3s ease;
+}
+.product-card:hover { transform: translateY(-5px); }
+.product-image { width: 100%; height: 300px; object-fit: cover; border-radius: 4px; }
+.product-tag { color: #b33939; font-size: 12px; font-weight: bold; margin-top: 10px; display: block;}
+.product-title { font-size: 16px; margin: 10px 0; }
+.product-price { font-weight: bold; }
+.btn-add-to-cart { 
+    width: 100%; padding: 10px; margin-top: 15px; 
+    background-color: var(--color-text-dark); color: var(--color-white); 
+    border: none; cursor: pointer; border-radius: 4px;
+}
+
+.footer { text-align: center; padding: 40px 20px; background-color: var(--color-white); margin-top: 40px; font-size: 14px;}
+.loader { text-align: center; padding: 100px; font-size: 18px; color: var(--color-text-dark); }
