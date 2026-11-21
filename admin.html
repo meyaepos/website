@@ -3,24 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MEYA 統一營運與形象網站管理系統</title>
+  <title>MEYA 形象網站管理員專區</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <!-- 輕量 Excel/CSV 前端解析庫，支援直接拖曳 .xlsx / .csv 預覽除錯 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Sans TC', sans-serif; }
     body { display: flex; height: 100vh; background-color: #f4f6f9; color: #333; overflow: hidden; }
 
-    /* 左側大系統導覽列 */
-    .sidebar { width: 245px; background: #1f2d3d; color: #cfd8e3; display: flex; flex-direction: column; flex-shrink: 0; }
+    /* 左側導覽列 */
+    .sidebar { width: 240px; background: #1f2d3d; color: #cfd8e3; display: flex; flex-direction: column; flex-shrink: 0; }
     .brand-box { padding: 20px; font-size: 18px; font-weight: 700; letter-spacing: 3px; color: #fff; background: #16202c; border-bottom: 1px solid #2b3c4e; text-align: center; }
-    .nav-group-label { padding: 14px 18px 6px; font-size: 11px; color: #7f92a6; letter-spacing: 1px; }
-    .nav-item { padding: 12px 18px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; border-left: 3px solid transparent; }
+    .nav-group-label { padding: 16px 18px 6px; font-size: 11px; color: #7f92a6; letter-spacing: 1px; }
+    .nav-item { padding: 13px 18px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; border-left: 3px solid transparent; }
     .nav-item:hover { background: #2a3b4e; color: #fff; }
     .nav-item.active { background: #2c3e50; color: #fff; border-left-color: #D9D2C5; font-weight: 500; }
-    .badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-    .badge-danger { background: #e74c3c; color: #fff; }
-    .badge-muted { background: #34495e; color: #9fb1c4; font-weight: 400; }
+    .badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; background: #e74c3c; color: #fff; }
 
     /* 右側主工作區 */
     .main-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -32,42 +29,48 @@
     /* 面板與卡片 */
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 16px; margin-bottom: 20px; }
     .kpi-card { background: #fff; padding: 18px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border-top: 3px solid #D9D2C5; }
     .kpi-label { font-size: 12px; color: #7f8c8d; margin-bottom: 6px; }
     .kpi-value { font-size: 24px; font-weight: 700; color: #2c3e50; }
     .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; }
     .card-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #edf2f7; }
 
-    /* 按鈕與輸入框 */
-    .btn { padding: 8px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s; }
+    /* 控制元件 */
+    .btn { padding: 8px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
     .btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn-primary { background: #2c3e50; color: #fff; }
     .btn-primary:hover { background: #1a252f; }
     .btn-accent { background: #D9D2C5; color: #333; }
-    .btn-accent:hover { background: #c7beae; }
+    .btn-accent:hover { background: #c5bcab; }
     .btn-info { background: #3498db; color: #fff; }
     .btn-success { background: #27ae60; color: #fff; }
     .btn-danger { background: #e74c3c; color: #fff; }
     .btn-outline { background: #fff; color: #333; border: 1px solid #cbd5e1; }
     .input-ctrl { padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; }
 
-    /* 資料表格 */
+    /* 表格與標籤 */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 11px 12px; border-bottom: 1px solid #edf2f7; text-align: left; vertical-align: middle; }
-    th { background: #f8fafc; color: #475569; font-weight: 600; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #edf2f7; text-align: left; vertical-align: middle; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; white-space: nowrap; }
     tbody tr:hover { background: #f8fafc; }
     .thumb-mini { width: 42px; height: 54px; object-fit: cover; border-radius: 4px; background: #eee; border: 1px solid #e2e8f0; }
-    .status-pill { padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; }
+    .pill { padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; white-space: nowrap; }
     .pill-ok { background: #dcfce7; color: #166534; }
     .pill-wait { background: #fef3c7; color: #92400e; }
     .pill-off { background: #f1f5f9; color: #64748b; }
     .pill-err { background: #fee2e2; color: #991b1b; }
+    .pill-new { background: #e0f2fe; color: #075985; }
 
-    /* 拖曳上傳區 */
-    .dropzone { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 32px; text-align: center; background: #f8fafc; cursor: pointer; transition: 0.2s; }
+    /* Excel 拖曳建庫區 */
+    .dropzone { border: 2px dashed #94a3b8; border-radius: 10px; padding: 38px 20px; text-align: center; background: #f8fafc; cursor: pointer; transition: 0.2s; }
     .dropzone:hover, .dropzone.dragover { border-color: #2c3e50; background: #eef2f6; }
+    .mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 16px 0; }
+    .mode-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 14px; cursor: pointer; transition: 0.2s; }
+    .mode-card.selected { border-color: #2c3e50; background: #f8fafc; }
+    .mode-card strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .mode-card span { font-size: 12px; color: #64748b; }
 
     /* 圖檔對標與排版彈窗 */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
@@ -79,50 +82,38 @@
     .drive-list { height: 340px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; }
     .drive-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 5px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
     .drive-item:hover { background: #f1f5f9; }
-    .drive-item.selected { background: #e0f2fe; border-color: #38bdf8; }
+    .drive-item.selected { background: #e0f2fe; }
     .drive-item.recommended { background: #fef9c3; }
     .drive-item img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
     .canvas-stage { height: 320px; background: #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 8px; }
     .canvas-stage canvas { max-width: 100%; max-height: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.18); background: #fff; }
-    .placeholder-box { text-align: center; padding: 60px 20px; color: #64748b; }
   </style>
 </head>
 <body>
-  <!-- 左側統一大系統導覽列 -->
+  <!-- 左側管理員專區導覽 -->
   <aside class="sidebar">
-    <div class="brand-box">MEYA 營運中樞</div>
+    <div class="brand-box">MEYA 管理專區</div>
 
-    <div class="nav-group-label">第一階段：形象網站核心</div>
+    <div class="nav-group-label">形象網站與資料庫核心</div>
     <div class="nav-item active" data-tab="tab-products">
       <span>商品與圖檔對標</span>
     </div>
-    <div class="nav-item" data-tab="tab-import-export">
-      <span>資料匯入與匯出</span>
+    <div class="nav-item" data-tab="tab-excel-builder">
+      <span>Excel 智慧建庫與匯出</span>
+    </div>
+    <div class="nav-item" data-tab="tab-site-settings">
+      <span>跑馬燈與網站設定</span>
     </div>
     <div class="nav-item" data-tab="tab-errors">
-      <span>異常報錯監控</span>
-      <span id="nav-error-badge" class="badge badge-danger" style="display:none;">0</span>
-    </div>
-
-    <div class="nav-group-label">第二階段：預留擴充模組</div>
-    <div class="nav-item" data-tab="tab-pos">
-      <span>POS 銷售系統</span>
-      <span class="badge badge-muted">預留</span>
-    </div>
-    <div class="nav-item" data-tab="tab-crm">
-      <span>CRM 會員系統</span>
-      <span class="badge badge-muted">預留</span>
-    </div>
-    <div class="nav-item" data-tab="tab-inventory">
-      <span>進銷存庫存管理</span>
-      <span class="badge badge-muted">預留</span>
+      <span>系統異常報錯中心</span>
+      <span id="nav-error-badge" class="badge" style="display:none;">0</span>
     </div>
   </aside>
 
-  <!-- 右側主作業視窗 -->
+  <!-- 右側工作區 -->
   <div class="main-wrap">
     <header class="topbar">
-      <div class="topbar-title" id="topbar-title">商品管理與圖檔一對一對標中心</div>
+      <div class="topbar-title" id="topbar-title">商品與圖檔對標</div>
       <div class="topbar-tools">
         <a href="./index.html" target="_blank" class="btn btn-outline">預覽形象網站</a>
         <button class="btn btn-outline" onclick="promptAdminToken()">🔒 管理密鑰</button>
@@ -143,19 +134,19 @@
             <div class="kpi-value" id="kpi-active">-</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">待對標缺圖商品</div>
+            <div class="kpi-label">缺圖待對標商品</div>
             <div class="kpi-value" id="kpi-pending">-</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">未處理異常項目</div>
-            <div class="kpi-value" id="kpi-errors">-</div>
+            <div class="kpi-label">目前資料庫欄位數</div>
+            <div class="kpi-value" id="kpi-cols">-</div>
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <input type="text" id="prod-search" class="input-ctrl" placeholder="搜尋編號或品名..." oninput="renderProductTable()">
+              <input type="text" id="prod-search" class="input-ctrl" placeholder="搜尋編號、品名或分類..." oninput="renderProductTable()">
               <select id="prod-filter" class="input-ctrl" onchange="renderProductTable()">
                 <option value="ALL">全部狀態</option>
                 <option value="NO_IMAGE">僅顯示缺圖商品</option>
@@ -164,7 +155,7 @@
                 <option value="下架">已下架</option>
               </select>
             </div>
-            <button class="btn btn-accent" onclick="runAutoSuggestCheck()">🔍 掃描規則配對與缺圖檢查</button>
+            <button class="btn btn-accent" onclick="runAutoSuggestCheck()">🔍 掃描同編號照片與缺圖清單</button>
           </div>
 
           <div id="suggest-banner" style="display:none; padding:12px 16px; background:#fefce8; border:1px solid #fde047; border-radius:6px; margin-bottom:14px; font-size:13px;"></div>
@@ -174,132 +165,180 @@
               <thead>
                 <tr>
                   <th>縮圖</th>
-                  <th>商品編號 (ID)</th>
+                  <th>商品編號 (id)</th>
                   <th>商品名稱</th>
                   <th>售價</th>
+                  <th>附加欄位摘要</th>
                   <th>狀態</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody id="product-tbody">
-                <tr><td colspan="6" style="text-align:center; padding:30px;">載入資料中...</td></tr>
+                <tr><td colspan="7" style="text-align:center; padding:30px;">載入資料中...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- ================= 分頁 2：資料批次匯入與匯出 ================= -->
-      <section id="tab-import-export" class="tab-panel">
+      <!-- ================= 分頁 2：Excel 智慧建庫與匯出 ================= -->
+      <section id="tab-excel-builder" class="tab-panel">
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>方式一：Google Drive 收件夾自動掃描匯入</h3>
-              <p style="font-size:12px; color:#64748b; margin-top:4px;">將 CSV 或 Google 試算表丟入設定好的雲端收件夾，點擊下方按鈕即可自動讀取、對齊形象網架構並歸檔。</p>
-            </div>
-            <button class="btn btn-primary" id="btn-scan-folder" onclick="triggerScanDropFolder()">📂 立即掃描雲端收件夾</button>
-          </div>
-          <div id="scan-folder-log" style="font-size:13px; color:#334155;"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>方式二：直接拖曳 Excel (.xlsx) / CSV 預覽匯入</h3>
-              <p style="font-size:12px; color:#64748b; margin-top:4px;">系統會自動對應「貨號/品號/id」、「品名/name」、「售價/price」並預先檢查缺漏，確認無誤再寫入。</p>
+              <h3>Excel / CSV 智慧辨識建庫區</h3>
+              <p style="font-size:12px; color:#64748b; margin-top:4px;">直接把 Excel (.xlsx / .xls) 或 CSV 丟進下方區域，系統會自動辨識所有工作表與欄位，並長出或擴充對應的資料庫。</p>
             </div>
           </div>
 
           <div id="file-dropzone" class="dropzone" onclick="document.getElementById('local-sheet-input').click()">
-            <p style="font-size:15px; font-weight:500; margin-bottom:6px;">點擊選擇或將 .xlsx / .csv 檔案拖曳至此</p>
-            <p style="font-size:12px; color:#64748b;">支援現有 POS 匯出表，已對標的圖片網址不會被空白覆蓋</p>
+            <p style="font-size:16px; font-weight:600; margin-bottom:6px;">📂 點擊選擇或直接將 Excel / CSV 拖曳至此</p>
+            <p style="font-size:12px; color:#64748b;">自動解析全部欄位，支援一鍵擴充「商品列表」新欄位，或自動長出全新資料表分頁</p>
             <input type="file" id="local-sheet-input" accept=".xlsx,.xls,.csv" style="display:none;">
           </div>
 
-          <div id="import-preview-area" style="display:none; margin-top:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <strong id="import-summary-text"></strong>
-              <button class="btn btn-success" id="btn-confirm-import" onclick="executeBatchImport()">🚀 確認寫入形象網站資料庫</button>
+          <!-- 解析後的智慧辨識與確認面板 -->
+          <div id="excel-analyze-panel" style="display:none; margin-top:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <div>
+                <strong id="excel-file-title" style="font-size:15px;"></strong>
+                <span id="excel-row-count" class="pill pill-new" style="margin-left:8px;"></span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:13px;">選擇工作表：</label>
+                <select id="excel-sheet-select" class="input-ctrl" onchange="onWorksheetChange()"></select>
+              </div>
             </div>
-            <div class="table-wrap" style="max-height:260px; overflow-y:auto;">
-              <table>
-                <thead><tr><th>編號 (id)</th><th>名稱 (name)</th><th>售價 (price)</th><th>圖片 (image)</th><th>狀態</th></tr></thead>
-                <tbody id="import-preview-tbody"></tbody>
-              </table>
+
+            <!-- 建庫模式選擇 -->
+            <div class="mode-grid">
+              <div id="mode-card-merge" class="mode-card selected" onclick="selectImportMode('MERGE_PRODUCTS')">
+                <strong>模式 A：整合至「商品列表」並自動擴充新欄位</strong>
+                <span>自動對標 id / name / price / 狀態，Excel 多出的欄位會自動長在資料庫右側（保護已對標的圖片不被覆蓋）。</span>
+              </div>
+              <div id="mode-card-new" class="mode-card" onclick="selectImportMode('CREATE_NEW_TABLE')">
+                <strong>模式 B：依此檔案自動長出全新資料表分頁</strong>
+                <span>以原欄位完整建立一張新的資料庫分頁（若分頁已存在則自動追加欄位與資料列）。</span>
+                <div style="margin-top:8px;" onclick="event.stopPropagation()">
+                  <input type="text" id="new-table-name-input" class="input-ctrl" style="width:100%;" placeholder="輸入新資料表分頁名稱">
+                </div>
+              </div>
+            </div>
+
+            <!-- 自動辨識欄位對照表（可微調欄位名） -->
+            <div style="margin: 16px 0;">
+              <strong style="font-size:13px; display:block; margin-bottom:8px;">系統自動辨識之欄位結構（可自由修改目標欄位名稱，取消勾選則不匯入）：</strong>
+              <div class="table-wrap" style="max-height:240px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width:50px;">匯入</th>
+                      <th>來源 Excel 欄位名稱</th>
+                      <th>對應資料庫欄位名稱（可編輯）</th>
+                      <th>系統辨識結果</th>
+                      <th>範例資料（第 1 筆）</th>
+                    </tr>
+                  </thead>
+                  <tbody id="header-mapping-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 資料預覽前 10 筆 -->
+            <div style="margin-bottom:16px;">
+              <strong style="font-size:13px; display:block; margin-bottom:8px;">資料內容預覽（前 10 筆）：</strong>
+              <div class="table-wrap" style="max-height:220px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px;">
+                <table id="excel-preview-table"></table>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+              <button class="btn btn-outline" onclick="resetExcelPanel()">清除重選</button>
+              <button class="btn btn-success" id="btn-execute-build" onclick="executeDynamicBuild()">🚀 確認欄位結構，開始自動建置資料庫</button>
             </div>
           </div>
         </div>
 
+        <!-- 標準資料匯出區 -->
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>標準化資料匯出（完全對標形象網站架構）</h3>
-              <p style="font-size:12px; color:#64748b; margin-top:4px;">自動合併所有分頁（含自動分表 _1, _2），匯出 Excel 不亂碼 CSV 或標準 JSON。</p>
+              <h3>資料庫標準匯出</h3>
+              <p style="font-size:12px; color:#64748b; margin-top:4px;">可選擇任何已建置的資料表（自動合併分頁 _1, _2），匯出 Excel 不亂碼 CSV 或標準 JSON。</p>
             </div>
-            <div style="display:flex; gap:10px;">
-              <button class="btn btn-info" onclick="exportWebsiteData('csv')">⬇️ 匯出標準 CSV (Excel用)</button>
-              <button class="btn btn-outline" onclick="exportWebsiteData('json')">⬇️ 匯出標準 JSON</button>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <select id="export-sheet-select" class="input-ctrl"></select>
+              <button class="btn btn-info" onclick="exportSelectedSheet('csv')">⬇️ 匯出 CSV</button>
+              <button class="btn btn-outline" onclick="exportSelectedSheet('json')">⬇️ 匯出 JSON</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ================= 分頁 3：系統異常與報錯監控 ================= -->
+      <!-- ================= 分頁 3：跑馬燈與網站設定 ================= -->
+      <section id="tab-site-settings" class="tab-panel">
+        <div class="card">
+          <div class="card-head">
+            <h3>頂部多則無縫跑馬燈管理</h3>
+          </div>
+          <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <input type="text" id="new-news-input" class="input-ctrl" style="flex:1;" placeholder="輸入新的跑馬燈最新消息文字，例如：✨ 全館滿 NT$2,000 享免運 ✨">
+            <button class="btn btn-primary" onclick="addAnnouncement()">＋ 新增上架公告</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>編號</th><th>跑馬燈內容</th><th>狀態</th><th>操作</th></tr></thead>
+              <tbody id="news-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>形象網站全域開關與頁尾設定</h3>
+          </div>
+          <div style="display:grid; gap:14px; max-width:560px;">
+            <div>
+              <label style="display:block; font-size:13px; font-weight:500; margin-bottom:6px;">頁尾免運／客服提示文案（free_shipping）</label>
+              <input type="text" id="cfg-free-shipping" class="input-ctrl" style="width:100%;">
+            </div>
+            <div>
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                <input type="checkbox" id="cfg-cart-enabled">
+                啟用購物車圖示（第一階段形象網站建議保持取消勾選）
+              </label>
+            </div>
+            <div>
+              <button class="btn btn-success" onclick="saveGlobalConfig()">💾 儲存前台設定</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 分頁 4：系統異常報錯中心 ================= -->
       <section id="tab-errors" class="tab-panel">
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>系統異常與報錯紀錄中心</h3>
-              <p style="font-size:12px; color:#64748b; margin-top:4px;">自動記錄匯入欄位缺失、格式錯誤、找不到商品編號或 API 異常狀況。</p>
+              <h3>系統異常與報錯監控中心</h3>
+              <p style="font-size:12px; color:#64748b; margin-top:4px;">任何匯入漏編號、圖檔對標失敗或 API 連線異常皆會自動記錄於此。</p>
             </div>
             <button class="btn btn-outline" onclick="resolveAllErrors()">✅ 全部標記為已處理</button>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>發生時間</th>
-                  <th>模組</th>
-                  <th>層級</th>
-                  <th>關聯對象</th>
-                  <th>異常訊息</th>
-                  <th>建議處理方式</th>
-                  <th>狀態</th>
-                </tr>
+                <tr><th>發生時間</th><th>模組</th><th>層級</th><th>關聯編號</th><th>異常訊息</th><th>建議處理方式</th><th>狀態</th></tr>
               </thead>
-              <tbody id="error-tbody">
-                <tr><td colspan="7" style="text-align:center; padding:24px;">目前沒有異常紀錄</td></tr>
-              </tbody>
+              <tbody id="error-tbody"></tbody>
             </table>
           </div>
-        </div>
-      </section>
-
-      <!-- ================= 第二階段預留分頁 ================= -->
-      <section id="tab-pos" class="tab-panel">
-        <div class="card placeholder-box">
-          <h3>POS 銷售結帳與營收分析模組（第二階段預留）</h3>
-          <p style="margin-top:8px;">後端已綁定 <code>DB_POS</code> 屬性與 <code>getPosData / createPosOrder</code> 路由，待第一階段形象網站驗收後直接接入。</p>
-        </div>
-      </section>
-
-      <section id="tab-crm" class="tab-panel">
-        <div class="card placeholder-box">
-          <h3>CRM 會員分層與點數管理模組（第二階段預留）</h3>
-          <p style="margin-top:8px;">後端已綁定 <code>DB_CRM</code> 屬性與 <code>getCrmData</code> 路由，隨時可擴充。</p>
-        </div>
-      </section>
-
-      <section id="tab-inventory" class="tab-panel">
-        <div class="card placeholder-box">
-          <h3>進銷存與條碼庫存模組（第二階段預留）</h3>
-          <p style="margin-top:8px;">後端已綁定 <code>DB_INVENTORY</code> 屬性與 <code>getInventoryData / syncInventory</code> 路由，隨時可擴充。</p>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- ================= 圖檔一對一對標、排版與 <2MB 降檔彈窗 ================= -->
+  <!-- ================= 圖檔一對一對標、排版與 <2MB 壓縮彈窗 ================= -->
   <div id="match-modal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-head">
@@ -333,11 +372,11 @@
       <div class="modal-foot">
         <label style="font-size:13px; display:flex; align-items:center; gap:6px; cursor:pointer;">
           <input type="checkbox" id="chk-auto-publish" checked>
-          對標成功後同步將商品設為「上架」
+          對標完成後同步將商品設為「上架」
         </label>
         <div style="display:flex; gap:10px;">
           <button class="btn btn-outline" onclick="closeMatchModal()">取消</button>
-          <button class="btn btn-primary" id="btn-upload-bind" onclick="confirmCompressAndUpload()" disabled>✅ 確認排版、壓縮轉存並改名對標</button>
+          <button class="btn btn-primary" id="btn-upload-bind" onclick="confirmCompressAndUpload()" disabled>✅ 確認排版、壓縮轉存並自動改名</button>
         </div>
       </div>
     </div>
@@ -345,10 +384,9 @@
 
   <script src="./js/config.js"></script>
   <script>
-    // 【可調整參數】圖檔輸出最大寬度與檔案大小上限（2MB）
     const MAX_IMAGE_WIDTH = 1600;
     const MAX_BYTES_LIMIT = 2 * 1024 * 1024;
-    const FIELD_SYNONYMS = {
+    const CORE_SYNONYMS = {
       id: ['id', 'sku', '貨號', '品號', '商品編號', '編號', '產品代碼', '款號'],
       name: ['name', 'title', '品名', '商品名稱', '產品名稱', '名稱'],
       price: ['price', '售價', '定價', '單價', '價格', '門市價'],
@@ -357,20 +395,28 @@
     };
 
     let adminProducts = [];
+    let existingProductHeaders = [];
+    let adminAnnouncements = [];
     let adminErrors = [];
     let rawDriveImages = [];
-    let stagedImportRows = [];
+
+    // Excel 動態建庫暫存狀態
+    let currentWorkbook = null;
+    let currentFileName = '';
+    let parsedRawMatrix = [];
+    let columnMappings = []; // [{ include, rawName, targetName, isCore, sampleVal }]
+    let selectedImportMode = 'MERGE_PRODUCTS';
+
+    // 圖檔對標狀態
     let activeProductId = '';
     let loadedSourceImage = null;
 
-    // 取得暫存在瀏覽器工作階段的管理密鑰（不寫死於程式碼）
     function getAdminToken() {
       return sessionStorage.getItem('MEYA_ADMIN_TOKEN') || '';
     }
 
     function promptAdminToken() {
-      const current = getAdminToken();
-      const input = prompt('請輸入後台管理密鑰 (ADMIN_TOKEN)：\n（若 GAS 尚未設定密鑰，留空按確定即可）', current);
+      const input = prompt('請輸入後台管理密鑰 (ADMIN_TOKEN)：\n（若 GAS 尚未設定密鑰，留空按確定即可）', getAdminToken());
       if (input !== null) {
         sessionStorage.setItem('MEYA_ADMIN_TOKEN', input.trim());
         loadDashboard();
@@ -383,8 +429,7 @@
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         item.classList.add('active');
-        const tabId = item.getAttribute('data-tab');
-        document.getElementById(tabId).classList.add('active');
+        document.getElementById(item.getAttribute('data-tab')).classList.add('active');
         document.getElementById('topbar-title').textContent = item.querySelector('span').textContent;
       });
     });
@@ -394,10 +439,10 @@
       loadDashboard();
     });
 
-    // ================= 1. 載入總覽、商品與報錯資料 =================
+    // ================= 1. 載入管理儀表板 =================
     async function loadDashboard() {
       const tbody = document.getElementById('product-tbody');
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px;">同步資料庫中...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px;">同步資料庫中...</td></tr>';
 
       try {
         const url = CONFIG.GAS_API_URL + '?action=getAdminDashboard&token=' + encodeURIComponent(getAdminToken());
@@ -406,7 +451,7 @@
 
         if (data.status !== 'success') {
           if (String(data.message).includes('Unauthorized')) {
-            alert('需要管理員密鑰才能存取後台，請輸入您在 GAS 設定的 ADMIN_TOKEN。');
+            alert('請先輸入正確的管理密鑰 (ADMIN_TOKEN)。');
             promptAdminToken();
             return;
           }
@@ -414,27 +459,28 @@
         }
 
         adminProducts = data.products || [];
+        existingProductHeaders = data.productHeaders || ['id', 'name', 'price', 'image', '狀態'];
+        adminAnnouncements = data.announcements || [];
         adminErrors = data.errors || [];
 
         updateKpis();
         renderProductTable();
+        renderExportSheetOptions(data.sheetNames || ['商品列表']);
+        renderAnnouncementsTable();
+        renderGlobalConfigForm(data.config || {});
         renderErrorTable();
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#e74c3c; padding:24px;">載入失敗：' + escapeHtml(err.message) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#e74c3c; padding:24px;">載入失敗：' + escapeHtml(err.message) + '</td></tr>';
       }
     }
 
     function updateKpis() {
-      const total = adminProducts.length;
-      const active = adminProducts.filter(p => p['狀態'] === '上架').length;
-      const pending = adminProducts.filter(p => !p.image || String(p.image).trim() === '').length;
+      document.getElementById('kpi-total').textContent = adminProducts.length;
+      document.getElementById('kpi-active').textContent = adminProducts.filter(p => p['狀態'] === '上架').length;
+      document.getElementById('kpi-pending').textContent = adminProducts.filter(p => !p.image || String(p.image).trim() === '').length;
+      document.getElementById('kpi-cols').textContent = existingProductHeaders.length;
+
       const openErrors = adminErrors.filter(e => e['狀態'] === '未處理').length;
-
-      document.getElementById('kpi-total').textContent = total;
-      document.getElementById('kpi-active').textContent = active;
-      document.getElementById('kpi-pending').textContent = pending;
-      document.getElementById('kpi-errors').textContent = openErrors;
-
       const badge = document.getElementById('nav-error-badge');
       badge.textContent = openErrors;
       badge.style.display = openErrors > 0 ? 'inline-block' : 'none';
@@ -444,41 +490,45 @@
       const tbody = document.getElementById('product-tbody');
       const kw = document.getElementById('prod-search').value.trim().toLowerCase();
       const filter = document.getElementById('prod-filter').value;
+      const coreSet = new Set(['id', 'name', 'price', 'image', '狀態']);
 
       const list = adminProducts.filter(p => {
-        const matchKw = !kw ||
-          String(p.id || '').toLowerCase().includes(kw) ||
-          String(p.name || '').toLowerCase().includes(kw);
-
-        if (!matchKw) return false;
+        const allText = Object.values(p).join(' ').toLowerCase();
+        if (kw && !allText.includes(kw)) return false;
         if (filter === 'NO_IMAGE') return !p.image || String(p.image).trim() === '';
         if (filter !== 'ALL') return p['狀態'] === filter;
         return true;
       });
 
       if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:#64748b;">沒有符合條件的商品資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b;">沒有符合條件的商品資料</td></tr>';
         return;
       }
 
       tbody.innerHTML = '';
       list.forEach(p => {
-        const tr = document.createElement('tr');
+        const extraSummary = Object.keys(p)
+          .filter(k => !coreSet.has(k) && p[k] !== '' && p[k] !== undefined)
+          .slice(0, 3)
+          .map(k => `<span class="pill pill-off" style="margin:2px;">${escapeHtml(k)}: ${escapeHtml(p[k])}</span>`)
+          .join('');
+
         const statusClass = p['狀態'] === '上架' ? 'pill-ok' : (p['狀態'] === '待對標' ? 'pill-wait' : 'pill-off');
         const nextStatus = p['狀態'] === '上架' ? '下架' : '上架';
 
+        const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${p.image ? `<img class="thumb-mini" src="${escapeHtml(p.image)}" alt="">` : '<span class="status-pill pill-err">缺圖</span>'}</td>
+          <td>${p.image ? `<img class="thumb-mini" src="${escapeHtml(p.image)}" alt="">` : '<span class="pill pill-err">缺圖</span>'}</td>
           <td><strong>${escapeHtml(p.id)}</strong></td>
           <td>${escapeHtml(p.name)}</td>
           <td>NT$ ${Number(p.price || 0).toLocaleString()}</td>
-          <td><span class="status-pill ${statusClass}">${escapeHtml(p['狀態'] || '未設定')}</span></td>
-          <td style="display:flex; gap:6px;">
+          <td>${extraSummary || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
+          <td><span class="pill ${statusClass}">${escapeHtml(p['狀態'] || '未設定')}</span></td>
+          <td style="white-space:nowrap;">
             <button class="btn btn-primary btn-open-match">對標排版</button>
             <button class="btn btn-outline btn-toggle-status">設為${nextStatus}</button>
           </td>
         `;
-
         tr.querySelector('.btn-open-match').addEventListener('click', () => openMatchModal(p));
         tr.querySelector('.btn-toggle-status').addEventListener('click', () => toggleProductStatus(p.id, nextStatus));
         tbody.appendChild(tr);
@@ -488,26 +538,302 @@
     async function toggleProductStatus(productId, newStatus) {
       const res = await fetch(CONFIG.GAS_API_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          action: 'updateProductStatus',
-          token: getAdminToken(),
-          productId: productId,
-          newStatus: newStatus
-        })
+        body: JSON.stringify({ action: 'updateProductStatus', token: getAdminToken(), productId, newStatus })
       });
-      const data = await res.json();
-      if (data.status === 'success') {
+      const json = await res.json();
+      if (json.status === 'success') loadDashboard();
+      else alert('狀態更新失敗：' + json.message);
+    }
+
+    // ================= 2. Excel 拖曳自動辨識與動態建庫 =================
+    function bindFileDropzone() {
+      const dz = document.getElementById('file-dropzone');
+      const input = document.getElementById('local-sheet-input');
+
+      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+
+      dz.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length > 0) loadLocalExcelFile(e.dataTransfer.files[0]);
+      });
+      input.addEventListener('change', e => {
+        if (e.target.files.length > 0) loadLocalExcelFile(e.target.files[0]);
+        e.target.value = '';
+      });
+    }
+
+    function loadLocalExcelFile(file) {
+      currentFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          currentWorkbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          const select = document.getElementById('excel-sheet-select');
+          select.innerHTML = '';
+          currentWorkbook.SheetNames.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            select.appendChild(opt);
+          });
+
+          document.getElementById('excel-file-title').textContent = '已載入檔案：' + file.name;
+          document.getElementById('excel-analyze-panel').style.display = 'block';
+          onWorksheetChange();
+        } catch (err) {
+          alert('讀取 Excel/CSV 失敗：' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function onWorksheetChange() {
+      const sheetName = document.getElementById('excel-sheet-select').value;
+      const ws = currentWorkbook.Sheets[sheetName];
+      const rawMatrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // 過濾完全空白的資料列
+      parsedRawMatrix = rawMatrix.filter(row => Array.isArray(row) && row.some(cell => String(cell).trim() !== ''));
+      if (parsedRawMatrix.length < 2) {
+        alert('此工作表內容不足（需至少包含 1 列標題與 1 列資料）。');
+        return;
+      }
+
+      const rawHeaders = parsedRawMatrix[0];
+      const firstDataRow = parsedRawMatrix[1] || [];
+      const usedCoreKeys = new Set();
+
+      columnMappings = [];
+      rawHeaders.forEach((rawH, colIdx) => {
+        const cleanRaw = String(rawH || '').trim();
+        const sampleVal = firstDataRow[colIdx] !== undefined ? String(firstDataRow[colIdx]).trim() : '';
+        if (!cleanRaw && !sampleVal) return;
+
+        const displayRaw = cleanRaw || ('未命名欄位_' + (colIdx + 1));
+        let autoTarget = displayRaw;
+        let isCore = false;
+
+        // 自動辨識是否對應核心商品欄位
+        const lower = displayRaw.toLowerCase();
+        for (const coreKey of Object.keys(CORE_SYNONYMS)) {
+          if (usedCoreKeys.has(coreKey)) continue;
+          const hit = CORE_SYNONYMS[coreKey].some(syn => lower === syn.toLowerCase() || lower.includes(syn.toLowerCase()));
+          if (hit) {
+            autoTarget = coreKey;
+            isCore = true;
+            usedCoreKeys.add(coreKey);
+            break;
+          }
+        }
+
+        columnMappings.push({
+          colIdx: colIdx,
+          include: true,
+          rawName: displayRaw,
+          targetName: selectedImportMode === 'MERGE_PRODUCTS' ? autoTarget : displayRaw,
+          autoCoreName: isCore ? autoTarget : null,
+          sampleVal: sampleVal
+        });
+      });
+
+      document.getElementById('excel-row-count').textContent = '共偵測到 ' + (parsedRawMatrix.length - 1) + ' 筆資料、' + columnMappings.length + ' 個欄位';
+      document.getElementById('new-table-name-input').value = sheetName === 'Sheet1' ? currentFileName.replace(/\.[^.]+$/, '') : sheetName;
+
+      renderHeaderMappingTable();
+      renderExcelPreviewTable();
+    }
+
+    function selectImportMode(mode) {
+      selectedImportMode = mode;
+      document.getElementById('mode-card-merge').classList.toggle('selected', mode === 'MERGE_PRODUCTS');
+      document.getElementById('mode-card-new').classList.toggle('selected', mode === 'CREATE_NEW_TABLE');
+
+      // 切換模式時自動更新目標欄位名稱建議
+      columnMappings.forEach(m => {
+        m.targetName = (mode === 'MERGE_PRODUCTS' && m.autoCoreName) ? m.autoCoreName : m.rawName;
+      });
+      renderHeaderMappingTable();
+      renderExcelPreviewTable();
+    }
+
+    function renderHeaderMappingTable() {
+      const tbody = document.getElementById('header-mapping-tbody');
+      tbody.innerHTML = '';
+
+      columnMappings.forEach((m, idx) => {
+        let statusTag = '';
+        if (selectedImportMode === 'MERGE_PRODUCTS') {
+          if (['id', 'name', 'price', 'image', '狀態'].includes(m.targetName)) {
+            statusTag = '<span class="pill pill-ok">核心商品欄位</span>';
+          } else if (existingProductHeaders.includes(m.targetName)) {
+            statusTag = '<span class="pill pill-off">對齊既有欄位</span>';
+          } else {
+            statusTag = '<span class="pill pill-new">✨ 將自動新增欄位</span>';
+          }
+        } else {
+          statusTag = '<span class="pill pill-new">新資料表欄位</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="checkbox" ${m.include ? 'checked' : ''} data-idx="${idx}" class="chk-col"></td>
+          <td>${escapeHtml(m.rawName)}</td>
+          <td><input type="text" class="input-ctrl inp-target" style="width:160px;" value="${escapeHtml(m.targetName)}" data-idx="${idx}"></td>
+          <td>${statusTag}</td>
+          <td style="color:#64748b; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(m.sampleVal)}</td>
+        `;
+
+        tr.querySelector('.chk-col').addEventListener('change', (e) => {
+          columnMappings[idx].include = e.target.checked;
+          renderExcelPreviewTable();
+        });
+        tr.querySelector('.inp-target').addEventListener('input', (e) => {
+          columnMappings[idx].targetName = e.target.value.trim();
+          renderExcelPreviewTable();
+        });
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderExcelPreviewTable() {
+      const table = document.getElementById('excel-preview-table');
+      const activeCols = columnMappings.filter(m => m.include && m.targetName);
+      if (activeCols.length === 0) {
+        table.innerHTML = '<tr><td style="padding:16px; color:#888;">請至少勾選一個要匯入的欄位</td></tr>';
+        return;
+      }
+
+      let html = '<thead><tr>' + activeCols.map(c => `<th>${escapeHtml(c.targetName)}</th>`).join('') + '</tr></thead><tbody>';
+      parsedRawMatrix.slice(1, 11).forEach(row => {
+        html += '<tr>' + activeCols.map(c => `<td>${escapeHtml(row[c.colIdx] !== undefined ? row[c.colIdx] : '')}</td>`).join('') + '</tr>';
+      });
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+
+    async function executeDynamicBuild() {
+      const activeCols = columnMappings.filter(m => m.include && m.targetName);
+      if (activeCols.length === 0) return alert('請至少勾選一個有效欄位！');
+
+      const targetHeaders = activeCols.map(c => c.targetName);
+      if (selectedImportMode === 'MERGE_PRODUCTS') {
+        if (!targetHeaders.includes('id') || !targetHeaders.includes('name')) {
+          return alert('整合至「商品列表」時，必須包含對應到「id」與「name」的欄位！\n請在上方表格將商品編號與商品名稱欄位改名為 id 與 name。');
+        }
+      }
+
+      const targetSheetName = selectedImportMode === 'MERGE_PRODUCTS'
+        ? '商品列表'
+        : document.getElementById('new-table-name-input').value.trim();
+
+      if (!targetSheetName) return alert('請輸入要建立的新資料表名稱！');
+
+      const records = parsedRawMatrix.slice(1).map(rawRow => {
+        const obj = {};
+        activeCols.forEach(c => {
+          let val = rawRow[c.colIdx] !== undefined ? rawRow[c.colIdx] : '';
+          if (c.targetName === 'price') {
+            val = Number(String(val).replace(/[^0-9.-]/g, '')) || 0;
+          } else {
+            val = String(val).trim();
+          }
+          obj[c.targetName] = val;
+        });
+        return obj;
+      });
+
+      const btn = document.getElementById('btn-execute-build');
+      btn.disabled = true;
+      btn.textContent = '⏳ 正在自動建置與寫入資料庫...';
+
+      try {
+        const CHUNK_SIZE = 500;
+        let totalInserted = 0, totalUpdated = 0, totalSkipped = 0;
+        let allAddedCols = new Set();
+
+        for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+          const chunk = records.slice(i, i + CHUNK_SIZE);
+          const res = await fetch(CONFIG.GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'importDynamicDataset',
+              token: getAdminToken(),
+              mode: selectedImportMode,
+              sheetName: targetSheetName,
+              headers: targetHeaders,
+              rows: chunk,
+              sourceName: currentFileName
+            })
+          });
+          const json = await res.json();
+          if (json.status !== 'success') throw new Error(json.message);
+
+          totalInserted += json.data.insertedCount;
+          totalUpdated += json.data.updatedCount;
+          totalSkipped += json.data.skippedCount;
+          (json.data.addedColumns || []).forEach(col => allAddedCols.add(col));
+        }
+
+        const addedMsg = allAddedCols.size > 0 ? '\n自動新增欄位：' + Array.from(allAddedCols).join(', ') : '';
+        alert(`✅ 資料庫建置完成！\n目標分頁：《${targetSheetName}》\n新增 ${totalInserted} 筆｜更新 ${totalUpdated} 筆｜略過 ${totalSkipped} 筆${addedMsg}`);
+        resetExcelPanel();
         loadDashboard();
-      } else {
-        alert('更新失敗：' + data.message);
+      } catch (err) {
+        alert('❌ 建庫過程發生錯誤：' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 確認欄位結構，開始自動建置資料庫';
       }
     }
 
-    // ================= 2. 規則建議對標與缺圖檢測 =================
+    function resetExcelPanel() {
+      currentWorkbook = null;
+      parsedRawMatrix = [];
+      columnMappings = [];
+      document.getElementById('excel-analyze-panel').style.display = 'none';
+    }
+
+    // ================= 3. 標準資料匯出 =================
+    function renderExportSheetOptions(sheetNames) {
+      const sel = document.getElementById('export-sheet-select');
+      sel.innerHTML = '';
+      sheetNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = '資料表：' + name;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function exportSelectedSheet(format) {
+      const sheetName = document.getElementById('export-sheet-select').value || '商品列表';
+      try {
+        const url = CONFIG.GAS_API_URL +
+          '?action=exportData&sheetName=' + encodeURIComponent(sheetName) +
+          '&format=' + format + '&token=' + encodeURIComponent(getAdminToken());
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.status !== 'success') throw new Error(json.message);
+
+        const d = json.data;
+        const content = format === 'json' ? JSON.stringify(d.records, null, 2) : d.csvContent;
+        const mime = format === 'json' ? 'application/json;charset=utf-8;' : 'text/csv;charset=utf-8;';
+        const blob = new Blob([content], { type: mime });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = d.fileName;
+        link.click();
+      } catch (err) {
+        alert('匯出失敗：' + err.message);
+      }
+    }
+
+    // ================= 4. 圖檔一對一對標、排版與 <2MB 降檔 =================
     async function runAutoSuggestCheck() {
       const banner = document.getElementById('suggest-banner');
       banner.style.display = 'block';
-      banner.textContent = '正在比對待對標商品與雲端原始資料夾...';
+      banner.textContent = '正在比對缺圖商品與雲端原始資料夾...';
 
       try {
         const url = CONFIG.GAS_API_URL + '?action=suggestImageMatches&token=' + encodeURIComponent(getAdminToken());
@@ -516,23 +842,22 @@
         if (json.status !== 'success') throw new Error(json.message);
 
         const d = json.data;
-        const unmatchedIds = (d.unmatchedProducts || []).slice(0, 10).map(x => x.id).join(', ');
+        const sampleMissing = (d.unmatchedProducts || []).slice(0, 10).map(x => x.id).join(', ');
         banner.innerHTML =
-          `<strong>規則檢查完成：</strong>目前共有 <strong>${d.totalPendingProducts}</strong> 筆缺圖商品；` +
-          `其中 <strong>${d.matchedCount}</strong> 筆已在雲端找到同編號原圖（點進「對標排版」會以黃色高亮提示），` +
-          `另有 <strong>${d.unmatchedCount}</strong> 筆尚未找到對應照片` +
-          (unmatchedIds ? `（例如：${escapeHtml(unmatchedIds)}）` : '。');
+          `<strong>規則檢查完成：</strong>缺圖商品共 <strong>${d.totalPendingProducts}</strong> 筆；` +
+          `已在雲端找到同編號原圖 <strong>${d.matchedCount}</strong> 筆（點進「對標排版」會以黃色高亮排在最上方），` +
+          `尚無對應照片 <strong>${d.unmatchedCount}</strong> 筆` +
+          (sampleMissing ? `（如：${escapeHtml(sampleMissing)}）` : '。');
       } catch (err) {
         banner.textContent = '檢查失敗：' + err.message;
       }
     }
 
-    // ================= 3. 圖檔一對一對標、排版與 <2MB 降檔 =================
     async function openMatchModal(product) {
       activeProductId = String(product.id);
       loadedSourceImage = null;
       document.getElementById('match-modal-title').textContent = `對標與排版：[${product.id}] ${product.name}`;
-      document.getElementById('match-status-text').textContent = '請從左側選擇對應的原始高畫質照片。';
+      document.getElementById('match-status-text').textContent = '請從左側選擇對應的原始照片。';
       document.getElementById('btn-upload-bind').disabled = true;
       const canvas = document.getElementById('preview-canvas');
       canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
@@ -558,7 +883,6 @@
       const kw = document.getElementById('raw-img-search').value.trim().toLowerCase();
       const targetLower = activeProductId.toLowerCase();
 
-      // 將檔名包含目前商品編號的圖片自動排到最上方
       const filtered = rawDriveImages
         .filter(img => !kw || String(img.name).toLowerCase().includes(kw))
         .sort((a, b) => {
@@ -581,7 +905,7 @@
           <img src="${escapeHtml(img.thumbnail)}" alt="">
           <div>
             <div>${escapeHtml(img.name)}</div>
-            ${isHit ? '<span style="font-size:11px; color:#a16207;">⭐ 系統辨識吻合商品編號</span>' : ''}
+            ${isHit ? '<span style="font-size:11px; color:#a16207;">⭐ 吻合商品編號</span>' : ''}
           </div>
         `;
         item.addEventListener('click', () => {
@@ -596,7 +920,7 @@
     async function loadRawImageToCanvas(fileId, fileName) {
       const statusEl = document.getElementById('match-status-text');
       const btn = document.getElementById('btn-upload-bind');
-      statusEl.textContent = '⏳ 正在載入高畫質原圖「' + fileName + '」進行排版預覽...';
+      statusEl.textContent = '⏳ 載入高畫質原圖「' + fileName + '」中...';
       btn.disabled = true;
 
       try {
@@ -624,7 +948,6 @@
       const srcW = loadedSourceImage.naturalWidth;
       const srcH = loadedSourceImage.naturalHeight;
 
-      // 依選擇的排版比例計算居中裁切範圍
       let sx = 0, sy = 0, sw = srcW, sh = srcH;
       if (ratioMode !== 'original') {
         const targetRatio = ratioMode === '1:1' ? 1 : (3 / 4);
@@ -638,7 +961,6 @@
         }
       }
 
-      // 等比例縮小至最大寬度以利網頁加速
       let outW = sw, outH = sh;
       if (outW > MAX_IMAGE_WIDTH) {
         outH = Math.round(outH * (MAX_IMAGE_WIDTH / outW));
@@ -652,9 +974,9 @@
       ctx.fillRect(0, 0, outW, outH);
       ctx.drawImage(loadedSourceImage, sx, sy, sw, sh, 0, 0, outW, outH);
 
-      const previewInfo = compressCanvasUnder2MB(canvas);
+      const info = compressCanvasUnder2MB(canvas);
       document.getElementById('match-status-text').textContent =
-        `✅ 排版就緒（${outW}×${outH}px）｜預估壓縮後大小：${previewInfo.sizeKb} KB（品質 ${Math.round(previewInfo.quality * 100)}%）｜將自動命名為 ${activeProductId}_cover.jpg`;
+        `✅ 排版就緒（${outW}×${outH}px）｜預估壓縮後：${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%）｜自動檔名：${activeProductId}_cover.jpg`;
     }
 
     function compressCanvasUnder2MB(canvas) {
@@ -668,11 +990,7 @@
         estBytes = Math.round((dataUrl.length * 3) / 4);
       }
 
-      return {
-        dataUrl: dataUrl,
-        quality: quality,
-        sizeKb: Math.round(estBytes / 1024)
-      };
+      return { dataUrl, quality, sizeKb: Math.round(estBytes / 1024) };
     }
 
     async function confirmCompressAndUpload() {
@@ -680,14 +998,10 @@
       const btn = document.getElementById('btn-upload-bind');
       const statusEl = document.getElementById('match-status-text');
       btn.disabled = true;
-      statusEl.textContent = '🚀 正在執行降檔轉存、自動歸檔至商品編號資料夾並更新試算表...';
+      statusEl.textContent = '🚀 正在降檔轉存、自動歸檔至商品編號資料夾並寫入資料庫...';
 
       try {
-        const canvas = document.getElementById('preview-canvas');
-        const compressed = compressCanvasUnder2MB(canvas);
-        const cleanBase64 = compressed.dataUrl.split(',')[1];
-        const autoPublish = document.getElementById('chk-auto-publish').checked;
-
+        const compressed = compressCanvasUnder2MB(document.getElementById('preview-canvas'));
         const res = await fetch(CONFIG.GAS_API_URL, {
           method: 'POST',
           body: JSON.stringify({
@@ -696,11 +1010,10 @@
             productId: activeProductId,
             fileName: activeProductId + '_cover.jpg',
             mimeType: 'image/jpeg',
-            base64Data: cleanBase64,
-            autoPublish: autoPublish
+            base64Data: compressed.dataUrl.split(',')[1],
+            autoPublish: document.getElementById('chk-auto-publish').checked
           })
         });
-
         const result = await res.json();
         if (result.status !== 'success') throw new Error(result.message);
 
@@ -717,170 +1030,81 @@
       document.getElementById('match-modal').classList.remove('open');
     }
 
-    // ================= 4. 雙軌資料匯入與標準化匯出 =================
-    async function triggerScanDropFolder() {
-      const btn = document.getElementById('btn-scan-folder');
-      const logEl = document.getElementById('scan-folder-log');
-      btn.disabled = true;
-      logEl.textContent = '⏳ 正在掃描 Google Drive 收件夾並執行資料整合...';
-
-      try {
-        const res = await fetch(CONFIG.GAS_API_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'scanDropFolder', token: getAdminToken() })
-        });
-        const json = await res.json();
-        if (json.status !== 'success') throw new Error(json.message);
-
-        const d = json.data;
-        logEl.innerHTML =
-          `✅ 掃描完成！成功處理 <strong>${d.processedFiles}</strong> 個檔案（新增 ${d.totalInserted} 筆 / 更新 ${d.totalUpdated} 筆），` +
-          `異常檔案 <strong>${d.failedFiles}</strong> 個` +
-          (d.failedFiles > 0 ? '（詳細原因已自動寫入「異常報錯監控」分頁）' : '。');
-        loadDashboard();
-      } catch (err) {
-        logEl.innerHTML = '<span style="color:#e74c3c;">❌ 掃描失敗：' + escapeHtml(err.message) + '</span>';
-      } finally {
-        btn.disabled = false;
+    // ================= 5. 跑馬燈與網站設定管理 =================
+    function renderAnnouncementsTable() {
+      const tbody = document.getElementById('news-tbody');
+      if (adminAnnouncements.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#64748b;">尚無公告</td></tr>';
+        return;
       }
-    }
-
-    function bindFileDropzone() {
-      const dz = document.getElementById('file-dropzone');
-      const input = document.getElementById('local-sheet-input');
-
-      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
-      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
-
-      dz.addEventListener('drop', e => {
-        if (e.dataTransfer.files.length > 0) parseLocalSpreadsheet(e.dataTransfer.files[0]);
-      });
-      input.addEventListener('change', e => {
-        if (e.target.files.length > 0) parseLocalSpreadsheet(e.target.files[0]);
-      });
-    }
-
-    function parseLocalSpreadsheet(file) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const rawJson = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-          if (rawJson.length === 0) throw new Error('檔案中找不到任何資料列');
-
-          const headers = Object.keys(rawJson[0]);
-          const keyMap = {};
-          Object.keys(FIELD_SYNONYMS).forEach(stdKey => {
-            const syns = FIELD_SYNONYMS[stdKey];
-            const found = headers.find(h => {
-              const lower = String(h).trim().toLowerCase();
-              return syns.some(s => lower === s.toLowerCase() || lower.includes(s.toLowerCase()));
-            });
-            if (found) keyMap[stdKey] = found;
-          });
-
-          if (!keyMap.id || !keyMap.name) {
-            throw new Error('缺少必要欄位（需包含「商品編號/id」與「商品名稱/name」），偵測到的表頭：' + headers.join(', '));
-          }
-
-          stagedImportRows = rawJson.map(r => ({
-            id: String(r[keyMap.id] || '').trim(),
-            name: String(r[keyMap.name] || '').trim(),
-            price: Number(String(r[keyMap.price] || 0).replace(/[^0-9.-]/g, '')) || 0,
-            image: keyMap.image ? String(r[keyMap.image] || '').trim() : '',
-            '狀態': keyMap['狀態'] ? String(r[keyMap['狀態']] || '').trim() : ''
-          })).filter(r => r.id !== '');
-
-          renderImportPreview(file.name);
-        } catch (err) {
-          alert('解析檔案失敗：' + err.message);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    function renderImportPreview(fileName) {
-      document.getElementById('import-preview-area').style.display = 'block';
-      document.getElementById('import-summary-text').textContent =
-        `已解析《${fileName}》共 ${stagedImportRows.length} 筆有效商品（預覽前 20 筆）：`;
-
-      const tbody = document.getElementById('import-preview-tbody');
       tbody.innerHTML = '';
-      stagedImportRows.slice(0, 20).forEach(r => {
-        tbody.innerHTML += `<tr><td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.name)}</td><td>${r.price}</td><td>${escapeHtml(r.image || '(保留原圖/待對標)')}</td><td>${escapeHtml(r['狀態'] || '待對標')}</td></tr>`;
+      adminAnnouncements.forEach(n => {
+        const isUp = n['狀態'] === '上架';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(n.id)}</td>
+          <td>${escapeHtml(n['內容'])}</td>
+          <td><span class="pill ${isUp ? 'pill-ok' : 'pill-off'}">${escapeHtml(n['狀態'])}</span></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-outline btn-toggle-news">${isUp ? '下架' : '上架'}</button>
+            <button class="btn btn-danger btn-del-news">刪除</button>
+          </td>
+        `;
+        tr.querySelector('.btn-toggle-news').addEventListener('click', () => manageAnnouncement('toggle', n.id));
+        tr.querySelector('.btn-del-news').addEventListener('click', () => {
+          if (confirm('確定要刪除此則跑馬燈公告嗎？')) manageAnnouncement('delete', n.id);
+        });
+        tbody.appendChild(tr);
       });
     }
 
-    async function executeBatchImport() {
-      if (stagedImportRows.length === 0) return;
-      const btn = document.getElementById('btn-confirm-import');
-      btn.disabled = true;
-      btn.textContent = '⏳ 分批寫入資料庫中...';
-
-      try {
-        const CHUNK_SIZE = 500;
-        let totalIns = 0, totalUpd = 0;
-
-        for (let i = 0; i < stagedImportRows.length; i += CHUNK_SIZE) {
-          const chunk = stagedImportRows.slice(i, i + CHUNK_SIZE);
-          const res = await fetch(CONFIG.GAS_API_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-              action: 'batchImportProducts',
-              token: getAdminToken(),
-              sourceName: '後台拖曳匯入',
-              rows: chunk
-            })
-          });
-          const json = await res.json();
-          if (json.status !== 'success') throw new Error(json.message);
-          totalIns += json.data.insertedCount;
-          totalUpd += json.data.updatedCount;
-        }
-
-        alert(`✅ 匯入完成！新增 ${totalIns} 筆、更新 ${totalUpd} 筆。`);
-        stagedImportRows = [];
-        document.getElementById('import-preview-area').style.display = 'none';
-        loadDashboard();
-      } catch (err) {
-        alert('❌ 寫入過程發生錯誤：' + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '🚀 確認寫入形象網站資料庫';
-      }
+    async function addAnnouncement() {
+      const input = document.getElementById('new-news-input');
+      const content = input.value.trim();
+      if (!content) return alert('請先輸入公告內容');
+      await manageAnnouncement('add', '', content);
+      input.value = '';
     }
 
-    async function exportWebsiteData(format) {
-      try {
-        const url = CONFIG.GAS_API_URL +
-          '?action=exportData&dbKey=DB_WEBSITE&sheetName=' + encodeURIComponent('商品列表') +
-          '&format=' + format + '&token=' + encodeURIComponent(getAdminToken());
-        const res = await fetch(url);
-        const json = await res.json();
-        if (json.status !== 'success') throw new Error(json.message);
-
-        const d = json.data;
-        const content = format === 'json' ? JSON.stringify(d.records, null, 2) : d.csvContent;
-        const mime = format === 'json' ? 'application/json;charset=utf-8;' : 'text/csv;charset=utf-8;';
-        const blob = new Blob([content], { type: mime });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = d.fileName;
-        link.click();
-      } catch (err) {
-        alert('匯出失敗：' + err.message);
-      }
+    async function manageAnnouncement(operation, id, content) {
+      const res = await fetch(CONFIG.GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'saveAnnouncement', token: getAdminToken(), operation, id, content })
+      });
+      const json = await res.json();
+      if (json.status === 'success') loadDashboard();
+      else alert('操作失敗：' + json.message);
     }
 
-    // ================= 5. 異常報錯監控渲染 =================
+    function renderGlobalConfigForm(cfg) {
+      document.getElementById('cfg-free-shipping').value = cfg.free_shipping || '';
+      document.getElementById('cfg-cart-enabled').checked = cfg.cart_enabled === true;
+    }
+
+    async function saveGlobalConfig() {
+      const res = await fetch(CONFIG.GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'saveWebsiteConfig',
+          token: getAdminToken(),
+          config: {
+            free_shipping: document.getElementById('cfg-free-shipping').value.trim(),
+            cart_enabled: document.getElementById('cfg-cart-enabled').checked
+          }
+        })
+      });
+      const json = await res.json();
+      if (json.status === 'success') alert('✅ 形象網站全域設定已儲存！');
+      else alert('儲存失敗：' + json.message);
+    }
+
+    // ================= 6. 異常報錯中心 =================
     function renderErrorTable() {
       const tbody = document.getElementById('error-tbody');
       if (adminErrors.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b;">太棒了！目前沒有任何系統異常紀錄。</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b;">目前沒有任何異常紀錄。</td></tr>';
         return;
       }
-
       tbody.innerHTML = '';
       adminErrors.forEach(e => {
         const levelClass = e['層級'] === 'ERROR' ? 'pill-err' : 'pill-wait';
@@ -889,11 +1113,11 @@
           <tr>
             <td>${escapeHtml(e['時間'])}</td>
             <td>${escapeHtml(e['模組'])}</td>
-            <td><span class="status-pill ${levelClass}">${escapeHtml(e['層級'])}</span></td>
+            <td><span class="pill ${levelClass}">${escapeHtml(e['層級'])}</span></td>
             <td>${escapeHtml(e['關聯編號'])}</td>
             <td>${escapeHtml(e['異常訊息'])}</td>
             <td>${escapeHtml(e['建議處理方式'])}</td>
-            <td><span class="status-pill ${statusClass}">${escapeHtml(e['狀態'])}</span></td>
+            <td><span class="pill ${statusClass}">${escapeHtml(e['狀態'])}</span></td>
           </tr>
         `;
       });
