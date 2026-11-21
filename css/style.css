@@ -27,7 +27,7 @@ body.cart-disabled .btn-add-to-cart {
   display: none !important;
 }
 
-/* 1. 頂部輕量跑馬燈 */
+/* 1. 頂部跑馬燈（全裝置統一從最右側進場、等速向左捲動） */
 .announcement-bar {
   background-color: var(--color-primary-soft);
   color: #555555;
@@ -36,28 +36,32 @@ body.cart-disabled .btn-add-to-cart {
   letter-spacing: 1.2px;
   overflow: hidden;
   width: 100%;
-  display: flex;
   border-bottom: 1px solid #EAE5DC;
 }
 
 .marquee-container {
-  display: flex;
-  white-space: nowrap;
-  width: fit-content;
+  width: 100%;
+  overflow: hidden;
+  display: block;
 }
 
 .marquee-content {
-  display: flex;
-  padding-right: 60px;
-  animation: marquee 30s linear infinite;
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  animation: marquee-rtl var(--marquee-duration, 18s) linear infinite;
+}
+
+#marquee-content-clone {
+  display: none !important;
 }
 
 .marquee-container:hover .marquee-content {
   animation-play-state: paused;
 }
 
-@keyframes marquee {
-  0% { transform: translateX(0); }
+@keyframes marquee-rtl {
+  0% { transform: translateX(100vw); }
   100% { transform: translateX(-100%); }
 }
 
@@ -271,7 +275,7 @@ body.cart-disabled .btn-add-to-cart {
   background-color: #555555;
 }
 
-/* 4. 商品展示區（保留捲動偏移，避免被置頂導覽列遮擋） */
+/* 4. 商品展示區 */
 .main-content {
   max-width: 1200px;
   margin: 0 auto;
@@ -610,7 +614,6 @@ body.cart-disabled .btn-add-to-cart {
   display: block;
 }
 
-/* 讓 LINE 完整字樣在綠色按鈕上更清晰醒目 */
 .dock-line {
   background-color: #06C755;
 }
