@@ -1,25 +1,25 @@
 /**
  * 模組 1：管理員專區核心中樞
- * 負責：共用狀態、無時限關閉即登出驗證 (sessionStorage)、API 封裝、分頁切換與 KPI 更新
+ * 負責：共用狀態、無時限關閉即登出驗證、原圖資料夾自動比對、API 封裝與分頁協調
  */
-const CORE_PRODUCT_KEYS = ['id', 'name', 'price', 'image', '狀態'];
+window.CORE_PRODUCT_KEYS = ['id', 'name', 'price', 'image', '狀態'];
 
-const AdminState = {
+window.AdminState = {
   authPolicy: { mode: 'STANDARD_NO_TIMEOUT', requirePin: true },
   products: [],
-  productHeaders: [...CORE_PRODUCT_KEYS],
+  productHeaders: [...window.CORE_PRODUCT_KEYS],
+  rawFolderNames: [],
   announcements: [],
   errors: []
 };
 
-const AdminCore = {
+window.AdminCore = {
   init: async function() {
     this.bindCoreEvents();
 
-    // 初始化各領域功能模組
-    if (window.AdminProducts) AdminProducts.init();
-    if (window.AdminExcel) AdminExcel.init();
-    if (window.AdminSite) AdminSite.init();
+    if (window.AdminProducts) window.AdminProducts.init();
+    if (window.AdminExcel) window.AdminExcel.init();
+    if (window.AdminSite) window.AdminSite.init();
 
     await this.initAuth();
   },
@@ -30,7 +30,6 @@ const AdminCore = {
       this.executeLogin();
     });
 
-    // 側邊欄分頁切換
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -48,7 +47,6 @@ const AdminCore = {
   // ================= 關閉即登出（無時間限制）認證邏輯 =================
 
   getSessionToken: function() {
-    // 嚴格僅存於 sessionStorage：重新整理維持登入，關閉分頁或瀏覽器立即銷毀登出
     return sessionStorage.getItem('MEYA_SESSION_TOKEN') || '';
   },
 
@@ -145,6 +143,7 @@ const AdminCore = {
   lockAndLogout: function() {
     sessionStorage.removeItem('MEYA_SESSION_TOKEN');
     AdminState.products = [];
+    AdminState.rawFolderNames = [];
     AdminState.announcements = [];
     AdminState.errors = [];
 
@@ -198,7 +197,7 @@ const AdminCore = {
 
   loadDashboard: async function() {
     const tbody = document.getElementById('product-tbody');
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">同步資料庫中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">同步資料庫與雲端原圖資料夾中...</td></tr>';
 
     try {
       const data = await this.apiGet('getAdminDashboard');
@@ -213,27 +212,73 @@ const AdminCore = {
   },
 
   applyDashboardData: function(data) {
-    AdminState.products = data.products || [];
-    AdminState.productHeaders = data.productHeaders || [...CORE_PRODUCT_KEYS];
+    AdminState.rawFolderNames = data.rawFolderNames || [];
+    AdminState.productHeaders = data.productHeaders || [...window.CORE_PRODUCT_KEYS];
     AdminState.announcements = data.announcements || [];
     AdminState.errors = data.errors || [];
 
+    // 為每筆商品標記「是否缺圖且雲端已有對應原圖資料夾」，供自動置頂與專區使用
+    const folderPairs = AdminState.rawFolderNames.map(name => ({
+      raw: name,
+      lower: String(name).trim().toLowerCase()
+    }));
+
+    AdminState.products = (data.products || []).map(p => {
+      const prodId = String(p.id || '').trim();
+      const prodLower = prodId.toLowerCase();
+      const hasImage = Boolean(p.image && String(p.image).trim() !== '');
+      let matchedFolder = '';
+
+      if (prodLower && folderPairs.length > 0) {
+        const hit = folderPairs.find(f => f.lower === prodLower || f.lower.includes(prodLower));
+        if (hit) matchedFolder = hit.raw;
+      }
+
+      return {
+        ...p,
+        _matchedFolder: matchedFolder,
+        _readyToMatch: !hasImage && Boolean(matchedFolder)
+      };
+    });
+
     this.updateKpis();
-    if (window.AdminProducts) AdminProducts.renderTable();
-    if (window.AdminExcel) AdminExcel.renderExportOptions(data.sheetNames || ['商品列表']);
-    if (window.AdminSite) AdminSite.renderAll(data.config || {});
+    if (window.AdminProducts) window.AdminProducts.renderTable(true);
+    if (window.AdminExcel) window.AdminExcel.renderExportOptions(data.sheetNames || ['商品列表']);
+    if (window.AdminSite) window.AdminSite.renderAll(data.config || {});
   },
 
   updateKpis: function() {
-    document.getElementById('kpi-total').textContent = AdminState.products.length;
-    document.getElementById('kpi-active').textContent = AdminState.products.filter(p => p['狀態'] === '上架').length;
-    document.getElementById('kpi-pending').textContent = AdminState.products.filter(p => !p.image || String(p.image).trim() === '').length;
-    document.getElementById('kpi-cols').textContent = AdminState.productHeaders.length;
+    const total = AdminState.products.length;
+    const active = AdminState.products.filter(p => p['狀態'] === '上架').length;
+    const pending = AdminState.products.filter(p => !p.image || String(p.image).trim() === '').length;
+    const readyList = AdminState.products.filter(p => p._readyToMatch);
 
+    document.getElementById('kpi-ready').textContent = readyList.length;
+    document.getElementById('kpi-total').textContent = total;
+    document.getElementById('kpi-active').textContent = active;
+    document.getElementById('kpi-pending').textContent = pending;
+
+    // 左側導覽列「有原圖待對標」綠色即時徽章
+    const readyBadge = document.getElementById('nav-ready-badge');
+    readyBadge.textContent = readyList.length;
+    readyBadge.style.display = readyList.length > 0 ? 'inline-block' : 'none';
+
+    // 頂部專屬提示橫幅
+    const priorityBar = document.getElementById('ready-priority-bar');
+    if (readyList.length > 0) {
+      const previewIds = readyList.slice(0, 6).map(x => x.id).join('、');
+      document.getElementById('ready-priority-text').innerHTML =
+        `<strong>⚡ 系統自動偵測到 ${readyList.length} 筆商品已有原圖資料夾待對標</strong>（已自動置頂排序）：${this.escapeHtml(previewIds)}${readyList.length > 6 ? ' 等...' : ''}`;
+      priorityBar.style.display = 'flex';
+    } else {
+      priorityBar.style.display = 'none';
+    }
+
+    // 異常紅點
     const openErrors = AdminState.errors.filter(e => e['狀態'] === '未處理').length;
-    const badge = document.getElementById('nav-error-badge');
-    badge.textContent = openErrors;
-    badge.style.display = openErrors > 0 ? 'inline-block' : 'none';
+    const errBadge = document.getElementById('nav-error-badge');
+    errBadge.textContent = openErrors;
+    errBadge.style.display = openErrors > 0 ? 'inline-block' : 'none';
   },
 
   escapeHtml: function(str) {
@@ -245,4 +290,4 @@ const AdminCore = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => AdminCore.init());
+document.addEventListener('DOMContentLoaded', () => window.AdminCore.init());
