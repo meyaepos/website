@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MEYA | 極簡美學官方形象網站</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <title>is Meya | 韓國精品服飾・純銀飾品</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/variables.css">
   <link rel="stylesheet" href="./css/style.css">
 </head>
-<body>
-  <!-- 1. 頂部多則無縫跑馬燈 -->
+<!-- 預設掛上 cart-disabled，確保第一階段未啟用購物車時絕不閃現 -->
+<body class="cart-disabled">
+
+  <!-- 1. 頂部輕量多則無縫跑馬燈 -->
   <div class="announcement-bar">
     <div class="marquee-container">
       <div class="marquee-content" id="marquee-content">最新消息載入中...</div>
@@ -17,38 +21,75 @@
     </div>
   </div>
 
-  <!-- 2. 主導覽列 -->
+  <!-- 2. 主導覽列（復刻舊站純白極簡視覺） -->
   <header class="site-header">
     <div class="header-container">
-      <div class="site-logo">
-        <a href="#top">MEYA</a>
-      </div>
-      <nav class="site-nav">
-        <a href="#catalog">ALL ITEMS</a>
-        <a href="#about">ABOUT MEYA</a>
-        <a href="#footer">CONTACT</a>
+      <a href="#top" class="site-logo" aria-label="is Meya 首頁">
+        <img src="./assets/images/logo.png" alt="Meya" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+        <span class="logo-script">Meya</span>
+      </a>
+
+      <nav class="site-nav" aria-label="主選單">
+        <a href="#catalog" data-nav="new">新品上市</a>
+        <a href="#catalog" data-nav="all">所有商品</a>
+        <a href="#contact">聯絡我們</a>
       </nav>
+
       <div class="header-actions">
-        <input type="text" id="search-input" class="search-input" placeholder="搜尋品名或編號...">
-        <button class="icon-btn cart-icon" title="購物車">🛒</button>
+        <button id="btn-search-toggle" class="icon-btn" title="搜尋商品" aria-label="搜尋商品">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <a href="#contact" class="icon-btn" title="門市與聯絡資訊" aria-label="門市與聯絡資訊">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </a>
+        <button class="icon-btn cart-icon" title="購物車" aria-label="購物車">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 手機版中文導覽列 -->
+    <nav class="mobile-nav" aria-label="行動裝置選單">
+      <a href="#catalog" data-nav="new">新品上市</a>
+      <a href="#catalog" data-nav="all">所有商品</a>
+      <a href="#contact">聯絡我們</a>
+    </nav>
+
+    <!-- 隱藏式極簡搜尋抽屜（點擊放大鏡才展開） -->
+    <div id="search-bar-drawer" class="search-drawer">
+      <div class="search-drawer-inner">
+        <input type="text" id="search-input" class="search-input" placeholder="輸入商品名稱、編號或分類關鍵字...">
+        <button id="btn-search-close" class="search-close-btn" aria-label="關閉搜尋">✕</button>
       </div>
     </div>
   </header>
 
-  <!-- 3. 主視覺形象橫幅 -->
+  <!-- 3. 滿版主視覺橫幅（上傳 assets/images/hero.jpg 即自動呈現） -->
   <section id="top" class="hero-section">
-    <div class="hero-inner">
-      <h1>NEW COLLECTION</h1>
-      <p>極簡．優雅．日常質感美學</p>
-      <a href="#catalog" class="hero-cta">EXPLORE ITEMS</a>
+    <img src="./assets/images/hero.jpg" alt="is Meya 形象視覺" class="hero-img" onerror="this.style.display='none'; document.getElementById('hero-fallback').style.display='flex';">
+    <div id="hero-fallback" class="hero-fallback" style="display:none;">
+      <span class="hero-script">is Meya</span>
+      <h1>韓國精品服飾・純銀設計飾品</h1>
+      <p>以柔和線條與細膩質感，詮釋日常優雅美學</p>
+      <a href="#catalog" class="hero-cta">探索新品上市</a>
     </div>
   </section>
 
   <!-- 4. 商品櫥窗展示區 -->
   <main id="catalog" class="main-content">
     <div class="section-header">
-      <h2>LATEST ITEMS</h2>
-      <p id="catalog-count">載入商品型錄中...</p>
+      <h2 id="catalog-heading">新品上市</h2>
+      <p id="catalog-count">商品型錄載入中...</p>
     </div>
 
     <div id="product-grid" class="product-grid">
@@ -59,38 +100,106 @@
     </div>
   </main>
 
-  <!-- 5. 品牌理念區 -->
-  <section id="about" class="about-section">
-    <h2>ABOUT MEYA</h2>
-    <p>以柔和細膩的色調與俐落線條，詮釋不被潮流定義的日常選物美學。每一件單品皆經過細緻挑選，為你的生活留下純粹優雅的印記。</p>
-  </section>
+  <!-- 5. 聯絡我們與頁尾（1:1 還原舊站結構，內嵌 Google 地圖，不含任何後台連結） -->
+  <footer id="contact" class="site-footer">
+    <div class="footer-top">
+      <a href="#top" class="footer-logo" aria-label="回到頁首">
+        <img src="./assets/images/logo.png" alt="Meya" class="footer-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+        <span class="logo-script footer-script">Meya</span>
+      </a>
 
-  <!-- 6. 頁尾 -->
-  <footer id="footer" class="site-footer">
-    <div class="footer-container">
-      <div class="footer-column">
-        <h4>CUSTOMER SERVICE</h4>
-        <p id="free-shipping-text">全館優惠活動請見上方公告</p>
+      <div class="footer-nav">
+        <a href="#catalog" data-nav="new">新品上市</a>
+        <span class="divider">|</span>
+        <a href="#catalog" data-nav="all">所有商品</a>
+        <span class="divider">|</span>
+        <a href="#contact">聯絡我們</a>
       </div>
-      <div class="footer-column">
-        <h4>INFORMATION</h4>
-        <a href="#catalog">商品型錄</a>
-        <a href="#about">品牌故事</a>
-      </div>
-      <div class="footer-column">
-        <h4>ADMINISTRATION</h4>
-        <a href="./admin.html">系統管理後台入口</a>
+
+      <!-- 置中圓形社群圖示（請替換 href 為品牌正式社群網址） -->
+      <div class="footer-social">
+        <a href="https://www.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"/></svg>
+        </a>
+        <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+        </a>
+        <a href="https://line.me/" target="_blank" rel="noopener" aria-label="LINE 官方帳號" title="LINE 官方帳號">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.52 1.46 4.77 3.74 6.23-.15.56-.56 2.02-.64 2.34-.1.39.14.38.3.28.12-.08 1.94-1.32 2.72-1.85.59.17 1.22.26 1.88.26 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>
+        </a>
       </div>
     </div>
+
+    <!-- 中段雙欄：左側客服門市資訊 / 右側 Google 地圖 -->
+    <div class="footer-info-grid">
+      <div class="footer-contact">
+        <div class="cs-label">CUSTOMER SERVICE</div>
+        <a href="tel:0422589779" class="cs-phone">04-2258-9779</a>
+
+        <div class="cs-list">
+          <p><span>E-mail</span><span class="pipe">|</span><a href="mailto:meyalady1@gmail.com">meyalady1@gmail.com</a></p>
+          <p><span>Address</span><span class="pipe">|</span>台中市南屯區大墩12街642號</p>
+          <p>MON.-SUN. 09:00 - 18:00</p>
+        </div>
+
+        <div class="cs-company">
+          <p><span>統編</span><span class="pipe">|</span>93428866</p>
+          <p>韓王朝精品服飾</p>
+          <p id="free-shipping-text" class="cs-shipping"></p>
+        </div>
+      </div>
+
+      <div class="footer-map">
+        <div class="map-frame-wrap">
+          <a href="https://maps.app.goo.gl/72mxX2nRsWgNAhMPA" target="_blank" rel="noopener" class="map-open-badge">
+            在 Google 地圖中開啟 ↗
+          </a>
+          <iframe
+            title="is Meya 門市位置地圖"
+            src="https://maps.google.com/maps?q=%E9%87%91%E7%8E%89%E5%90%8D%E5%AA%9B%20%E5%8F%B0%E4%B8%AD%E5%B8%82%E5%8D%97%E5%B1%AF%E5%8D%80%E5%A4%A7%E5%A2%A9%E5%8D%81%E4%BA%8C%E8%A1%97642%E8%99%9F&t=&z=16&ie=UTF8&iwloc=&output=embed"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen>
+          </iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部版權與條款列 -->
     <div class="footer-bottom">
-      <p>&copy; 2026 MEYA. All Rights Reserved.</p>
+      <div class="footer-bottom-inner">
+        <p>Copyright &copy; 2026 is Meya. All rights reserved.</p>
+        <div class="footer-policies">
+          <a href="#contact">購物須知</a>
+          <span>/</span>
+          <a href="#contact">服務條款</a>
+          <span>/</span>
+          <a href="#contact">隱私權政策</a>
+        </div>
+      </div>
     </div>
   </footer>
 
-  <!-- 商品細節預覽彈窗 -->
+  <!-- 6. 右下角懸浮社群與回到頂端列（復刻舊站） -->
+  <div class="floating-dock" aria-label="快速聯絡按鈕">
+    <a href="https://line.me/" target="_blank" rel="noopener" class="dock-btn dock-line" title="LINE 官方帳號">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.52 1.46 4.77 3.74 6.23-.15.56-.56 2.02-.64 2.34-.1.39.14.38.3.28.12-.08 1.94-1.32 2.72-1.85.59.17 1.22.26 1.88.26 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>
+    </a>
+    <a href="https://www.facebook.com/" target="_blank" rel="noopener" class="dock-btn dock-fb" title="Facebook 粉絲專頁">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"/></svg>
+    </a>
+    <a href="https://www.instagram.com/" target="_blank" rel="noopener" class="dock-btn dock-ig" title="Instagram">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+    </a>
+    <button id="btn-scroll-top" class="dock-btn dock-top" title="回到頂端" aria-label="回到頂端">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+    </button>
+  </div>
+
+  <!-- 7. 商品細節預覽彈窗 -->
   <div id="product-modal-backdrop" class="modal-backdrop">
     <div class="product-modal">
-      <button class="modal-close" id="modal-close-btn">&times;</button>
+      <button class="modal-close" id="modal-close-btn" aria-label="關閉視窗">&times;</button>
       <div class="modal-img-box">
         <img id="modal-img" src="" alt="">
       </div>
@@ -98,8 +207,9 @@
         <div class="sku-tag" id="modal-sku"></div>
         <h3 id="modal-name"></h3>
         <div class="price-tag" id="modal-price"></div>
+        <div id="modal-dynamic-specs" class="modal-specs"></div>
         <button class="hero-cta btn-add-to-cart" style="margin-bottom:16px;">加入購物車</button>
-        <p class="modal-note">如需洽詢款式、門市試穿或現貨狀況，請憑上方商品編號聯繫官方客服。</p>
+        <p class="modal-note">如需洽詢款式、門市試穿或現貨狀況，請提供上方商品編號聯繫官方 LINE 或來電洽詢。</p>
       </div>
     </div>
   </div>
