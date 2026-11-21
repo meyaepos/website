@@ -1,52 +1,100 @@
 /**
- * 模組 2：商品管理與圖檔對標引擎
- * 負責：商品搜尋篩選、上下架切換、規則缺圖掃描、Drive 商品編號子資料夾對標與 Canvas 排版降檔 (<2MB)
+ * 模組 2：商品管理、有原圖置頂專區、全欄位編修與圖檔對標引擎
  */
-const AdminProducts = {
+window.AdminProducts = {
   MAX_IMAGE_WIDTH: 1600,
   MAX_BYTES_LIMIT: 2 * 1024 * 1024,
+  PAGE_SIZE: 50,
 
+  currentPage: 1,
   rawDriveImages: [],
   matchedFolderName: '',
   activeProductId: '',
   loadedSourceImage: null,
 
-  init: function() {
-    document.getElementById('prod-search').addEventListener('input', () => this.renderTable());
-    document.getElementById('prod-filter').addEventListener('change', () => this.renderTable());
-    document.getElementById('btn-suggest-check').addEventListener('click', () => this.runAutoSuggestCheck());
+  editMode: 'EDIT', // 'EDIT' 或 'CREATE'
+  editingProductId: '',
 
-    document.getElementById('btn-close-modal-x').addEventListener('click', () => this.closeModal());
-    document.getElementById('btn-cancel-modal').addEventListener('click', () => this.closeModal());
+  init: function() {
+    document.getElementById('prod-search').addEventListener('input', () => this.renderTable(true));
+    document.getElementById('prod-filter').addEventListener('change', () => this.renderTable(true));
+
+    // 點擊 KPI 卡或提示條直接切進「有原圖待對標專區」
+    const switchReadyFilter = () => {
+      document.getElementById('prod-filter').value = 'READY_MATCH';
+      document.getElementById('prod-search').value = '';
+      this.renderTable(true);
+    };
+    document.getElementById('kpi-card-ready').addEventListener('click', switchReadyFilter);
+    document.getElementById('btn-filter-ready').addEventListener('click', switchReadyFilter);
+
+    // 新增與編輯商品彈窗
+    document.getElementById('btn-create-product').addEventListener('click', () => this.openEditModal(null));
+    document.getElementById('btn-close-edit-x').addEventListener('click', () => this.closeEditModal());
+    document.getElementById('btn-cancel-edit').addEventListener('click', () => this.closeEditModal());
+    document.getElementById('btn-save-edit').addEventListener('click', () => this.saveProductEdit());
+
+    // 圖檔對標彈窗
+    document.getElementById('btn-close-modal-x').addEventListener('click', () => this.closeMatchModal());
+    document.getElementById('btn-cancel-modal').addEventListener('click', () => this.closeMatchModal());
     document.getElementById('raw-img-search').addEventListener('input', () => this.renderRawImageList());
     document.getElementById('crop-ratio-select').addEventListener('change', () => this.redrawCanvasPreview());
     document.getElementById('btn-upload-bind').addEventListener('click', () => this.confirmCompressAndUpload());
   },
 
-  renderTable: function() {
+  // ================= 1. 商品列表（自動置頂「有原圖待對標」＋ 高速分頁） =================
+
+  renderTable: function(resetPage = false) {
+    if (resetPage) this.currentPage = 1;
+
     const tbody = document.getElementById('product-tbody');
     const kw = document.getElementById('prod-search').value.trim().toLowerCase();
     const filter = document.getElementById('prod-filter').value;
-    const coreSet = new Set(CORE_PRODUCT_KEYS);
+    const coreSet = new Set(window.CORE_PRODUCT_KEYS);
     const esc = AdminCore.escapeHtml;
 
-    const list = AdminState.products.filter(p => {
-      const allText = Object.values(p).join(' ').toLowerCase();
-      if (kw && !allText.includes(kw)) return false;
+    const filtered = AdminState.products.filter(p => {
+      if (kw) {
+        const hitText = Object.keys(p)
+          .filter(k => !k.startsWith('_'))
+          .some(k => String(p[k] || '').toLowerCase().includes(kw));
+        if (!hitText) return false;
+      }
+      if (filter === 'READY_MATCH') return p._readyToMatch === true;
       if (filter === 'NO_IMAGE') return !p.image || String(p.image).trim() === '';
       if (filter !== 'ALL') return p['狀態'] === filter;
       return true;
     });
 
-    if (list.length === 0) {
+    // 自動排序：1. 有原圖待對標最優先 ➔ 2. 已上架 ➔ 3. 其餘待對標/下架
+    filtered.sort((a, b) => {
+      const rank = item => {
+        if (item._readyToMatch) return 0;
+        if (item['狀態'] === '上架') return 1;
+        return 2;
+      };
+      const diff = rank(a) - rank(b);
+      if (diff !== 0) return diff;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / this.PAGE_SIZE));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+
+    const startIdx = (this.currentPage - 1) * this.PAGE_SIZE;
+    const pageItems = filtered.slice(startIdx, startIdx + this.PAGE_SIZE);
+
+    if (pageItems.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">沒有符合條件的商品資料</td></tr>';
+      this.renderPagination(0, 1, 1);
       return;
     }
 
     tbody.innerHTML = '';
-    list.forEach(p => {
+    pageItems.forEach(p => {
       const extraSummary = Object.keys(p)
-        .filter(k => !coreSet.has(k) && p[k] !== '' && p[k] !== undefined)
+        .filter(k => !k.startsWith('_') && !coreSet.has(k) && p[k] !== '' && p[k] !== undefined)
         .slice(0, 3)
         .map(k => `<span class="pill pill-off" style="margin:2px;">${esc(k)}: ${esc(p[k])}</span>`)
         .join('');
@@ -54,24 +102,63 @@ const AdminProducts = {
       const statusClass = p['狀態'] === '上架' ? 'pill-ok' : (p['狀態'] === '待對標' ? 'pill-wait' : 'pill-off');
       const nextStatus = p['狀態'] === '上架' ? '下架' : '上架';
 
+      const thumbCell = p.image
+        ? `<img class="thumb-mini" src="${esc(p.image)}" loading="lazy" alt="">`
+        : (p._readyToMatch
+            ? `<div><span class="pill pill-ready">📁 有原圖</span></div>`
+            : `<span class="pill pill-err">缺圖</span>`);
+
       const tr = document.createElement('tr');
+      if (p._readyToMatch) tr.className = 'row-ready-match';
+
       tr.innerHTML = `
-        <td>${p.image ? `<img class="thumb-mini" src="${esc(p.image)}" alt="">` : '<span class="pill pill-err">缺圖</span>'}</td>
-        <td><strong>${esc(p.id)}</strong></td>
+        <td>${thumbCell}</td>
+        <td>
+          <strong>${esc(p.id)}</strong>
+          ${p._readyToMatch ? `<div style="font-size:11px; color:#15803d;">資料夾：${esc(p._matchedFolder)}</div>` : ''}
+        </td>
         <td>${esc(p.name)}</td>
         <td>NT$ ${Number(p.price || 0).toLocaleString()}</td>
         <td>${extraSummary || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
         <td><span class="pill ${statusClass}">${esc(p['狀態'] || '未設定')}</span></td>
         <td style="white-space:nowrap;">
-          <button class="btn btn-primary btn-open-match">對標排版</button>
+          <button class="btn ${p._readyToMatch ? 'btn-success' : 'btn-primary'} btn-open-match">對標排版</button>
+          <button class="btn btn-info btn-edit-prod">編輯資料</button>
           <button class="btn btn-outline btn-toggle-status">設為${nextStatus}</button>
         </td>
       `;
 
       tr.querySelector('.btn-open-match').addEventListener('click', () => this.openMatchModal(p));
+      tr.querySelector('.btn-edit-prod').addEventListener('click', () => this.openEditModal(p));
       tr.querySelector('.btn-toggle-status').addEventListener('click', () => this.toggleProductStatus(p.id, nextStatus));
       tbody.appendChild(tr);
     });
+
+    this.renderPagination(totalItems, this.currentPage, totalPages);
+  },
+
+  renderPagination: function(totalItems, currentPage, totalPages) {
+    const bar = document.getElementById('pagination-bar');
+    if (totalItems === 0) {
+      bar.innerHTML = '<span>共 0 筆商品</span>';
+      return;
+    }
+
+    const start = (currentPage - 1) * this.PAGE_SIZE + 1;
+    const end = Math.min(totalItems, currentPage * this.PAGE_SIZE);
+
+    bar.innerHTML = `
+      <span>顯示第 ${start}～${end} 筆，共 <strong>${totalItems}</strong> 筆（第 ${currentPage} / ${totalPages} 頁）</span>
+      <div class="toolbar-group">
+        <button class="btn btn-outline" id="btn-page-prev" ${currentPage <= 1 ? 'disabled' : ''}>← 上一頁</button>
+        <button class="btn btn-outline" id="btn-page-next" ${currentPage >= totalPages ? 'disabled' : ''}>下一頁 →</button>
+      </div>
+    `;
+
+    const prevBtn = document.getElementById('btn-page-prev');
+    const nextBtn = document.getElementById('btn-page-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => { this.currentPage--; this.renderTable(false); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { this.currentPage++; this.renderTable(false); });
   },
 
   toggleProductStatus: async function(productId, newStatus) {
@@ -84,29 +171,104 @@ const AdminProducts = {
     }
   },
 
-  runAutoSuggestCheck: async function() {
-    const banner = document.getElementById('suggest-banner');
-    banner.style.display = 'block';
-    banner.textContent = '正在比對缺圖商品與原檔資料庫子資料夾...';
+  // ================= 2. 商品全欄位編輯 / 新增視窗 =================
+
+  openEditModal: function(product) {
+    this.editMode = product ? 'EDIT' : 'CREATE';
+    this.editingProductId = product ? String(product.id) : '';
+
+    document.getElementById('edit-modal-title').textContent = product
+      ? `編輯商品數據：[${product.id}] ${product.name}`
+      : '＋ 新增商品至資料庫';
+
+    const grid = document.getElementById('edit-fields-grid');
+    grid.innerHTML = '';
+
+    // 確保核心 5 欄位排在最前面，其餘動態擴充欄位接續在後
+    const allHeaders = Array.from(new Set([...window.CORE_PRODUCT_KEYS, ...AdminState.productHeaders]));
+
+    allHeaders.forEach(colName => {
+      const val = product && product[colName] !== undefined ? String(product[colName]) : '';
+      const wrap = document.createElement('div');
+      wrap.className = 'edit-field-item' + (colName === 'image' || colName === 'name' ? ' full-span' : '');
+
+      const label = document.createElement('label');
+      label.textContent = colName === 'id' ? '商品編號 (id) *' : (colName === 'name' ? '商品名稱 (name) *' : colName);
+      wrap.appendChild(label);
+
+      if (colName === '狀態') {
+        const sel = document.createElement('select');
+        sel.className = 'input-ctrl';
+        sel.dataset.field = colName;
+        ['待對標', '上架', '下架'].forEach(optVal => {
+          const opt = document.createElement('option');
+          opt.value = optVal;
+          opt.textContent = optVal;
+          if ((val || '待對標') === optVal) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        wrap.appendChild(sel);
+      } else {
+        const input = document.createElement('input');
+        input.type = colName === 'price' ? 'number' : 'text';
+        input.className = 'input-ctrl';
+        input.dataset.field = colName;
+        input.value = val;
+        if (colName === 'id' && this.editMode === 'EDIT') {
+          input.readOnly = true;
+          input.title = '商品編號為雲端圖庫對標鍵值，不可直接變更';
+        }
+        wrap.appendChild(input);
+      }
+
+      grid.appendChild(wrap);
+    });
+
+    document.getElementById('edit-product-modal').classList.add('open');
+  },
+
+  saveProductEdit: async function() {
+    const inputs = document.querySelectorAll('#edit-fields-grid [data-field]');
+    const fields = {};
+    inputs.forEach(el => {
+      fields[el.dataset.field] = el.value.trim();
+    });
+
+    if (this.editMode === 'CREATE' && (!fields.id || !fields.name)) {
+      alert('「商品編號 (id)」與「商品名稱 (name)」為必填欄位！');
+      return;
+    }
+
+    const btn = document.getElementById('btn-save-edit');
+    btn.disabled = true;
+    btn.textContent = '⏳ 寫入資料庫中...';
 
     try {
-      const json = await AdminCore.apiGet('suggestImageMatches');
+      const json = this.editMode === 'EDIT'
+        ? await AdminCore.apiPost('updateProductRecord', { productId: this.editingProductId, fields })
+        : await AdminCore.apiPost('createProductRecord', { fields });
+
       if (json.status !== 'success') {
         if (AdminCore.handleAuthFailure(json.message)) return;
         throw new Error(json.message);
       }
 
-      const d = json.data;
-      const matchedPreview = (d.suggestions || []).slice(0, 8).map(x => x.productId).join(', ');
-      banner.innerHTML =
-        `<strong>規則檢查完成：</strong>缺圖商品共 <strong>${d.totalPendingProducts}</strong> 筆；` +
-        `已在原檔資料庫找到同編號資料夾或圖片 <strong>${d.matchedCount}</strong> 筆` +
-        (matchedPreview ? `（已就緒編號：${AdminCore.escapeHtml(matchedPreview)}）` : '') +
-        `，尚無照片資料夾 <strong>${d.unmatchedCount}</strong> 筆。`;
+      alert('✅ ' + (json.message || '儲存成功！'));
+      this.closeEditModal();
+      AdminCore.loadDashboard();
     } catch (err) {
-      banner.textContent = '檢查失敗：' + err.message;
+      alert('❌ 儲存失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 儲存變更';
     }
   },
+
+  closeEditModal: function() {
+    document.getElementById('edit-product-modal').classList.remove('open');
+  },
+
+  // ================= 3. 圖檔一對一對標與 <2MB 排版壓縮 =================
 
   openMatchModal: async function(product) {
     this.activeProductId = String(product.id);
@@ -287,7 +449,7 @@ const AdminProducts = {
       }
 
       alert('✅ ' + result.message);
-      this.closeModal();
+      this.closeMatchModal();
       AdminCore.loadDashboard();
     } catch (err) {
       statusEl.textContent = '❌ 轉存失敗：' + err.message;
@@ -295,7 +457,7 @@ const AdminProducts = {
     }
   },
 
-  closeModal: function() {
+  closeMatchModal: function() {
     document.getElementById('match-modal').classList.remove('open');
   }
 };
