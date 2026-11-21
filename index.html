@@ -1,91 +1,110 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>is Meya - 韓系極簡優雅飾品</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- 未來這裡將引入 LINE LIFF SDK -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEYA | 極簡美學官方形象網站</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/variables.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
-<body class="loading-state">
-    
-    <!-- 頂部導覽列 (100% 模仿 is Meya 結構) -->
-    <header class="header">
-        <!-- 建議將舊站 Logo 下載後放在此路徑 -->
-        <div class="logo">
-            <img src="./assets/images/logo.png" alt="is Meya" onerror="this.outerHTML='<span class=\'text-logo\'>is Meya</span>'">
-        </div>
-        <nav class="nav-links">
-            <a href="#">新品上市</a>
-            <a href="#">所有商品</a>
-            <a href="#">精選飾品</a>
-            <a href="#">聯絡我們</a>
-        </nav>
-        <div class="header-actions">
-            <!-- 預留會員登入按鈕 -->
-            <button id="btn-login" class="btn-icon">👤 會員登入</button>
-            <div class="cart-icon">🛒</div>
-        </div>
-    </header>
+<body>
+  <!-- 1. 頂部多則無縫跑馬燈 -->
+  <div class="announcement-bar">
+    <div class="marquee-container">
+      <div class="marquee-content" id="marquee-content">最新消息載入中...</div>
+      <div class="marquee-content" id="marquee-content-clone" aria-hidden="true"></div>
+    </div>
+  </div>
 
-    <!-- 骨架屏載入提示 -->
-    <div id="loader" class="loader">
-        <div class="spinner"></div>
-        <p>優雅載入中...</p>
+  <!-- 2. 主導覽列 -->
+  <header class="site-header">
+    <div class="header-container">
+      <div class="site-logo">
+        <a href="#top">MEYA</a>
+      </div>
+      <nav class="site-nav">
+        <a href="#catalog">ALL ITEMS</a>
+        <a href="#about">ABOUT MEYA</a>
+        <a href="#footer">CONTACT</a>
+      </nav>
+      <div class="header-actions">
+        <input type="text" id="search-input" class="search-input" placeholder="搜尋品名或編號...">
+        <button class="icon-btn cart-icon" title="購物車">🛒</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3. 主視覺形象橫幅 -->
+  <section id="top" class="hero-section">
+    <div class="hero-inner">
+      <h1>NEW COLLECTION</h1>
+      <p>極簡．優雅．日常質感美學</p>
+      <a href="#catalog" class="hero-cta">EXPLORE ITEMS</a>
+    </div>
+  </section>
+
+  <!-- 4. 商品櫥窗展示區 -->
+  <main id="catalog" class="main-content">
+    <div class="section-header">
+      <h2>LATEST ITEMS</h2>
+      <p id="catalog-count">載入商品型錄中...</p>
     </div>
 
-    <!-- 主內容區 -->
-    <main id="app-content" style="display: none;">
-        <!-- 主視覺橫幅 (Hero Banner) -->
-        <section class="hero">
-            <div class="hero-content">
-                <h1>點亮生活裡的每個細節</h1>
-                <p>在細微處，遇見最美的自己。</p>
-                <p class="subtitle">Minimal and chic Korean style</p>
-            </div>
-        </section>
+    <div id="product-grid" class="product-grid">
+      <div class="loading-state"></div>
+      <div class="loading-state"></div>
+      <div class="loading-state"></div>
+      <div class="loading-state"></div>
+    </div>
+  </main>
 
-        <!-- 精選飾品區 (動態載入) -->
-        <section class="curated-jewelry">
-            <h2 class="section-title">精選飾品 Curated Jewelry</h2>
-            <div class="divider"></div>
-            <div id="product-grid" class="grid-container">
-                <!-- 商品卡片由 JS 動態生成 -->
-            </div>
-        </section>
+  <!-- 5. 品牌理念區 -->
+  <section id="about" class="about-section">
+    <h2>ABOUT MEYA</h2>
+    <p>以柔和細膩的色調與俐落線條，詮釋不被潮流定義的日常選物美學。每一件單品皆經過細緻挑選，為你的生活留下純粹優雅的印記。</p>
+  </section>
 
-        <!-- 品牌保證區塊 -->
-        <section class="features">
-            <div class="feature-item">
-                <h3>免運優惠</h3>
-                <p id="free-shipping-text">全館滿 NT$1,000 享免運服務。</p>
-            </div>
-            <div class="feature-item">
-                <h3>用心製作</h3>
-                <p>以你與地球的需求為出發，精心打造每一件飾品。</p>
-            </div>
-            <div class="feature-item">
-                <h3>歡迎蒞臨</h3>
-                <p>我們設有實體門市，等你來逛逛。</p>
-            </div>
-        </section>
-    </main>
+  <!-- 6. 頁尾 -->
+  <footer id="footer" class="site-footer">
+    <div class="footer-container">
+      <div class="footer-column">
+        <h4>CUSTOMER SERVICE</h4>
+        <p id="free-shipping-text">全館優惠活動請見上方公告</p>
+      </div>
+      <div class="footer-column">
+        <h4>INFORMATION</h4>
+        <a href="#catalog">商品型錄</a>
+        <a href="#about">品牌故事</a>
+      </div>
+      <div class="footer-column">
+        <h4>ADMINISTRATION</h4>
+        <a href="./admin.html">系統管理後台入口</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 MEYA. All Rights Reserved.</p>
+    </div>
+  </footer>
 
-    <!-- 頁尾 -->
-    <footer class="footer">
-        <div class="footer-info">
-            <p><strong>CUSTOMER SERVICE</strong></p>
-            <p>04-2258-9779</p>
-            <p>E-mail｜meyalady1@gmail.com</p>
-            <p>Address｜台中市南屯區大墩12街642號</p>
-            <p>MON.~SUN. 09:00 - 18:00</p>
-            <p>統編｜93428866</p>
-        </div>
-        <div class="footer-copyright">
-            <p>Copyright © 2026 is Meya. All rights reserved. Designed by YourBrand.</p>
-        </div>
-    </footer>
+  <!-- 商品細節預覽彈窗 -->
+  <div id="product-modal-backdrop" class="modal-backdrop">
+    <div class="product-modal">
+      <button class="modal-close" id="modal-close-btn">&times;</button>
+      <div class="modal-img-box">
+        <img id="modal-img" src="" alt="">
+      </div>
+      <div class="modal-info-box">
+        <div class="sku-tag" id="modal-sku"></div>
+        <h3 id="modal-name"></h3>
+        <div class="price-tag" id="modal-price"></div>
+        <button class="hero-cta btn-add-to-cart" style="margin-bottom:16px;">加入購物車</button>
+        <p class="modal-note">如需洽詢款式、門市試穿或現貨狀況，請憑上方商品編號聯繫官方客服。</p>
+      </div>
+    </div>
+  </div>
 
-    <script src="app.js"></script>
+  <script src="./js/config.js"></script>
+  <script src="./js/app.js"></script>
 </body>
 </html>
