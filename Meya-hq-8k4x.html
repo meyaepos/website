@@ -7,16 +7,21 @@
   <title>MEYA 內部管理專區</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/admin.css">
+  <link rel="stylesheet" href="./css/labels.css">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
 
-  <!-- 標準模式登入驗證畫面（無時間限制，關閉分頁即自動登出） -->
+  <!-- 標準模式登入驗證畫面（保留官方 LINE 驗證空位，無時限、關閉即登出） -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
       <div class="login-brand">is Meya</div>
       <h2>管理員專區登入</h2>
       <p id="login-policy-desc" class="login-desc">正在連線至系統驗證伺服器...</p>
+
+      <!-- 預留官方 LINE 身分驗證插槽（待 CRM 員工權限啟用時接入） -->
+      <div id="line-auth-placeholder" style="display:none;"></div>
 
       <form id="login-form">
         <input type="password" id="login-token-input" class="input-ctrl full-width login-input" placeholder="請輸入管理密鑰 (ADMIN_TOKEN)" autocomplete="current-password">
@@ -47,6 +52,14 @@
       <div class="nav-item" data-tab="tab-errors">
         <span>系統異常報錯中心</span>
         <span id="nav-error-badge" class="badge" style="display:none;">0</span>
+      </div>
+
+      <div class="nav-group-label">門市 POS 與標籤作業</div>
+      <div class="nav-item" data-tab="tab-labels">
+        <span>條碼標籤機列印</span>
+      </div>
+      <div class="nav-item" data-tab="tab-pos-hub">
+        <span>手機作業與 POS 專區</span>
       </div>
     </aside>
 
@@ -286,9 +299,151 @@
             </div>
           </div>
         </section>
+
+        <!-- 分頁 5：條碼標籤機對標列印（支援上下中線切割） -->
+        <section id="tab-labels" class="tab-panel">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>條碼標籤機校準與上下切割排版設定</h3>
+                <p class="card-desc">預先建置毫米級向量對位邏輯（Code 128）。待確認貼紙實際尺寸與機台型號後，填入數值儲存即可精準批次印表。</p>
+              </div>
+              <button id="btn-save-label-cfg" class="btn btn-success">💾 儲存標籤機校準設定</button>
+            </div>
+
+            <div class="label-layout-grid">
+              <div>
+                <div class="label-form-grid">
+                  <div>
+                    <label class="field-label">印表機類型</label>
+                    <select id="lbl-printer-type" class="input-ctrl full-width">
+                      <option value="roll">捲筒條碼標籤機</option>
+                      <option value="a4">A4 雷射預切貼紙</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">單張寬度 (mm)</label>
+                    <input type="number" step="0.5" id="lbl-width" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">單張高度 (mm)</label>
+                    <input type="number" step="0.5" id="lbl-height" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">中線切割安全留白 (mm)</label>
+                    <input type="number" step="0.5" id="lbl-cut-gap" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">每列欄數</label>
+                    <input type="number" min="1" max="10" id="lbl-cols" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">欄間距 (mm)</label>
+                    <input type="number" step="0.5" id="lbl-col-gap" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">列間距 (mm)</label>
+                    <input type="number" step="0.5" id="lbl-row-gap" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">左偏移 X (mm)</label>
+                    <input type="number" step="0.5" id="lbl-offset-x" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">上偏移 Y (mm)</label>
+                    <input type="number" step="0.5" id="lbl-offset-y" class="input-ctrl full-width">
+                  </div>
+                  <div>
+                    <label class="field-label">上半區顯示內容</label>
+                    <select id="lbl-top-content" class="input-ctrl full-width">
+                      <option value="barcode">條碼 (Code 128) ＋ 編號</option>
+                      <option value="name_price">品名 ＋ 售價</option>
+                      <option value="id_price">編號 ＋ 售價</option>
+                      <option value="id_only">僅顯示編號</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">下半區顯示內容</label>
+                    <select id="lbl-bottom-content" class="input-ctrl full-width">
+                      <option value="name_price">品名 ＋ 售價</option>
+                      <option value="barcode">條碼 (Code 128) ＋ 編號</option>
+                      <option value="id_price">編號 ＋ 售價</option>
+                      <option value="id_only">僅顯示編號</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label">文字大小 (pt)</label>
+                    <input type="number" min="5" max="14" id="lbl-font-size" class="input-ctrl full-width">
+                  </div>
+                </div>
+              </div>
+
+              <div id="label-live-preview" class="label-preview-stage"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>待列印標籤清單</h3>
+              <div class="toolbar-group">
+                <select id="lbl-product-select" class="input-ctrl" style="max-width:300px;"></select>
+                <input type="number" id="lbl-qty-input" class="input-ctrl" value="1" min="1" max="500" style="width:76px;" title="列印張數">
+                <button id="btn-add-label-item" class="btn btn-primary">＋ 加入清單</button>
+                <button id="btn-clear-label-queue" class="btn btn-outline">清空</button>
+                <button id="btn-print-labels" class="btn btn-success" disabled>🖨️ 產生向量條碼並列印</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>商品編號</th><th>商品名稱</th><th>售價</th><th>張數</th><th>操作</th></tr>
+                </thead>
+                <tbody id="lbl-queue-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 分頁 6：手機作業與 POS 模組入口中樞 -->
+        <section id="tab-pos-hub" class="tab-panel">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>門市作業專區與 POS 模組擴充架構</h3>
+                <p class="card-desc">各作業端點採獨立頁面與模組化 JS，互不干擾形象網站與後台穩定度。</p>
+              </div>
+            </div>
+            <div class="portal-cards-grid">
+              <div class="portal-card">
+                <div>
+                  <h4>📱 手機掃碼作業專區（已上線基礎邏輯）</h4>
+                  <p>專屬單手介面：整合手機鏡頭與藍牙條碼槍，支援<strong>出貨掃碼撿貨核對</strong>、<strong>即時查貨盤點</strong>與<strong>快速收銀草稿</strong>。已保留官方 LINE 驗證空位，後續可直接鎖定操作人員。</p>
+                </div>
+                <a href="./Meya-m-7p2v.html" target="_blank" class="btn btn-primary">開啟手機作業專區 ↗</a>
+              </div>
+              <div class="portal-card">
+                <div>
+                  <h4>🧾 門市收銀 POS 主系統（第二階段接入）</h4>
+                  <p>對接 <code>DB_POS</code>、<code>DB_CRM</code> 與 <code>DB_INVENTORY</code>，支援藍牙槍連刷結帳、會員集點折扣、交班日結與發票／收據串接。</p>
+                </div>
+                <button type="button" class="btn btn-outline" disabled>架構已預留・待第二階段啟用</button>
+              </div>
+              <div class="portal-card">
+                <div>
+                  <h4>🛡️ 官方 LINE 多分組權限鎖定（待接入）</h4>
+                  <p>已於 CRM 資料庫預建「<code>權限管理</code>」多分組表，待官方 LINE LIFF 資訊齊備後即可一鍵開啟人員身分綁定與操作軌跡紀錄。</p>
+                </div>
+                <button type="button" class="btn btn-outline" disabled>認證插槽已就緒</button>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
+
+  <!-- 實際列印專用容器（平時隱藏） -->
+  <div id="label-print-sheet"></div>
 
   <!-- 彈窗 1：多圖挑選、順序調整、主圖指定與 2K 高清 (<=1MB) 壓縮 -->
   <div id="match-modal" class="modal-overlay">
@@ -298,7 +453,6 @@
         <button id="btn-close-modal-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="modal-body gallery-modal-body">
-        <!-- 左欄：勾選要／不要的照片 -->
         <div class="modal-col">
           <div class="modal-col-head">
             <strong>1. 勾選要採用的原圖</strong>
@@ -311,7 +465,6 @@
           <div id="drive-raw-list" class="drive-list drive-list-tall">載入中...</div>
         </div>
 
-        <!-- 右欄：上方高清預覽 ＋ 下方排序與主圖設定 -->
         <div class="modal-col">
           <div class="modal-col-head">
             <strong>2. 2K 高清排版預覽（95%品質｜上限 1MB）</strong>
@@ -376,6 +529,7 @@
   <script src="./js/admin-core.js"></script>
   <script src="./js/admin-products.js"></script>
   <script src="./js/admin-excel.js"></script>
+  <script src="./js/admin-labels.js"></script>
   <script src="./js/admin-site.js"></script>
 </body>
 </html>
