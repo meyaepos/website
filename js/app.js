@@ -1,8 +1,36 @@
 let allPublishedProducts = [];
 let activeCategory = 'ALL';
 let detectedCategoryKey = null;
+let userHasInteracted = false;
+
+function forceScrollTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+// 使用者只要手動觸碰或滑動，就不再介入捲動位置
+['touchstart', 'wheel', 'mousedown'].forEach(evt => {
+  window.addEventListener(evt, () => {
+    userHasInteracted = true;
+  }, { passive: true, once: true });
+});
+
+// 處理手機瀏覽器 / LINE 內建瀏覽器從快取返回時自動歸頂
+window.addEventListener('pageshow', () => {
+  if (!userHasInteracted) {
+    forceScrollTop();
+  }
+});
+
+window.addEventListener('load', () => {
+  if (!userHasInteracted) {
+    forceScrollTop();
+  }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
+  forceScrollTop();
   initWebsite();
   bindWebsiteEvents();
 });
@@ -31,6 +59,11 @@ async function initWebsite() {
     document.getElementById('catalog-count').textContent = '目前尚未連線至商品資料庫，請確認 GAS 部署權限設為「所有人」與 js/config.js 網址';
     document.getElementById('product-grid').innerHTML =
       '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
+  } finally {
+    // 資料載入完畢造成版面高度變化時，若使用者尚未操作則維持在最頂端
+    if (!userHasInteracted) {
+      forceScrollTop();
+    }
   }
 }
 
@@ -204,13 +237,29 @@ function bindWebsiteEvents() {
 
   searchInput.addEventListener('input', applyFiltersAndRender);
 
-  // 切換「新品上市 / 所有商品」標題顯示
-  document.querySelectorAll('[data-nav]').forEach(link => {
-    link.addEventListener('click', () => {
+  // 統一攔截內部錨點點擊：平滑捲動且不把 #contact 寫進網址列，避免重開直接跳到底部
+  document.querySelectorAll('[data-scroll-target]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      userHasInteracted = true;
+
       const mode = link.getAttribute('data-nav');
-      document.getElementById('catalog-heading').textContent = mode === 'new' ? '新品上市' : '所有商品';
-      activeCategory = 'ALL';
-      applyFiltersAndRender();
+      if (mode) {
+        document.getElementById('catalog-heading').textContent = mode === 'new' ? '新品上市' : '所有商品';
+        activeCategory = 'ALL';
+        applyFiltersAndRender();
+      }
+
+      const targetId = link.getAttribute('data-scroll-target');
+      if (targetId === 'top') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   });
 
