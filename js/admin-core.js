@@ -244,7 +244,7 @@ window.AdminCore = {
     this.updateKpis();
     if (window.AdminProducts) window.AdminProducts.renderTable(true);
     if (window.AdminExcel) window.AdminExcel.renderExportOptions(data.sheetNames || ['商品列表']);
-    if (window.AdminLabels) window.AdminLabels.syncData(data.config || {});
+    if (window.AdminLabels) window.AdminLabels.syncData(data.config || {}, data.labelQueue || [], data.labelDbSource || '');
     if (window.AdminSite) window.AdminSite.renderAll(data.config || {});
   },
 
