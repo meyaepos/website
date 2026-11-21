@@ -26,6 +26,10 @@ window.addEventListener('load', () => {
   if (!userHasInteracted) forceScrollTop();
 });
 
+window.addEventListener('resize', () => {
+  updateMarqueeSpeed();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   forceScrollTop();
   initWebsite();
@@ -76,12 +80,27 @@ function renderConfig(config) {
 
 function renderAnnouncements(newsList) {
   const mainEl = document.getElementById('marquee-content');
-  const cloneEl = document.getElementById('marquee-content-clone');
   const text = newsList.length > 0
-    ? newsList.join('　✦　') + '　✦　'
-    : '歡迎蒞臨 is Meya 官方形象網站　✦　';
+    ? newsList.join('　　✦　　')
+    : '歡迎蒞臨 is Meya 官方形象網站';
+
   mainEl.textContent = text;
-  cloneEl.textContent = text;
+
+  // 重置動畫確保載入資料後乾淨地從螢幕最右側開始滑入
+  mainEl.style.animation = 'none';
+  void mainEl.offsetWidth;
+  updateMarqueeSpeed();
+  mainEl.style.animation = '';
+}
+
+function updateMarqueeSpeed() {
+  const mainEl = document.getElementById('marquee-content');
+  if (!mainEl) return;
+
+  // 以每秒約 72px 的一致速度計算總時長，讓手機與平板視覺節奏相同
+  const totalDistance = window.innerWidth + mainEl.offsetWidth;
+  const durationSec = Math.max(12, Math.round(totalDistance / 72));
+  mainEl.style.setProperty('--marquee-duration', durationSec + 's');
 }
 
 function detectAndRenderCategories(products) {
@@ -238,12 +257,10 @@ function renderModalGallery() {
   const mainImg = document.getElementById('modal-img');
   mainImg.src = currentModalGallery[currentModalImgIndex] || '';
 
-  // 清除先前的多圖控制元件
   imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar').forEach(el => el.remove());
 
   if (currentModalGallery.length <= 1) return;
 
-  // 左右切換按鈕
   const makeNavBtn = (text, side, delta) => {
     const btn = document.createElement('button');
     btn.className = 'gallery-nav-btn';
@@ -260,7 +277,6 @@ function renderModalGallery() {
   imgBox.appendChild(makeNavBtn('‹', 'left', -1));
   imgBox.appendChild(makeNavBtn('›', 'right', 1));
 
-  // 下方排序縮圖列
   const strip = document.createElement('div');
   strip.className = 'gallery-thumbs-bar';
   strip.style.cssText = 'position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:6px; padding:0 10px; overflow-x:auto; z-index:4;';
