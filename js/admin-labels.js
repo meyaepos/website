@@ -1,25 +1,28 @@
 /**
- * 模組 5：條碼標籤機對標設定與批次向量列印引擎
- * 支援：中線上下切割留白安全區、X/Y 軸毫米級微調校準、Code 128 向量條碼生成、設定直存 Google Sheet 全域設定
+ * 模組 5：條碼標籤機對標設定、關鍵字搜尋勾選入庫、14 天雲端待印資料庫與向量列印引擎
  */
 window.AdminLabels = {
-  // 預設參數（待實際取得貼紙與印表機後可直接於畫面微調並存檔）
+  MAX_SEARCH_DISPLAY: 25,
+
   settings: {
-    printerType: 'roll',      // 'roll' (捲筒標籤機) | 'a4' (A4 雷射整張預切貼紙)
-    widthMm: 50,              // 單張貼紙寬度 (mm)
-    heightMm: 25,             // 單張貼紙高度 (mm)
-    cutGapMm: 2,              // 正中間上下切割安全留白 (mm)
-    cols: 1,                  // 每列張數（捲筒通常 1～2 欄，A4 雷射依版面如 3～5 欄）
-    colGapMm: 2,              // 欄間距 (mm)
-    rowGapMm: 2,              // 列間距 (mm)
-    offsetXMm: 0,             // 左邊界微調偏移 (mm)
-    offsetYMm: 0,             // 上邊界微調偏移 (mm)
-    topContent: 'barcode',    // 上半區內容：'barcode' | 'name_price' | 'id_only'
-    bottomContent: 'name_price', // 下半區內容：'name_price' | 'barcode' | 'id_price'
-    fontSizePt: 7             // 文字字體大小 (pt)
+    printerType: 'roll',
+    widthMm: 50,
+    heightMm: 25,
+    cutGapMm: 2,
+    cols: 1,
+    colGapMm: 2,
+    rowGapMm: 2,
+    offsetXMm: 0,
+    offsetYMm: 0,
+    topContent: 'barcode',
+    bottomContent: 'name_price',
+    fontSizePt: 7
   },
 
-  printQueue: [], // [{ id, name, price, qty }]
+  printQueue: [],             // 來自雲端試算表「標籤待印清單」的持久資料
+  dbSourceLabel: '',
+  searchCheckedMap: {},       // { productId: qty } 搜尋區已勾選準備批次入庫的項目
+  queueCheckedSet: new Set(), // 雲端待印清單已勾選的 productId（供批量刪除或指定列印）
 
   init: function() {
     this.bindEvents();
@@ -34,7 +37,6 @@ window.AdminLabels = {
       'lbl-cols', 'lbl-col-gap', 'lbl-row-gap', 'lbl-offset-x', 'lbl-offset-y',
       'lbl-top-content', 'lbl-bottom-content', 'lbl-font-size'
     ];
-
     fieldIds.forEach(id => {
       const el = document.getElementById(id);
       if (el) {
@@ -43,28 +45,28 @@ window.AdminLabels = {
       }
     });
 
-    const saveBtn = document.getElementById('btn-save-label-cfg');
-    if (saveBtn) saveBtn.addEventListener('click', () => this.saveCalibrationConfig());
+    document.getElementById('btn-save-label-cfg').addEventListener('click', () => this.saveCalibrationConfig());
 
-    const addBtn = document.getElementById('btn-add-label-item');
-    if (addBtn) addBtn.addEventListener('click', () => this.addSelectedProductToQueue());
+    // 搜尋與勾選入庫區
+    document.getElementById('lbl-search-input').addEventListener('input', () => this.renderSearchList());
+    document.getElementById('chk-search-all').addEventListener('change', e => this.toggleAllSearchCheckboxes(e.target.checked));
+    document.getElementById('btn-batch-add-picked').addEventListener('click', () => this.batchAddCheckedToDb());
 
-    const clearBtn = document.getElementById('btn-clear-label-queue');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        this.printQueue = [];
-        this.renderQueue();
-      });
-    }
+    // 備選傳統下拉選單
+    document.getElementById('btn-add-label-item').addEventListener('click', () => this.addDropdownProductToDb());
 
-    const printBtn = document.getElementById('btn-print-labels');
-    if (printBtn) printBtn.addEventListener('click', () => this.executeVectorPrint());
+    // 雲端待印資料庫控制鈕
+    document.getElementById('btn-refresh-label-db').addEventListener('click', () => this.refreshQueueFromServer());
+    document.getElementById('chk-queue-all').addEventListener('change', e => this.toggleAllQueueCheckboxes(e.target.checked));
+    document.getElementById('btn-batch-del-queue').addEventListener('click', () => this.deleteCheckedQueueItems());
+    document.getElementById('btn-clear-label-queue').addEventListener('click', () => this.clearAllQueueItems());
+    document.getElementById('btn-print-selected-labels').addEventListener('click', () => this.executeVectorPrint(true));
+    document.getElementById('btn-print-labels').addEventListener('click', () => this.executeVectorPrint(false));
   },
 
-  /**
-   * 從 GAS 全域設定載入已儲存的標籤機校準值，並同步最新商品清單至下拉選單
-   */
-  syncData: function(configObj) {
+  // ================= 1. 同步設定、商品清單與雲端待印資料庫 =================
+
+  syncData: function(configObj, labelQueueItems, dbSource) {
     if (configObj && configObj.label_config) {
       try {
         const parsed = typeof configObj.label_config === 'string'
@@ -73,10 +75,374 @@ window.AdminLabels = {
         this.settings = { ...this.settings, ...parsed };
       } catch (_) {}
     }
+
+    this.printQueue = Array.isArray(labelQueueItems) ? labelQueueItems : [];
+    this.dbSourceLabel = dbSource || '';
+    this.queueCheckedSet.clear();
+
     this.syncFormFromSettings();
-    this.populateProductDropdown();
+    this.populateBackupDropdown();
+    this.renderSearchList();
+    this.renderQueue();
     this.renderLivePreview();
   },
+
+  applyQueueResponse: function(queueData) {
+    this.printQueue = (queueData && Array.isArray(queueData.items)) ? queueData.items : [];
+    if (queueData && queueData.dbSource) this.dbSourceLabel = queueData.dbSource;
+
+    // 清除已不存在清單中的勾選狀態
+    const validIds = new Set(this.printQueue.map(x => x.id));
+    Array.from(this.queueCheckedSet).forEach(id => {
+      if (!validIds.has(id)) this.queueCheckedSet.delete(id);
+    });
+
+    this.renderSearchList();
+    this.renderQueue();
+  },
+
+  refreshQueueFromServer: async function() {
+    const btn = document.getElementById('btn-refresh-label-db');
+    btn.disabled = true;
+    btn.textContent = '⏳ 同步中...';
+    try {
+      const json = await AdminCore.apiGet('getLabelQueue');
+      if (json.status !== 'success') {
+        if (AdminCore.handleAuthFailure(json.message)) return;
+        throw new Error(json.message);
+      }
+      this.applyQueueResponse(json.data);
+      if (json.data && json.data.prunedCount > 0) {
+        alert(`已自動清除 ${json.data.prunedCount} 筆超過 14 天的過期標籤紀錄。`);
+      }
+    } catch (err) {
+      alert('同步待印資料庫失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 重新整理';
+    }
+  },
+
+  // ================= 2. 關鍵字／編號即時搜尋與勾選入庫 =================
+
+  getFilteredSearchProducts: function() {
+    const kw = (document.getElementById('lbl-search-input').value || '').trim().toLowerCase();
+    const list = (AdminState.products || []).filter(p => {
+      if (!kw) return true;
+      return String(p.id || '').toLowerCase().includes(kw) ||
+        String(p.name || '').toLowerCase().includes(kw) ||
+        String(p['條碼'] || '').toLowerCase().includes(kw) ||
+        String(p['國際條碼'] || '').toLowerCase().includes(kw);
+    });
+    return { total: list.length, visible: list.slice(0, this.MAX_SEARCH_DISPLAY) };
+  },
+
+  renderSearchList: function() {
+    const tbody = document.getElementById('lbl-search-tbody');
+    const countEl = document.getElementById('lbl-search-count');
+    const esc = AdminCore.escapeHtml;
+    if (!tbody) return;
+
+    const { total, visible } = this.getFilteredSearchProducts();
+    countEl.textContent = total > visible.length
+      ? `符合 ${total} 筆（顯示前 ${visible.length} 筆，可輸入關鍵字縮小範圍）`
+      : `符合 ${total} 筆`;
+
+    const inDbIds = new Set(this.printQueue.map(q => q.id));
+
+    if (visible.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">找不到符合關鍵字或編號的商品</td></tr>';
+      document.getElementById('chk-search-all').checked = false;
+      this.updateBatchAddButton();
+      return;
+    }
+
+    tbody.innerHTML = '';
+    let visibleCheckedCount = 0;
+
+    visible.forEach(p => {
+      const pid = String(p.id);
+      const isChecked = Object.prototype.hasOwnProperty.call(this.searchCheckedMap, pid);
+      if (isChecked) visibleCheckedCount++;
+      const qtyVal = isChecked ? this.searchCheckedMap[pid] : 1;
+      const alreadyInDb = inDbIds.has(pid);
+
+      const tr = document.createElement('tr');
+      if (alreadyInDb) tr.className = 'lbl-row-in-db';
+
+      tr.innerHTML = `
+        <td><input type="checkbox" class="lbl-checkbox chk-s-row" ${isChecked ? 'checked' : ''}></td>
+        <td>
+          <strong>${esc(pid)}</strong>
+          ${alreadyInDb ? '<span class="pill pill-ok" style="margin-left:4px; font-size:11px;">已在庫中</span>' : ''}
+        </td>
+        <td>${esc(p.name)}</td>
+        <td>NT$ ${Number(p.price || 0).toLocaleString()}</td>
+        <td><input type="number" min="1" max="500" class="input-ctrl inp-s-qty" style="width:68px;" value="${qtyVal}"></td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-primary btn-xs btn-direct-add">＋直接入庫</button>
+          <button type="button" class="btn btn-outline btn-xs btn-preview-s">預覽</button>
+        </td>
+      `;
+
+      const chk = tr.querySelector('.chk-s-row');
+      const qtyInput = tr.querySelector('.inp-s-qty');
+
+      chk.addEventListener('change', () => {
+        if (chk.checked) {
+          this.searchCheckedMap[pid] = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        } else {
+          delete this.searchCheckedMap[pid];
+        }
+        this.updateBatchAddButton();
+      });
+
+      qtyInput.addEventListener('change', () => {
+        const v = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        qtyInput.value = v;
+        if (chk.checked) this.searchCheckedMap[pid] = v;
+      });
+
+      tr.querySelector('.btn-direct-add').addEventListener('click', () => {
+        const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        this.pushItemsToCloudDb([{ id: pid, name: String(p.name || ''), price: Number(p.price || 0), qty: qty }]);
+      });
+
+      tr.querySelector('.btn-preview-s').addEventListener('click', () => this.renderLivePreview(p));
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('chk-search-all').checked = visible.length > 0 && visibleCheckedCount === visible.length;
+    this.updateBatchAddButton();
+  },
+
+  toggleAllSearchCheckboxes: function(checked) {
+    const { visible } = this.getFilteredSearchProducts();
+    visible.forEach(p => {
+      const pid = String(p.id);
+      if (checked) {
+        if (!this.searchCheckedMap[pid]) this.searchCheckedMap[pid] = 1;
+      } else {
+        delete this.searchCheckedMap[pid];
+      }
+    });
+    this.renderSearchList();
+  },
+
+  updateBatchAddButton: function() {
+    const count = Object.keys(this.searchCheckedMap).length;
+    const btn = document.getElementById('btn-batch-add-picked');
+    btn.disabled = count === 0;
+    btn.textContent = `✅ 將已勾選 (${count}) 筆寫入待印資料庫`;
+  },
+
+  batchAddCheckedToDb: async function() {
+    const ids = Object.keys(this.searchCheckedMap);
+    if (ids.length === 0) return;
+
+    const payloadItems = ids.map(pid => {
+      const p = AdminState.products.find(x => String(x.id) === pid);
+      return {
+        id: pid,
+        name: p ? String(p.name || '') : '',
+        price: p ? Number(p.price || 0) : 0,
+        qty: this.searchCheckedMap[pid] || 1
+      };
+    });
+
+    const ok = await this.pushItemsToCloudDb(payloadItems);
+    if (ok) {
+      this.searchCheckedMap = {};
+      this.renderSearchList();
+    }
+  },
+
+  populateBackupDropdown: function() {
+    const sel = document.getElementById('lbl-product-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- 請選擇要印標籤的商品 --</option>';
+    (AdminState.products || []).slice(0, 800).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `[${p.id}] ${p.name} (NT$${Number(p.price || 0).toLocaleString()})`;
+      sel.appendChild(opt);
+    });
+  },
+
+  addDropdownProductToDb: function() {
+    const prodId = document.getElementById('lbl-product-select').value;
+    const qty = Math.max(1, parseInt(document.getElementById('lbl-qty-input').value, 10) || 1);
+    if (!prodId) return alert('請先選擇一件商品');
+    const p = AdminState.products.find(x => String(x.id) === String(prodId));
+    if (!p) return;
+    this.pushItemsToCloudDb([{ id: String(p.id), name: String(p.name || ''), price: Number(p.price || 0), qty: qty }]);
+  },
+
+  pushItemsToCloudDb: async function(items) {
+    const batchBtn = document.getElementById('btn-batch-add-picked');
+    const prevText = batchBtn.textContent;
+    batchBtn.disabled = true;
+    batchBtn.textContent = '⏳ 寫入雲端資料庫中...';
+
+    try {
+      const json = await AdminCore.apiPost('addLabelQueueItems', { items: items });
+      if (json.status !== 'success') {
+        if (AdminCore.handleAuthFailure(json.message)) return false;
+        throw new Error(json.message);
+      }
+      this.applyQueueResponse(json.data);
+      if (items[0]) this.renderLivePreview(items[0]);
+      return true;
+    } catch (err) {
+      alert('❌ 寫入待印資料庫失敗：' + err.message);
+      return false;
+    } finally {
+      batchBtn.textContent = prevText;
+      this.updateBatchAddButton();
+    }
+  },
+
+  // ================= 3. 雲端待印清單渲染、改張數與批量刪除 =================
+
+  renderQueue: function() {
+    const tbody = document.getElementById('lbl-queue-tbody');
+    const noteEl = document.getElementById('lbl-db-source-note');
+    const navBadge = document.getElementById('nav-label-badge');
+    const esc = AdminCore.escapeHtml;
+    if (!tbody) return;
+
+    if (noteEl) {
+      noteEl.textContent = this.dbSourceLabel
+        ? `🗄️ 儲存位置：${this.dbSourceLabel} ➔ 分頁《標籤待印清單》｜滿 14 天自動清除`
+        : '🗄️ 雲端試算表永久保存｜滿 14 天自動清除';
+    }
+
+    if (navBadge) {
+      navBadge.textContent = this.printQueue.length;
+      navBadge.style.display = this.printQueue.length > 0 ? 'inline-block' : 'none';
+    }
+
+    if (this.printQueue.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">雲端待印資料庫目前為空（請於上方搜尋並點選入庫）</td></tr>';
+      document.getElementById('chk-queue-all').checked = false;
+      this.updateQueueActionButtons();
+      return;
+    }
+
+    tbody.innerHTML = '';
+    this.printQueue.forEach(item => {
+      const isChecked = this.queueCheckedSet.has(item.id);
+      const daysClass = item.daysLeft <= 3 ? 'pill-wait' : 'pill-off';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" class="lbl-checkbox chk-q-row" ${isChecked ? 'checked' : ''}></td>
+        <td><strong>${esc(item.id)}</strong></td>
+        <td>${esc(item.name)}</td>
+        <td>NT$ ${Number(item.price || 0).toLocaleString()}</td>
+        <td><input type="number" min="1" max="500" class="input-ctrl lbl-qty-edit" style="width:74px;" value="${item.qty}"></td>
+        <td>
+          <span class="pill ${daysClass}">剩 ${item.daysLeft || 14} 天</span>
+          <div style="font-size:11px; color:#94a3b8; margin-top:2px;">到期：${esc(item.expireDate || '')}</div>
+        </td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-outline btn-xs btn-preview-q">預覽</button>
+          <button type="button" class="btn btn-danger btn-xs btn-del-lbl">刪除</button>
+        </td>
+      `;
+
+      tr.querySelector('.chk-q-row').addEventListener('change', e => {
+        if (e.target.checked) this.queueCheckedSet.add(item.id);
+        else this.queueCheckedSet.delete(item.id);
+        this.updateQueueActionButtons();
+      });
+
+      tr.querySelector('.lbl-qty-edit').addEventListener('change', async e => {
+        const newQty = Math.max(1, parseInt(e.target.value, 10) || 1);
+        e.target.value = newQty;
+        await this.updateCloudItemQty(item.id, newQty);
+      });
+
+      tr.querySelector('.btn-preview-q').addEventListener('click', () => this.renderLivePreview(item));
+      tr.querySelector('.btn-del-lbl').addEventListener('click', () => this.deleteItemsFromCloudDb([item.id], false));
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('chk-queue-all').checked =
+      this.printQueue.length > 0 && this.queueCheckedSet.size === this.printQueue.length;
+    this.updateQueueActionButtons();
+  },
+
+  toggleAllQueueCheckboxes: function(checked) {
+    this.queueCheckedSet.clear();
+    if (checked) {
+      this.printQueue.forEach(item => this.queueCheckedSet.add(item.id));
+    }
+    this.renderQueue();
+  },
+
+  updateQueueActionButtons: function() {
+    const checkedCount = this.queueCheckedSet.size;
+    const checkedTags = this.printQueue
+      .filter(it => this.queueCheckedSet.has(it.id))
+      .reduce((sum, it) => sum + it.qty, 0);
+    const totalTags = this.printQueue.reduce((sum, it) => sum + it.qty, 0);
+
+    const delBtn = document.getElementById('btn-batch-del-queue');
+    delBtn.disabled = checkedCount === 0;
+    delBtn.textContent = `🗑️ 批量刪除已勾選 (${checkedCount})`;
+
+    const printSelBtn = document.getElementById('btn-print-selected-labels');
+    printSelBtn.disabled = checkedCount === 0;
+    printSelBtn.textContent = checkedCount > 0 ? `🖨️ 列印已勾選 (${checkedTags}張)` : '🖨️ 列印已勾選';
+
+    const printAllBtn = document.getElementById('btn-print-labels');
+    printAllBtn.disabled = totalTags === 0;
+    printAllBtn.textContent = totalTags > 0 ? `🖨️ 列印全部 (${totalTags}張)` : '🖨️ 列印全部';
+  },
+
+  updateCloudItemQty: async function(productId, newQty) {
+    try {
+      const json = await AdminCore.apiPost('updateLabelQueueQty', { productId: productId, qty: newQty });
+      if (json.status !== 'success') {
+        if (AdminCore.handleAuthFailure(json.message)) return;
+        throw new Error(json.message);
+      }
+      this.applyQueueResponse(json.data);
+    } catch (err) {
+      alert('更新張數失敗：' + err.message);
+    }
+  },
+
+  deleteCheckedQueueItems: function() {
+    const ids = Array.from(this.queueCheckedSet);
+    if (ids.length === 0) return;
+    if (!confirm(`確定要從雲端待印資料庫批量刪除已勾選的 ${ids.length} 筆商品嗎？`)) return;
+    this.deleteItemsFromCloudDb(ids, false);
+  },
+
+  clearAllQueueItems: function() {
+    if (this.printQueue.length === 0) return;
+    if (!confirm(`確定要清空雲端待印資料庫內的全部 ${this.printQueue.length} 筆商品嗎？`)) return;
+    this.deleteItemsFromCloudDb([], true);
+  },
+
+  deleteItemsFromCloudDb: async function(ids, clearAll) {
+    try {
+      const json = await AdminCore.apiPost('deleteLabelQueueItems', { ids: ids, clearAll: clearAll });
+      if (json.status !== 'success') {
+        if (AdminCore.handleAuthFailure(json.message)) return;
+        throw new Error(json.message);
+      }
+      this.applyQueueResponse(json.data);
+    } catch (err) {
+      alert('刪除失敗：' + err.message);
+    }
+  },
+
+  // ================= 4. 標籤校準設定、即時模擬與向量列印 =================
 
   syncFormFromSettings: function() {
     const s = this.settings;
@@ -132,9 +498,7 @@ window.AdminLabels = {
 
     try {
       const json = await AdminCore.apiPost('saveWebsiteConfig', {
-        config: {
-          label_config: JSON.stringify(this.settings)
-        }
+        config: { label_config: JSON.stringify(this.settings) }
       });
       if (json.status !== 'success') {
         if (AdminCore.handleAuthFailure(json.message)) return;
@@ -149,83 +513,6 @@ window.AdminLabels = {
     }
   },
 
-  populateProductDropdown: function() {
-    const sel = document.getElementById('lbl-product-select');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">-- 請選擇要印標籤的商品 --</option>';
-    (AdminState.products || []).slice(0, 800).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `[${p.id}] ${p.name} (NT$${Number(p.price || 0).toLocaleString()})`;
-      sel.appendChild(opt);
-    });
-  },
-
-  addSelectedProductToQueue: function() {
-    const prodId = document.getElementById('lbl-product-select').value;
-    const qty = Math.max(1, parseInt(document.getElementById('lbl-qty-input').value, 10) || 1);
-    if (!prodId) return alert('請先選擇一件商品');
-
-    const prod = AdminState.products.find(p => String(p.id) === String(prodId));
-    if (!prod) return;
-
-    const existing = this.printQueue.find(item => item.id === prod.id);
-    if (existing) {
-      existing.qty += qty;
-    } else {
-      this.printQueue.push({
-        id: String(prod.id),
-        name: String(prod.name || ''),
-        price: Number(prod.price || 0),
-        qty: qty
-      });
-    }
-    this.renderQueue();
-    this.renderLivePreview(prod);
-  },
-
-  renderQueue: function() {
-    const tbody = document.getElementById('lbl-queue-tbody');
-    const printBtn = document.getElementById('btn-print-labels');
-    const esc = AdminCore.escapeHtml;
-    if (!tbody) return;
-
-    const totalCount = this.printQueue.reduce((sum, item) => sum + item.qty, 0);
-    if (printBtn) {
-      printBtn.disabled = totalCount === 0;
-      printBtn.textContent = totalCount > 0 ? `🖨️ 列印全部 ${totalCount} 張條碼標籤` : '🖨️ 產生向量條碼並列印';
-    }
-
-    if (this.printQueue.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">尚未加入待列印商品（選擇商品與張數後按「加入清單」）</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = '';
-    this.printQueue.forEach((item, idx) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><strong>${esc(item.id)}</strong></td>
-        <td>${esc(item.name)}</td>
-        <td>NT$ ${item.price.toLocaleString()}</td>
-        <td><input type="number" min="1" max="500" class="input-ctrl lbl-qty-edit" style="width:74px;" value="${item.qty}"></td>
-        <td><button type="button" class="btn btn-danger btn-xs btn-del-lbl">移除</button></td>
-      `;
-      tr.querySelector('.lbl-qty-edit').addEventListener('change', e => {
-        this.printQueue[idx].qty = Math.max(1, parseInt(e.target.value, 10) || 1);
-        this.renderQueue();
-      });
-      tr.querySelector('.btn-del-lbl').addEventListener('click', () => {
-        this.printQueue.splice(idx, 1);
-        this.renderQueue();
-      });
-      tbody.appendChild(tr);
-    });
-  },
-
-  /**
-   * 建構單張貼紙 DOM（共用給預覽框與實際列印頁）
-   */
   _buildHalfHtml: function(mode, prod, fontSizePt, svgId) {
     const esc = AdminCore.escapeHtml;
     if (mode === 'barcode') {
@@ -243,7 +530,6 @@ window.AdminLabels = {
     if (mode === 'id_only') {
       return `<div class="label-text-line" style="font-size:${fontSizePt + 1}pt;">${esc(prod.id)}</div>`;
     }
-    // 預設 name_price
     return `
       <div class="label-text-line" style="font-size:${fontSizePt}pt;">${esc(prod.name)}</div>
       <div class="label-text-line" style="font-size:${fontSizePt}pt;">NT$ ${Number(prod.price || 0).toLocaleString()}</div>
@@ -293,8 +579,12 @@ window.AdminLabels = {
     this._renderSvgBarcode(document.getElementById('demo-svg-bot'), prod.id, halfHeightMm);
   },
 
-  executeVectorPrint: function() {
-    if (this.printQueue.length === 0) return;
+  executeVectorPrint: function(onlyChecked) {
+    const targetItems = onlyChecked
+      ? this.printQueue.filter(it => this.queueCheckedSet.has(it.id))
+      : this.printQueue;
+
+    if (targetItems.length === 0) return;
     this.readSettingsFromForm();
 
     const sheet = document.getElementById('label-print-sheet');
@@ -313,7 +603,7 @@ window.AdminLabels = {
     let seq = 0;
     const renderTasks = [];
 
-    this.printQueue.forEach(item => {
+    targetItems.forEach(item => {
       for (let i = 0; i < item.qty; i++) {
         seq++;
         const topId = `p-svg-t-${seq}`;
