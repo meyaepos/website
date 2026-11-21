@@ -28,11 +28,18 @@ window.ScannerEngine = {
   },
 
   /**
+   * 偵測是否處於容易封鎖鏡頭權限的 App 內建瀏覽器（LINE / FB / IG）
+   */
+  isInAppBrowser: function() {
+    const ua = navigator.userAgent || '';
+    return /Line\/|FBAN|FBAV|Instagram/i.test(ua);
+  },
+
+  /**
    * 藍牙條碼槍監聽：偵測極短間隔連續輸入 + Enter，店員免點輸入框即可連續刷條碼
    */
   _bindBluetoothHidListener: function() {
     document.addEventListener('keydown', e => {
-      // 若游標停在表單輸入框內，交由該輸入框自行處理（避免干擾手動打字）
       const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -70,6 +77,13 @@ window.ScannerEngine = {
       return false;
     }
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (statusEl) {
+        statusEl.textContent = '⚠️ 目前瀏覽器不支援網頁相機功能，請改用 Chrome 或 Safari 開啟此頁面。';
+      }
+      return false;
+    }
+
     try {
       if (statusEl) statusEl.textContent = '⏳ 正在開啟後置鏡頭...';
       this.html5Scanner = new Html5Qrcode(containerId);
@@ -88,7 +102,6 @@ window.ScannerEngine = {
         { facingMode: 'environment' },
         {
           fps: 12,
-          // 橫長型掃描框，專為飾品長條碼貼紙最佳化
           qrbox: { width: 260, height: 110 },
           aspectRatio: 1.5,
           formatsToSupport: formats
@@ -103,9 +116,37 @@ window.ScannerEngine = {
       if (statusEl) statusEl.textContent = '🟢 鏡頭已就緒（請將條碼對準框線，亦可直接刷藍牙條碼槍）';
       return true;
     } catch (err) {
-      if (statusEl) statusEl.textContent = '❌ 無法開啟相機：' + (err.message || err);
+      this.isCameraRunning = false;
+      this.html5Scanner = null;
+      if (statusEl) {
+        statusEl.textContent = this._formatCameraError(err);
+      }
       return false;
     }
+  },
+
+  /**
+   * 將技術性相機錯誤轉為現場人員看得懂的中文排解引導
+   */
+  _formatCameraError: function(err) {
+    const raw = String((err && err.message) || err || '');
+
+    if (/NotAllowedError|Permission denied|PermissionDismissed/i.test(raw)) {
+      if (this.isInAppBrowser()) {
+        return '⚠️ LINE 內建瀏覽器會封鎖相機權限！請點右下角「⋮」➔「使用預設瀏覽器開啟（Chrome）」即可正常使用鏡頭。';
+      }
+      return '❌ 未取得相機權限：請點網址列左側設定圖示開啟「相機權限」，或至手機設定允許瀏覽器存取相機。';
+    }
+
+    if (/NotFoundError|DevicesNotFound/i.test(raw)) {
+      return '❌ 偵測不到可用相機鏡頭，請改用藍牙條碼槍或手動輸入。';
+    }
+
+    if (/NotReadableError|TrackStartError/i.test(raw)) {
+      return '⚠️ 相機正被其他應用程式佔用中，請先關閉其他拍照 App 後再試。';
+    }
+
+    return '❌ 無法開啟相機：' + raw;
   },
 
   /**
@@ -134,7 +175,6 @@ window.ScannerEngine = {
 
   _emitCode: function(code, source) {
     const now = Date.now();
-    // 鏡頭連掃防抖；藍牙槍與手動輸入不受冷卻限制（可快速連刷同款多件）
     if (source === 'camera' && code === this.lastScannedCode && (now - this.lastScannedTime) < this.COOLDOWN_MS) {
       return;
     }
