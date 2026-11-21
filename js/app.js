@@ -6,6 +6,71 @@ let userHasInteracted = false;
 let currentModalGallery = [];
 let currentModalImgIndex = 0;
 
+// JS 動態跑馬燈控制器（徹底取代 CSS animation，保證全裝置從最右側開始）
+const MarqueeRunner = {
+  rafId: null,
+  x: 0,
+  lastTime: 0,
+  paused: false,
+  speedPxPerSec: 72, // 手機、平板、電腦統一每秒移動 72px
+
+  start: function(text) {
+    const mainEl = document.getElementById('marquee-content');
+    const cloneEl = document.getElementById('marquee-content-clone');
+    if (!mainEl) return;
+
+    const container = mainEl.parentElement;
+    if (cloneEl) cloneEl.style.display = 'none';
+
+    // 強制覆寫樣式，避免舊版 CSS 快取干擾
+    container.style.display = 'block';
+    container.style.width = '100%';
+    container.style.overflow = 'hidden';
+
+    mainEl.style.display = 'inline-block';
+    mainEl.style.whiteSpace = 'nowrap';
+    mainEl.style.animation = 'none';
+    mainEl.textContent = text;
+
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+
+    // 動態讀取當下螢幕最右邊界作為起點
+    this.x = container.clientWidth || window.innerWidth;
+    this.lastTime = 0;
+    mainEl.style.transform = `translate3d(${this.x}px, 0, 0)`;
+
+    const step = (now) => {
+      if (!this.lastTime) this.lastTime = now;
+      // 限制單幀最大時間差，避免切換分頁回來時文字跳躍
+      const dt = Math.min((now - this.lastTime) / 1000, 0.05);
+      this.lastTime = now;
+
+      if (!this.paused) {
+        this.x -= this.speedPxPerSec * dt;
+        const textWidth = mainEl.offsetWidth || 200;
+        const containerWidth = container.clientWidth || window.innerWidth;
+
+        // 完全滑出左側邊界後，重新從最右側進場
+        if (this.x < -textWidth) {
+          this.x = containerWidth;
+        }
+        mainEl.style.transform = `translate3d(${this.x}px, 0, 0)`;
+      }
+
+      this.rafId = requestAnimationFrame(step);
+    };
+
+    this.rafId = requestAnimationFrame(step);
+  },
+
+  bindHover: function() {
+    const bar = document.querySelector('.announcement-bar');
+    if (!bar) return;
+    bar.addEventListener('mouseenter', () => { this.paused = true; });
+    bar.addEventListener('mouseleave', () => { this.paused = false; });
+  }
+};
+
 function forceScrollTop() {
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   document.documentElement.scrollTop = 0;
@@ -26,12 +91,9 @@ window.addEventListener('load', () => {
   if (!userHasInteracted) forceScrollTop();
 });
 
-window.addEventListener('resize', () => {
-  updateMarqueeSpeed();
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   forceScrollTop();
+  MarqueeRunner.bindHover();
   initWebsite();
   bindWebsiteEvents();
 });
@@ -79,28 +141,11 @@ function renderConfig(config) {
 }
 
 function renderAnnouncements(newsList) {
-  const mainEl = document.getElementById('marquee-content');
   const text = newsList.length > 0
     ? newsList.join('　　✦　　')
     : '歡迎蒞臨 is Meya 官方形象網站';
 
-  mainEl.textContent = text;
-
-  // 重置動畫確保載入資料後乾淨地從螢幕最右側開始滑入
-  mainEl.style.animation = 'none';
-  void mainEl.offsetWidth;
-  updateMarqueeSpeed();
-  mainEl.style.animation = '';
-}
-
-function updateMarqueeSpeed() {
-  const mainEl = document.getElementById('marquee-content');
-  if (!mainEl) return;
-
-  // 以每秒約 72px 的一致速度計算總時長，讓手機與平板視覺節奏相同
-  const totalDistance = window.innerWidth + mainEl.offsetWidth;
-  const durationSec = Math.max(12, Math.round(totalDistance / 72));
-  mainEl.style.setProperty('--marquee-duration', durationSec + 's');
+  MarqueeRunner.start(text);
 }
 
 function detectAndRenderCategories(products) {
