@@ -20,7 +20,6 @@
       <h2>管理員專區登入</h2>
       <p id="login-policy-desc" class="login-desc">正在連線至系統驗證伺服器...</p>
 
-      <!-- 預留官方 LINE 身分驗證插槽（待 CRM 員工權限啟用時接入） -->
       <div id="line-auth-placeholder" style="display:none;"></div>
 
       <form id="login-form">
@@ -57,6 +56,7 @@
       <div class="nav-group-label">門市 POS 與標籤作業</div>
       <div class="nav-item" data-tab="tab-labels">
         <span>條碼標籤機列印</span>
+        <span id="nav-label-badge" class="badge badge-ready" style="display:none;">0</span>
       </div>
       <div class="nav-item" data-tab="tab-pos-hub">
         <span>手機作業與 POS 專區</span>
@@ -300,13 +300,14 @@
           </div>
         </section>
 
-        <!-- 分頁 5：條碼標籤機對標列印（支援上下中線切割） -->
+        <!-- 分頁 5：條碼標籤機對標列印（搜尋勾選入庫 ＋ 14天雲端待印資料庫） -->
         <section id="tab-labels" class="tab-panel">
+          <!-- 區塊 A：標籤機校準設定與即時預覽 -->
           <div class="card">
             <div class="card-head">
               <div>
-                <h3>條碼標籤機校準與上下切割排版設定</h3>
-                <p class="card-desc">預先建置毫米級向量對位邏輯（Code 128）。待確認貼紙實際尺寸與機台型號後，填入數值儲存即可精準批次印表。</p>
+                <h3>1. 條碼標籤機校準與上下切割排版設定</h3>
+                <p class="card-desc">毫米級向量對位邏輯（Code 128）。微調貼紙尺寸、中線安全區與偏移後按儲存即可永久留存。</p>
               </div>
               <button id="btn-save-label-cfg" class="btn btn-success">💾 儲存標籤機校準設定</button>
             </div>
@@ -382,23 +383,84 @@
             </div>
           </div>
 
+          <!-- 區塊 B：快速關鍵字／編號搜尋 ＋ 勾選或單鍵直接入庫 -->
           <div class="card">
             <div class="card-head">
-              <h3>待列印標籤清單</h3>
+              <div>
+                <h3>2. 搜尋商品並加入「待印資料庫」</h3>
+                <p class="card-desc">輸入編號、條碼或關鍵字即時篩選；可點「＋直接入庫」，或勾選多筆後一次批次寫入雲端資料庫。</p>
+              </div>
               <div class="toolbar-group">
-                <select id="lbl-product-select" class="input-ctrl" style="max-width:300px;"></select>
-                <input type="number" id="lbl-qty-input" class="input-ctrl" value="1" min="1" max="500" style="width:76px;" title="列印張數">
-                <button id="btn-add-label-item" class="btn btn-primary">＋ 加入清單</button>
-                <button id="btn-clear-label-queue" class="btn btn-outline">清空</button>
-                <button id="btn-print-labels" class="btn btn-success" disabled>🖨️ 產生向量條碼並列印</button>
+                <button type="button" id="btn-batch-add-picked" class="btn btn-success" disabled>✅ 將已勾選 (0) 筆寫入待印資料庫</button>
               </div>
             </div>
+
+            <div class="lbl-search-bar">
+              <input type="text" id="lbl-search-input" class="input-ctrl flex-1" placeholder="輸入商品編號、條碼或關鍵字快速搜尋（例如：3822039、莫桑石、手環）...">
+              <span id="lbl-search-count" class="pill pill-off">顯示前 25 筆</span>
+            </div>
+
+            <div class="table-wrap scroll-box-md" style="margin-top:10px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:42px;"><input type="checkbox" id="chk-search-all" class="lbl-checkbox" title="全選目前搜尋結果"></th>
+                    <th>商品編號 (id)</th>
+                    <th>商品名稱</th>
+                    <th>售價</th>
+                    <th style="width:88px;">張數</th>
+                    <th style="width:140px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="lbl-search-tbody">
+                  <tr><td colspan="6" class="empty-cell">商品資料同步中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 備選方式：保留傳統下拉選單（預設收合不佔版面） -->
+            <details class="lbl-fallback-details">
+              <summary>備選方式：展開傳統下拉選單挑選商品</summary>
+              <div class="toolbar-group" style="margin-top:10px;">
+                <select id="lbl-product-select" class="input-ctrl" style="max-width:340px;"></select>
+                <input type="number" id="lbl-qty-input" class="input-ctrl" value="1" min="1" max="500" style="width:76px;" title="列印張數">
+                <button type="button" id="btn-add-label-item" class="btn btn-primary">＋ 加入待印資料庫</button>
+              </div>
+            </details>
+          </div>
+
+          <!-- 區塊 C：雲端待印標籤資料庫（14 天自動清除 ＋ 批量刪除 ＋ 選擇列印） -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>3. 雲端待印標籤資料庫（滿 14 天自動清除）</h3>
+                <p id="lbl-db-source-note" class="card-desc">🗄️ 儲存位置同步中...</p>
+              </div>
+              <div class="toolbar-group">
+                <button type="button" id="btn-refresh-label-db" class="btn btn-outline">🔄 重新整理</button>
+                <button type="button" id="btn-batch-del-queue" class="btn btn-danger" disabled>🗑️ 批量刪除已勾選 (0)</button>
+                <button type="button" id="btn-clear-label-queue" class="btn btn-outline">🧹 全部清空</button>
+                <button type="button" id="btn-print-selected-labels" class="btn btn-info" disabled>🖨️ 列印已勾選</button>
+                <button type="button" id="btn-print-labels" class="btn btn-success" disabled>🖨️ 列印全部</button>
+              </div>
+            </div>
+
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>商品編號</th><th>商品名稱</th><th>售價</th><th>張數</th><th>操作</th></tr>
+                  <tr>
+                    <th style="width:42px;"><input type="checkbox" id="chk-queue-all" class="lbl-checkbox" title="全選待印清單"></th>
+                    <th>商品編號</th>
+                    <th>商品名稱</th>
+                    <th>售價</th>
+                    <th style="width:92px;">列印張數</th>
+                    <th>保存期限（14天）</th>
+                    <th style="width:130px;">操作</th>
+                  </tr>
                 </thead>
-                <tbody id="lbl-queue-tbody"></tbody>
+                <tbody id="lbl-queue-tbody">
+                  <tr><td colspan="7" class="empty-cell">讀取雲端待印資料庫中...</td></tr>
+                </tbody>
               </table>
             </div>
           </div>
