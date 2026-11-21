@@ -1,6 +1,6 @@
 /**
  * 模組 2：商品管理、有原圖置頂專區、全欄位編修與多圖排序對標引擎
- * 畫質策略：2K (寬度上限 2048px) ＋ 起始 95% 高品質 ＋ 單張上限 1MB
+ * 畫質策略：2K (寬度上限 2048px) ＋ 起始 95% 高品質 ＋ 單張上限 1MB ＋ 點擊放大檢視細節燈箱
  */
 window.AdminProducts = {
   MAX_IMAGE_WIDTH: 2048,
@@ -10,12 +10,15 @@ window.AdminProducts = {
 
   currentPage: 1,
   rawDriveImages: [],
-  selectedQueue: [],      // 已勾選且排序好的照片清單（index 0 固定為主圖）
-  base64Cache: {},        // 暫存已下載的原圖 Base64，避免切換預覽時重複向 GAS 抓取
+  selectedQueue: [],
+  base64Cache: {},
   matchedFolderName: '',
   activeProductId: '',
   previewingFileId: '',
+  previewingFileName: '',
   loadedSourceImage: null,
+  lastPreviewInfo: null, // 儲存最新一次壓縮成品資訊供放大燈箱檢視
+  lightboxZoomMode: 'fit', // 'fit' | '100' | '150'
 
   editMode: 'EDIT',
   editingProductId: '',
@@ -46,6 +49,126 @@ window.AdminProducts = {
     document.getElementById('btn-clear-all-raw').addEventListener('click', () => this.clearAllRawImages());
     document.getElementById('crop-ratio-select').addEventListener('change', () => this.redrawCanvasPreview());
     document.getElementById('btn-upload-bind').addEventListener('click', () => this.confirmBatchCompressAndUpload());
+
+    // 初始化 2K 預覽點擊放大燈箱（免修改 HTML 結構）
+    this.setupHdLightbox();
+  },
+
+  // ================= 0. 2K 高清預覽點擊放大燈箱 =================
+
+  setupHdLightbox: function() {
+    const stage = document.querySelector('.canvas-stage');
+    const canvas = document.getElementById('preview-canvas');
+
+    // 在預覽區右下角加入可點擊的放大提示標籤
+    if (stage && !document.getElementById('canvas-zoom-hint')) {
+      const hint = document.createElement('button');
+      hint.type = 'button';
+      hint.id = 'canvas-zoom-hint';
+      hint.className = 'canvas-zoom-hint';
+      hint.textContent = '🔍 點擊放大確認細節';
+      hint.style.display = 'none';
+      hint.addEventListener('click', () => this.openHdLightbox());
+      stage.appendChild(hint);
+    }
+
+    if (canvas) {
+      canvas.title = '點擊放大檢視 2K 高清細節';
+      canvas.addEventListener('click', () => this.openHdLightbox());
+    }
+
+    // 動態建立全螢幕燈箱元件
+    if (!document.getElementById('hd-zoom-lightbox')) {
+      const box = document.createElement('div');
+      box.id = 'hd-zoom-lightbox';
+      box.className = 'hd-lightbox';
+      box.innerHTML = `
+        <div class="hd-lightbox-bar">
+          <div id="hd-lightbox-meta" class="hd-lightbox-meta"></div>
+          <div class="hd-lightbox-controls">
+            <button type="button" class="btn btn-outline btn-xs hd-zoom-btn active" data-zoom="fit">適應螢幕</button>
+            <button type="button" class="btn btn-outline btn-xs hd-zoom-btn" data-zoom="100">100% 原寸</button>
+            <button type="button" class="btn btn-outline btn-xs hd-zoom-btn" data-zoom="150">150% 微距</button>
+            <button type="button" id="btn-close-hd-lightbox" class="btn btn-danger btn-xs">✕ 關閉</button>
+          </div>
+        </div>
+        <div id="hd-lightbox-stage" class="hd-lightbox-stage">
+          <img id="hd-lightbox-img" class="hd-lightbox-img" src="" alt="2K 高清預覽放大">
+        </div>
+      `;
+      document.body.appendChild(box);
+
+      box.querySelectorAll('.hd-zoom-btn').forEach(btn => {
+        btn.addEventListener('click', () => this.applyLightboxZoom(btn.dataset.zoom));
+      });
+
+      document.getElementById('btn-close-hd-lightbox').addEventListener('click', () => this.closeHdLightbox());
+
+      // 點擊背景空白處關閉燈箱
+      document.getElementById('hd-lightbox-stage').addEventListener('click', e => {
+        if (e.target.id === 'hd-lightbox-stage') this.closeHdLightbox();
+      });
+
+      // 點擊圖片本身快速切換「適應螢幕 ↔ 100% 原寸」
+      document.getElementById('hd-lightbox-img').addEventListener('click', e => {
+        e.stopPropagation();
+        this.applyLightboxZoom(this.lightboxZoomMode === 'fit' ? '100' : 'fit');
+      });
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') this.closeHdLightbox();
+      });
+    }
+  },
+
+  openHdLightbox: function() {
+    if (!this.lastPreviewInfo || !this.lastPreviewInfo.dataUrl) return;
+
+    const info = this.lastPreviewInfo;
+    const imgEl = document.getElementById('hd-lightbox-img');
+    imgEl.src = info.dataUrl;
+
+    document.getElementById('hd-lightbox-meta').textContent =
+      `${info.fileName} ｜ ${info.outW}×${info.outH}px ｜ 壓縮後 ${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%）— 點擊圖片可快速切換原寸`;
+
+    this.applyLightboxZoom('fit');
+    document.getElementById('hd-zoom-lightbox').classList.add('open');
+  },
+
+  applyLightboxZoom: function(mode) {
+    if (!this.lastPreviewInfo) return;
+    this.lightboxZoomMode = mode;
+
+    const imgEl = document.getElementById('hd-lightbox-img');
+    const stageEl = document.getElementById('hd-lightbox-stage');
+    const { outW, outH } = this.lastPreviewInfo;
+
+    document.querySelectorAll('.hd-zoom-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.zoom === mode);
+    });
+
+    if (mode === 'fit') {
+      imgEl.classList.remove('zoomed');
+      imgEl.style.width = '';
+      imgEl.style.height = '';
+      stageEl.scrollTo(0, 0);
+    } else {
+      const scale = mode === '150' ? 1.5 : 1;
+      imgEl.classList.add('zoomed');
+      imgEl.style.width = Math.round(outW * scale) + 'px';
+      imgEl.style.height = Math.round(outH * scale) + 'px';
+
+      // 放大後自動捲動到畫面正中央（飾品主體位置）
+      requestAnimationFrame(() => {
+        stageEl.scrollLeft = Math.max(0, (stageEl.scrollWidth - stageEl.clientWidth) / 2);
+        stageEl.scrollTop = Math.max(0, (stageEl.scrollHeight - stageEl.clientHeight) / 2);
+      });
+    }
+  },
+
+  closeHdLightbox: function() {
+    const box = document.getElementById('hd-zoom-lightbox');
+    if (box) box.classList.remove('open');
   },
 
   // ================= 1. 商品列表（自動置頂「有原圖待對標」＋ 高速分頁） =================
@@ -284,8 +407,13 @@ window.AdminProducts = {
     this.selectedQueue = [];
     this.base64Cache = {};
     this.previewingFileId = '';
+    this.previewingFileName = '';
     this.loadedSourceImage = null;
+    this.lastPreviewInfo = null;
     this.matchedFolderName = '';
+
+    const hintEl = document.getElementById('canvas-zoom-hint');
+    if (hintEl) hintEl.style.display = 'none';
 
     document.getElementById('match-modal-title').textContent = `多圖挑選與排版：[${product.id}] ${product.name}`;
     document.getElementById('match-status-text').textContent = '正在讀取對應編號的雲端原圖資料夾...';
@@ -310,7 +438,7 @@ window.AdminProducts = {
       this.renderRawImageList();
 
       document.getElementById('match-status-text').textContent = this.matchedFolderName
-        ? `✅ 已定位資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張原圖）。請勾選要採用的照片，並於下方排定順序與主圖。`
+        ? `✅ 已定位資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張原圖）。勾選照片後點擊預覽圖可放大確認細節。`
         : `找不到名為「${this.activeProductId}」的子資料夾，請確認雲端原檔資料庫是否已建立對應編號資料夾。`;
     } catch (err) {
       listEl.innerHTML = '<p style="color:#e74c3c; padding:12px;">讀取失敗：' + AdminCore.escapeHtml(err.message) + '</p>';
@@ -527,6 +655,7 @@ window.AdminProducts = {
 
   loadRawImageToCanvas: async function(fileId, fileName) {
     this.previewingFileId = fileId;
+    this.previewingFileName = fileName;
     this.renderRawImageList();
 
     const statusEl = document.getElementById('match-status-text');
@@ -583,8 +712,20 @@ window.AdminProducts = {
     const { outW, outH } = this.renderImageToCanvas(canvas, this.loadedSourceImage, ratioMode);
     const info = this.compressCanvasUnder1MB(canvas);
 
+    this.lastPreviewInfo = {
+      fileName: this.previewingFileName || this.activeProductId,
+      outW,
+      outH,
+      dataUrl: info.dataUrl,
+      quality: info.quality,
+      sizeKb: info.sizeKb
+    };
+
+    const hintEl = document.getElementById('canvas-zoom-hint');
+    if (hintEl) hintEl.style.display = 'inline-flex';
+
     document.getElementById('match-status-text').textContent =
-      `✅ 2K 預覽就緒（${outW}×${outH}px）｜預估壓縮後：${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%，上限 1MB）`;
+      `✅ 2K 預覽就緒（${outW}×${outH}px）｜預估壓縮後：${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%）｜點擊上方預覽圖可放大看細節`;
   },
 
   compressCanvasUnder1MB: function(canvas) {
@@ -601,9 +742,6 @@ window.AdminProducts = {
     return { dataUrl, quality, sizeKb: Math.round(estBytes / 1024) };
   },
 
-  /**
-   * 依序逐張處理已選照片：2K 排版壓縮 (<=1MB) -> 逐張存入 Drive -> 寫回主圖與多圖排序欄位
-   */
   confirmBatchCompressAndUpload: async function() {
     if (this.selectedQueue.length === 0 || !this.activeProductId) return;
 
@@ -638,7 +776,7 @@ window.AdminProducts = {
           fileName: targetFileName,
           mimeType: 'image/jpeg',
           base64Data: compressed.dataUrl.split(',')[1],
-          clearFolder: isCover // 上傳第 1 張主圖時清理該商品舊的優化檔
+          clearFolder: isCover
         });
 
         if (upRes.status !== 'success') {
@@ -673,6 +811,7 @@ window.AdminProducts = {
   },
 
   closeMatchModal: function() {
+    this.closeHdLightbox();
     document.getElementById('match-modal').classList.remove('open');
   }
 };
