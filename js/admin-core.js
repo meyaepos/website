@@ -19,6 +19,7 @@ window.AdminCore = {
 
     if (window.AdminProducts) window.AdminProducts.init();
     if (window.AdminExcel) window.AdminExcel.init();
+    if (window.AdminLabels) window.AdminLabels.init();
     if (window.AdminSite) window.AdminSite.init();
 
     await this.initAuth();
@@ -217,7 +218,6 @@ window.AdminCore = {
     AdminState.announcements = data.announcements || [];
     AdminState.errors = data.errors || [];
 
-    // 為每筆商品標記「是否缺圖且雲端已有對應原圖資料夾」，供自動置頂與專區使用
     const folderPairs = AdminState.rawFolderNames.map(name => ({
       raw: name,
       lower: String(name).trim().toLowerCase()
@@ -244,6 +244,7 @@ window.AdminCore = {
     this.updateKpis();
     if (window.AdminProducts) window.AdminProducts.renderTable(true);
     if (window.AdminExcel) window.AdminExcel.renderExportOptions(data.sheetNames || ['商品列表']);
+    if (window.AdminLabels) window.AdminLabels.syncData(data.config || {});
     if (window.AdminSite) window.AdminSite.renderAll(data.config || {});
   },
 
@@ -258,12 +259,10 @@ window.AdminCore = {
     document.getElementById('kpi-active').textContent = active;
     document.getElementById('kpi-pending').textContent = pending;
 
-    // 左側導覽列「有原圖待對標」綠色即時徽章
     const readyBadge = document.getElementById('nav-ready-badge');
     readyBadge.textContent = readyList.length;
     readyBadge.style.display = readyList.length > 0 ? 'inline-block' : 'none';
 
-    // 頂部專屬提示橫幅
     const priorityBar = document.getElementById('ready-priority-bar');
     if (readyList.length > 0) {
       const previewIds = readyList.slice(0, 6).map(x => x.id).join('、');
@@ -274,7 +273,6 @@ window.AdminCore = {
       priorityBar.style.display = 'none';
     }
 
-    // 異常紅點
     const openErrors = AdminState.errors.filter(e => e['狀態'] === '未處理').length;
     const errBadge = document.getElementById('nav-error-badge');
     errBadge.textContent = openErrors;
