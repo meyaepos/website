@@ -9,11 +9,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initWebsite() {
   try {
+    if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
+      throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
+    }
+
     const response = await fetch(CONFIG.GAS_API_URL + '?action=getWebsiteInitData');
-    if (!response.ok) throw new Error('伺服器回應異常：' + response.status);
+    if (!response.ok) throw new Error('伺服器回應狀態碼：' + response.status);
 
     const data = await response.json();
-    if (data.status !== 'success') throw new Error(data.message || '資料載入失敗');
+    if (data.status !== 'success') throw new Error(data.message || '資料庫回傳異常');
 
     renderConfig(data.config || {});
     renderAnnouncements(data.announcements || []);
@@ -22,19 +26,19 @@ async function initWebsite() {
     detectAndRenderCategories(allPublishedProducts);
     applyFiltersAndRender();
   } catch (error) {
-    console.error('形象網站初始化失敗:', error);
-    document.getElementById('marquee-content').textContent = 'MEYA 官方形象網站維護更新中';
-    document.getElementById('catalog-count').textContent = '暫時無法連線至商品資料庫';
+    console.error('[is Meya] 資料庫連線診斷：', error);
+    renderAnnouncements(['is Meya 韓國精品服飾・純銀飾品']);
+    document.getElementById('catalog-count').textContent = '目前尚未連線至商品資料庫，請確認 GAS 部署權限設為「所有人」與 js/config.js 網址';
     document.getElementById('product-grid').innerHTML =
-      '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px 0;">資料載入異常，請稍後重新整理頁面。</p>';
+      '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
   }
 }
 
 function renderConfig(config) {
-  if (config.cart_enabled === false || config.cart_enabled === undefined) {
-    document.body.classList.add('cart-disabled');
-  } else {
+  if (config.cart_enabled === true) {
     document.body.classList.remove('cart-disabled');
+  } else {
+    document.body.classList.add('cart-disabled');
   }
 
   if (config.free_shipping) {
@@ -46,12 +50,14 @@ function renderConfig(config) {
 function renderAnnouncements(newsList) {
   const mainEl = document.getElementById('marquee-content');
   const cloneEl = document.getElementById('marquee-content-clone');
-  const text = newsList.length > 0 ? newsList.join('　✦　') + '　✦　' : '歡迎蒞臨 MEYA 官方形象網站　✦　';
+  const text = newsList.length > 0
+    ? newsList.join('　✦　') + '　✦　'
+    : '歡迎蒞臨 is Meya 官方形象網站　✦　';
   mainEl.textContent = text;
   cloneEl.textContent = text;
 }
 
-// 若資料庫動態長出「分類 / category」欄位，前台自動長出極簡篩選列
+// 若資料庫有「分類 / 類別 / category」欄位，自動生成極簡中文分類篩選鈕
 function detectAndRenderCategories(products) {
   if (!products || products.length === 0) return;
 
@@ -68,7 +74,7 @@ function detectAndRenderCategories(products) {
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'dynamic-category-bar';
-    bar.style.cssText = 'display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin-bottom:32px;';
+    bar.style.cssText = 'display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin-bottom:36px;';
     const grid = document.getElementById('product-grid');
     grid.parentNode.insertBefore(bar, grid);
   }
@@ -78,7 +84,7 @@ function detectAndRenderCategories(products) {
     const btn = document.createElement('button');
     btn.textContent = cat === 'ALL' ? '全部商品' : cat;
     btn.dataset.cat = cat;
-    btn.style.cssText = 'padding:7px 18px; border-radius:20px; font-size:13px; letter-spacing:1px; border:1px solid #D9D2C5; transition:0.25s;';
+    btn.style.cssText = 'padding:6px 18px; border-radius:20px; font-size:13px; letter-spacing:1px; border:1px solid #D9D2C5; transition:0.25s;';
     updateCategoryBtnStyle(btn, cat === activeCategory);
 
     btn.addEventListener('click', () => {
@@ -116,12 +122,12 @@ function renderProducts(list) {
   grid.innerHTML = '';
 
   if (!list || list.length === 0) {
-    countEl.textContent = '目前尚無符合條件的商品';
-    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px 0;">敬請期待全新系列上架</p>';
+    countEl.textContent = '目前尚無上架商品';
+    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 44px 0; font-size: 14px;">全新商品陸續上架中，敬請期待。</p>';
     return;
   }
 
-  countEl.textContent = '共 ' + list.length + ' 件精選商品';
+  countEl.textContent = '共 ' + list.length + ' 件商品';
 
   list.forEach(product => {
     const card = document.createElement('div');
@@ -160,23 +166,14 @@ function renderProducts(list) {
 
 function openProductModal(product) {
   document.getElementById('modal-img').src = product.image || '';
-  document.getElementById('modal-sku').textContent = 'ITEM NO. ' + (product.id || '');
+  document.getElementById('modal-sku').textContent = '商品編號 ' + (product.id || '');
   document.getElementById('modal-name').textContent = product.name || '';
   document.getElementById('modal-price').textContent = 'NT$ ' + Number(product.price || 0).toLocaleString();
 
-  // 動態呈現從 Excel 擴充出來的公開規格欄位（如分類、材質、尺寸、說明）
-  const infoBox = document.querySelector('.modal-info-box');
-  let specBox = document.getElementById('modal-dynamic-specs');
-  if (!specBox) {
-    specBox = document.createElement('div');
-    specBox.id = 'modal-dynamic-specs';
-    specBox.style.cssText = 'margin-bottom:18px; font-size:13px; color:#555; display:grid; gap:6px;';
-    const noteEl = infoBox.querySelector('.modal-note');
-    infoBox.insertBefore(specBox, noteEl);
-  }
-
+  const specBox = document.getElementById('modal-dynamic-specs');
   const coreKeys = new Set(['id', 'name', 'price', 'image', '狀態']);
   specBox.innerHTML = '';
+
   Object.keys(product).forEach(k => {
     if (coreKeys.has(k)) return;
     const val = String(product[k] || '').trim();
@@ -190,8 +187,39 @@ function openProductModal(product) {
 }
 
 function bindWebsiteEvents() {
-  document.getElementById('search-input').addEventListener('input', applyFiltersAndRender);
+  // 展開/關閉搜尋抽屜
+  const drawer = document.getElementById('search-bar-drawer');
+  const searchInput = document.getElementById('search-input');
 
+  document.getElementById('btn-search-toggle').addEventListener('click', () => {
+    drawer.classList.toggle('open');
+    if (drawer.classList.contains('open')) searchInput.focus();
+  });
+
+  document.getElementById('btn-search-close').addEventListener('click', () => {
+    searchInput.value = '';
+    drawer.classList.remove('open');
+    applyFiltersAndRender();
+  });
+
+  searchInput.addEventListener('input', applyFiltersAndRender);
+
+  // 切換「新品上市 / 所有商品」標題顯示
+  document.querySelectorAll('[data-nav]').forEach(link => {
+    link.addEventListener('click', () => {
+      const mode = link.getAttribute('data-nav');
+      document.getElementById('catalog-heading').textContent = mode === 'new' ? '新品上市' : '所有商品';
+      activeCategory = 'ALL';
+      applyFiltersAndRender();
+    });
+  });
+
+  // 回到頂端按鈕
+  document.getElementById('btn-scroll-top').addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // 關閉商品彈窗
   const backdrop = document.getElementById('product-modal-backdrop');
   document.getElementById('modal-close-btn').addEventListener('click', () => backdrop.classList.remove('open'));
   backdrop.addEventListener('click', (e) => {
