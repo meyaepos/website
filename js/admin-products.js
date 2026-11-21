@@ -1,25 +1,29 @@
 /**
- * 模組 2：商品管理、有原圖置頂專區、全欄位編修與圖檔對標引擎
+ * 模組 2：商品管理、有原圖置頂專區、全欄位編修與多圖排序對標引擎
+ * 畫質策略：2K (寬度上限 2048px) ＋ 起始 95% 高品質 ＋ 單張上限 1MB
  */
 window.AdminProducts = {
-  MAX_IMAGE_WIDTH: 1600,
-  MAX_BYTES_LIMIT: 2 * 1024 * 1024,
+  MAX_IMAGE_WIDTH: 2048,
+  MAX_BYTES_LIMIT: 1 * 1024 * 1024, // 單張上限 1MB
+  INIT_QUALITY: 0.95,
   PAGE_SIZE: 50,
 
   currentPage: 1,
   rawDriveImages: [],
+  selectedQueue: [],      // 已勾選且排序好的照片清單（index 0 固定為主圖）
+  base64Cache: {},        // 暫存已下載的原圖 Base64，避免切換預覽時重複向 GAS 抓取
   matchedFolderName: '',
   activeProductId: '',
+  previewingFileId: '',
   loadedSourceImage: null,
 
-  editMode: 'EDIT', // 'EDIT' 或 'CREATE'
+  editMode: 'EDIT',
   editingProductId: '',
 
   init: function() {
     document.getElementById('prod-search').addEventListener('input', () => this.renderTable(true));
     document.getElementById('prod-filter').addEventListener('change', () => this.renderTable(true));
 
-    // 點擊 KPI 卡或提示條直接切進「有原圖待對標專區」
     const switchReadyFilter = () => {
       document.getElementById('prod-filter').value = 'READY_MATCH';
       document.getElementById('prod-search').value = '';
@@ -34,12 +38,14 @@ window.AdminProducts = {
     document.getElementById('btn-cancel-edit').addEventListener('click', () => this.closeEditModal());
     document.getElementById('btn-save-edit').addEventListener('click', () => this.saveProductEdit());
 
-    // 圖檔對標彈窗
+    // 多圖對標彈窗
     document.getElementById('btn-close-modal-x').addEventListener('click', () => this.closeMatchModal());
     document.getElementById('btn-cancel-modal').addEventListener('click', () => this.closeMatchModal());
     document.getElementById('raw-img-search').addEventListener('input', () => this.renderRawImageList());
+    document.getElementById('btn-select-all-raw').addEventListener('click', () => this.selectAllRawImages());
+    document.getElementById('btn-clear-all-raw').addEventListener('click', () => this.clearAllRawImages());
     document.getElementById('crop-ratio-select').addEventListener('change', () => this.redrawCanvasPreview());
-    document.getElementById('btn-upload-bind').addEventListener('click', () => this.confirmCompressAndUpload());
+    document.getElementById('btn-upload-bind').addEventListener('click', () => this.confirmBatchCompressAndUpload());
   },
 
   // ================= 1. 商品列表（自動置頂「有原圖待對標」＋ 高速分頁） =================
@@ -50,7 +56,7 @@ window.AdminProducts = {
     const tbody = document.getElementById('product-tbody');
     const kw = document.getElementById('prod-search').value.trim().toLowerCase();
     const filter = document.getElementById('prod-filter').value;
-    const coreSet = new Set(window.CORE_PRODUCT_KEYS);
+    const skipSummarySet = new Set([...window.CORE_PRODUCT_KEYS, 'images']);
     const esc = AdminCore.escapeHtml;
 
     const filtered = AdminState.products.filter(p => {
@@ -66,7 +72,6 @@ window.AdminProducts = {
       return true;
     });
 
-    // 自動排序：1. 有原圖待對標最優先 ➔ 2. 已上架 ➔ 3. 其餘待對標/下架
     filtered.sort((a, b) => {
       const rank = item => {
         if (item._readyToMatch) return 0;
@@ -93,8 +98,13 @@ window.AdminProducts = {
 
     tbody.innerHTML = '';
     pageItems.forEach(p => {
-      const extraSummary = Object.keys(p)
-        .filter(k => !k.startsWith('_') && !coreSet.has(k) && p[k] !== '' && p[k] !== undefined)
+      const galleryUrls = String(p.images || '').split(',').map(s => s.trim()).filter(Boolean);
+      const photoCountBadge = galleryUrls.length > 1
+        ? `<span class="pill pill-new" style="margin:2px;">🖼️ 共 ${galleryUrls.length} 張圖</span>`
+        : '';
+
+      const extraSummary = photoCountBadge + Object.keys(p)
+        .filter(k => !k.startsWith('_') && !skipSummarySet.has(k) && p[k] !== '' && p[k] !== undefined)
         .slice(0, 3)
         .map(k => `<span class="pill pill-off" style="margin:2px;">${esc(k)}: ${esc(p[k])}</span>`)
         .join('');
@@ -184,13 +194,12 @@ window.AdminProducts = {
     const grid = document.getElementById('edit-fields-grid');
     grid.innerHTML = '';
 
-    // 確保核心 5 欄位排在最前面，其餘動態擴充欄位接續在後
     const allHeaders = Array.from(new Set([...window.CORE_PRODUCT_KEYS, ...AdminState.productHeaders]));
 
     allHeaders.forEach(colName => {
       const val = product && product[colName] !== undefined ? String(product[colName]) : '';
       const wrap = document.createElement('div');
-      wrap.className = 'edit-field-item' + (colName === 'image' || colName === 'name' ? ' full-span' : '');
+      wrap.className = 'edit-field-item' + (colName === 'image' || colName === 'images' || colName === 'name' ? ' full-span' : '');
 
       const label = document.createElement('label');
       label.textContent = colName === 'id' ? '商品編號 (id) *' : (colName === 'name' ? '商品名稱 (name) *' : colName);
@@ -268,20 +277,23 @@ window.AdminProducts = {
     document.getElementById('edit-product-modal').classList.remove('open');
   },
 
-  // ================= 3. 圖檔一對一對標與 <2MB 排版壓縮 =================
+  // ================= 3. 多圖挑選、排序、主圖設定與 2K (<=1MB) 轉存 =================
 
   openMatchModal: async function(product) {
     this.activeProductId = String(product.id);
+    this.selectedQueue = [];
+    this.base64Cache = {};
+    this.previewingFileId = '';
     this.loadedSourceImage = null;
     this.matchedFolderName = '';
 
-    document.getElementById('match-modal-title').textContent = `對標與排版：[${product.id}] ${product.name}`;
-    document.getElementById('match-status-text').textContent = '正在依商品編號尋找對應的雲端原圖資料夾...';
-    document.getElementById('btn-upload-bind').disabled = true;
+    document.getElementById('match-modal-title').textContent = `多圖挑選與排版：[${product.id}] ${product.name}`;
+    document.getElementById('match-status-text').textContent = '正在讀取對應編號的雲端原圖資料夾...';
     document.getElementById('raw-img-search').value = '';
 
     const canvas = document.getElementById('preview-canvas');
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    this.renderSelectedQueue();
     document.getElementById('match-modal').classList.add('open');
 
     const listEl = document.getElementById('drive-raw-list');
@@ -298,11 +310,44 @@ window.AdminProducts = {
       this.renderRawImageList();
 
       document.getElementById('match-status-text').textContent = this.matchedFolderName
-        ? `✅ 已自動定位到子資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張原圖），請點選左側照片進行排版預覽。`
+        ? `✅ 已定位資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張原圖）。請勾選要採用的照片，並於下方排定順序與主圖。`
         : `找不到名為「${this.activeProductId}」的子資料夾，請確認雲端原檔資料庫是否已建立對應編號資料夾。`;
     } catch (err) {
       listEl.innerHTML = '<p style="color:#e74c3c; padding:12px;">讀取失敗：' + AdminCore.escapeHtml(err.message) + '</p>';
     }
+  },
+
+  selectAllRawImages: function() {
+    const matched = this.rawDriveImages.filter(img => img.isMatchedFolder);
+    const pool = matched.length > 0 ? matched : this.rawDriveImages;
+    pool.forEach(img => {
+      if (!this.selectedQueue.some(q => q.id === img.id)) {
+        this.selectedQueue.push(img);
+      }
+    });
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+    if (this.selectedQueue.length > 0 && !this.previewingFileId) {
+      this.loadRawImageToCanvas(this.selectedQueue[0].id, this.selectedQueue[0].name);
+    }
+  },
+
+  clearAllRawImages: function() {
+    this.selectedQueue = [];
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+  },
+
+  toggleImageSelection: function(img) {
+    const idx = this.selectedQueue.findIndex(q => q.id === img.id);
+    if (idx === -1) {
+      this.selectedQueue.push(img);
+      this.loadRawImageToCanvas(img.id, img.name);
+    } else {
+      this.selectedQueue.splice(idx, 1);
+    }
+    this.renderRawImageList();
+    this.renderSelectedQueue();
   },
 
   renderRawImageList: function() {
@@ -321,64 +366,185 @@ window.AdminProducts = {
 
     listEl.innerHTML = '';
     filtered.forEach(img => {
+      const queueIdx = this.selectedQueue.findIndex(q => q.id === img.id);
+      const isChecked = queueIdx !== -1;
+      const isPreviewing = this.previewingFileId === img.id;
       const sizeText = img.sizeKb >= 1024 ? (img.sizeKb / 1024).toFixed(1) + ' MB' : img.sizeKb + ' KB';
+
       const thumbHtml = img.thumbnail
         ? `<img src="${esc(img.thumbnail)}" alt="">`
         : '<div style="width:44px;height:44px;border-radius:4px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🖼️</div>';
 
+      const orderTag = isChecked
+        ? (queueIdx === 0 ? '<span class="pill pill-cover" style="margin-left:6px;">★ 主圖</span>' : `<span class="pill pill-new" style="margin-left:6px;">#${queueIdx + 1}</span>`)
+        : '';
+
       const item = document.createElement('div');
-      item.className = 'drive-item' + (img.isMatchedFolder ? ' recommended' : '');
+      item.className = 'drive-item' +
+        (img.isMatchedFolder ? ' recommended' : '') +
+        (isChecked ? ' checked-item' : '') +
+        (isPreviewing ? ' previewing' : '');
+
       item.innerHTML = `
+        <input type="checkbox" class="drive-item-check" ${isChecked ? 'checked' : ''} title="勾選採用此張照片">
         ${thumbHtml}
-        <div>
-          <div><strong>${esc(img.name)}</strong></div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; flex-wrap:wrap;">
+            <strong>${esc(img.name)}</strong>${orderTag}
+          </div>
           <span style="font-size:11px; color:${img.isMatchedFolder ? '#a16207' : '#64748b'};">
             ${img.isMatchedFolder ? '📁 ' + esc(img.folderName) + ' ｜ ' : ''}${sizeText}
           </span>
         </div>
       `;
+
+      const checkbox = item.querySelector('.drive-item-check');
+      checkbox.addEventListener('click', e => {
+        e.stopPropagation();
+        this.toggleImageSelection(img);
+      });
+
       item.addEventListener('click', () => {
-        document.querySelectorAll('.drive-item').forEach(x => x.classList.remove('selected'));
-        item.classList.add('selected');
         this.loadRawImageToCanvas(img.id, img.name);
       });
+
       listEl.appendChild(item);
     });
   },
 
+  renderSelectedQueue: function() {
+    const listEl = document.getElementById('selected-queue-list');
+    const countEl = document.getElementById('selected-queue-count');
+    const uploadBtn = document.getElementById('btn-upload-bind');
+    const esc = AdminCore.escapeHtml;
+
+    const total = this.selectedQueue.length;
+    countEl.textContent = `已選 ${total} 張`;
+    uploadBtn.disabled = total === 0;
+    uploadBtn.textContent = total > 0
+      ? `✅ 確認轉存全部 ${total} 張（第 1 張為主圖）`
+      : '✅ 確認轉存所選照片並對標';
+
+    if (total === 0) {
+      listEl.innerHTML = '<div class="queue-empty">尚未勾選任何照片（請於左側打勾，第 1 張自動成為商品主圖）</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    this.selectedQueue.forEach((img, idx) => {
+      const isCover = idx === 0;
+      const thumbHtml = img.thumbnail
+        ? `<img src="${esc(img.thumbnail)}" alt="">`
+        : '<div style="width:36px;height:36px;border-radius:4px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;">🖼️</div>';
+
+      const targetFileName = isCover
+        ? `${this.activeProductId}_01_cover.jpg`
+        : `${this.activeProductId}_${String(idx + 1).padStart(2, '0')}.jpg`;
+
+      const row = document.createElement('div');
+      row.className = 'queue-item' + (isCover ? ' is-cover' : '');
+      row.innerHTML = `
+        <span class="pill ${isCover ? 'pill-cover' : 'pill-off'}">${isCover ? '★ 主圖' : '#' + (idx + 1)}</span>
+        ${thumbHtml}
+        <div class="queue-item-info">
+          <div class="queue-item-name">${esc(img.name)}</div>
+          <div style="font-size:11px; color:#64748b;">轉存檔名：${esc(targetFileName)}</div>
+        </div>
+        <div class="queue-item-actions">
+          ${!isCover ? '<button type="button" class="btn btn-warning btn-xs btn-set-cover" title="設為主圖並移到第1張">設為主圖</button>' : ''}
+          <button type="button" class="btn btn-outline btn-xs btn-move-up" ${idx === 0 ? 'disabled' : ''} title="往前移">↑</button>
+          <button type="button" class="btn btn-outline btn-xs btn-move-down" ${idx === total - 1 ? 'disabled' : ''} title="往後移">↓</button>
+          <button type="button" class="btn btn-danger btn-xs btn-remove-q" title="取消採用">✕</button>
+        </div>
+      `;
+
+      row.addEventListener('click', () => this.loadRawImageToCanvas(img.id, img.name));
+
+      const coverBtn = row.querySelector('.btn-set-cover');
+      if (coverBtn) {
+        coverBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          this.setAsCover(idx);
+        });
+      }
+      row.querySelector('.btn-move-up').addEventListener('click', e => {
+        e.stopPropagation();
+        this.moveQueueItem(idx, -1);
+      });
+      row.querySelector('.btn-move-down').addEventListener('click', e => {
+        e.stopPropagation();
+        this.moveQueueItem(idx, 1);
+      });
+      row.querySelector('.btn-remove-q').addEventListener('click', e => {
+        e.stopPropagation();
+        this.selectedQueue.splice(idx, 1);
+        this.renderRawImageList();
+        this.renderSelectedQueue();
+      });
+
+      listEl.appendChild(row);
+    });
+  },
+
+  setAsCover: function(idx) {
+    if (idx <= 0 || idx >= this.selectedQueue.length) return;
+    const [picked] = this.selectedQueue.splice(idx, 1);
+    this.selectedQueue.unshift(picked);
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+    this.loadRawImageToCanvas(picked.id, picked.name);
+  },
+
+  moveQueueItem: function(idx, delta) {
+    const target = idx + delta;
+    if (target < 0 || target >= this.selectedQueue.length) return;
+    const temp = this.selectedQueue[idx];
+    this.selectedQueue[idx] = this.selectedQueue[target];
+    this.selectedQueue[target] = temp;
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+  },
+
+  fetchBase64Cached: async function(fileId) {
+    if (this.base64Cache[fileId]) return this.base64Cache[fileId];
+    const data = await AdminCore.apiGet('getImageBase64', { fileId });
+    if (data.status !== 'success') {
+      if (AdminCore.handleAuthFailure(data.message)) return null;
+      throw new Error(data.message);
+    }
+    this.base64Cache[fileId] = data.base64;
+    return data.base64;
+  },
+
+  loadImageElementFromBase64: function(base64Str) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('圖片解碼失敗'));
+      img.src = 'data:' + base64Str;
+    });
+  },
+
   loadRawImageToCanvas: async function(fileId, fileName) {
+    this.previewingFileId = fileId;
+    this.renderRawImageList();
+
     const statusEl = document.getElementById('match-status-text');
-    const btn = document.getElementById('btn-upload-bind');
-    statusEl.textContent = '⏳ 載入高畫質原圖「' + fileName + '」中...';
-    btn.disabled = true;
+    statusEl.textContent = '⏳ 載入原圖「' + fileName + '」進行 2K 高清預覽...';
 
     try {
-      const data = await AdminCore.apiGet('getImageBase64', { fileId });
-      if (data.status !== 'success') {
-        if (AdminCore.handleAuthFailure(data.message)) return;
-        throw new Error(data.message);
-      }
-
-      const img = new Image();
-      img.onload = () => {
-        this.loadedSourceImage = img;
-        this.redrawCanvasPreview();
-        btn.disabled = false;
-      };
-      img.src = 'data:' + data.base64;
+      const base64 = await this.fetchBase64Cached(fileId);
+      if (!base64) return;
+      this.loadedSourceImage = await this.loadImageElementFromBase64(base64);
+      this.redrawCanvasPreview();
     } catch (err) {
       statusEl.textContent = '❌ 讀取原圖失敗：' + err.message;
     }
   },
 
-  redrawCanvasPreview: function() {
-    const img = this.loadedSourceImage;
-    if (!img) return;
-
-    const canvas = document.getElementById('preview-canvas');
-    const ratioMode = document.getElementById('crop-ratio-select').value;
-    const srcW = img.naturalWidth;
-    const srcH = img.naturalHeight;
+  renderImageToCanvas: function(canvas, imgElement, ratioMode) {
+    const srcW = imgElement.naturalWidth;
+    const srcH = imgElement.naturalHeight;
 
     let sx = 0, sy = 0, sw = srcW, sh = srcH;
     if (ratioMode !== 'original') {
@@ -402,22 +568,32 @@ window.AdminProducts = {
     canvas.width = outW;
     canvas.height = outH;
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, outW, outH);
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
-
-    const info = this.compressCanvasUnder2MB(canvas);
-    document.getElementById('match-status-text').textContent =
-      `✅ 排版就緒（${outW}×${outH}px）｜預估壓縮後：${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%）｜自動檔名：${this.activeProductId}_cover.jpg`;
+    ctx.drawImage(imgElement, sx, sy, sw, sh, 0, 0, outW, outH);
+    return { outW, outH };
   },
 
-  compressCanvasUnder2MB: function(canvas) {
-    let quality = 0.88;
+  redrawCanvasPreview: function() {
+    if (!this.loadedSourceImage) return;
+    const canvas = document.getElementById('preview-canvas');
+    const ratioMode = document.getElementById('crop-ratio-select').value;
+    const { outW, outH } = this.renderImageToCanvas(canvas, this.loadedSourceImage, ratioMode);
+    const info = this.compressCanvasUnder1MB(canvas);
+
+    document.getElementById('match-status-text').textContent =
+      `✅ 2K 預覽就緒（${outW}×${outH}px）｜預估壓縮後：${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%，上限 1MB）`;
+  },
+
+  compressCanvasUnder1MB: function(canvas) {
+    let quality = this.INIT_QUALITY;
     let dataUrl = canvas.toDataURL('image/jpeg', quality);
     let estBytes = Math.round((dataUrl.length * 3) / 4);
 
-    while (estBytes > this.MAX_BYTES_LIMIT && quality > 0.3) {
-      quality = Number((quality - 0.08).toFixed(2));
+    while (estBytes > this.MAX_BYTES_LIMIT && quality > 0.55) {
+      quality = Number((quality - 0.04).toFixed(2));
       dataUrl = canvas.toDataURL('image/jpeg', quality);
       estBytes = Math.round((dataUrl.length * 3) / 4);
     }
@@ -425,34 +601,73 @@ window.AdminProducts = {
     return { dataUrl, quality, sizeKb: Math.round(estBytes / 1024) };
   },
 
-  confirmCompressAndUpload: async function() {
-    if (!this.loadedSourceImage || !this.activeProductId) return;
+  /**
+   * 依序逐張處理已選照片：2K 排版壓縮 (<=1MB) -> 逐張存入 Drive -> 寫回主圖與多圖排序欄位
+   */
+  confirmBatchCompressAndUpload: async function() {
+    if (this.selectedQueue.length === 0 || !this.activeProductId) return;
 
     const btn = document.getElementById('btn-upload-bind');
     const statusEl = document.getElementById('match-status-text');
+    const ratioMode = document.getElementById('crop-ratio-select').value;
+    const autoPublish = document.getElementById('chk-auto-publish').checked;
+    const workCanvas = document.getElementById('preview-canvas');
+
     btn.disabled = true;
-    statusEl.textContent = '🚀 正在降檔轉存、自動歸檔至商品編號資料夾並寫入資料庫...';
+    const uploadedUrls = [];
 
     try {
-      const compressed = this.compressCanvasUnder2MB(document.getElementById('preview-canvas'));
-      const result = await AdminCore.apiPost('uploadAndBindImage', {
-        productId: this.activeProductId,
-        fileName: this.activeProductId + '_cover.jpg',
-        mimeType: 'image/jpeg',
-        base64Data: compressed.dataUrl.split(',')[1],
-        autoPublish: document.getElementById('chk-auto-publish').checked
-      });
+      for (let i = 0; i < this.selectedQueue.length; i++) {
+        const item = this.selectedQueue[i];
+        const isCover = i === 0;
+        const targetFileName = isCover
+          ? `${this.activeProductId}_01_cover.jpg`
+          : `${this.activeProductId}_${String(i + 1).padStart(2, '0')}.jpg`;
 
-      if (result.status !== 'success') {
-        if (AdminCore.handleAuthFailure(result.message)) return;
-        throw new Error(result.message);
+        statusEl.textContent = `⏳ 正在處理並轉存第 ${i + 1} / ${this.selectedQueue.length} 張（${isCover ? '主圖：' : ''}${item.name}）...`;
+
+        const base64 = await this.fetchBase64Cached(item.id);
+        if (!base64) return;
+
+        const imgEl = await this.loadImageElementFromBase64(base64);
+        this.renderImageToCanvas(workCanvas, imgEl, ratioMode);
+        const compressed = this.compressCanvasUnder1MB(workCanvas);
+
+        const upRes = await AdminCore.apiPost('uploadSingleProductImage', {
+          productId: this.activeProductId,
+          fileName: targetFileName,
+          mimeType: 'image/jpeg',
+          base64Data: compressed.dataUrl.split(',')[1],
+          clearFolder: isCover // 上傳第 1 張主圖時清理該商品舊的優化檔
+        });
+
+        if (upRes.status !== 'success') {
+          if (AdminCore.handleAuthFailure(upRes.message)) return;
+          throw new Error(`第 ${i + 1} 張（${item.name}）上傳失敗：` + upRes.message);
+        }
+
+        uploadedUrls.push(upRes.data.imageUrl);
       }
 
-      alert('✅ ' + result.message);
+      statusEl.textContent = '💾 全部圖片轉存完成，正在寫入主圖與排序清單至資料庫...';
+
+      const finalRes = await AdminCore.apiPost('finalizeProductImages', {
+        productId: this.activeProductId,
+        coverUrl: uploadedUrls[0],
+        imageUrls: uploadedUrls,
+        autoPublish: autoPublish
+      });
+
+      if (finalRes.status !== 'success') {
+        if (AdminCore.handleAuthFailure(finalRes.message)) return;
+        throw new Error(finalRes.message);
+      }
+
+      alert('✅ ' + finalRes.message);
       this.closeMatchModal();
       AdminCore.loadDashboard();
     } catch (err) {
-      statusEl.textContent = '❌ 轉存失敗：' + err.message;
+      statusEl.textContent = '❌ 轉存中斷：' + err.message;
       btn.disabled = false;
     }
   },
