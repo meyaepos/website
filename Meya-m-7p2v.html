@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <title>MEYA 手機現場作業專區</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/mobile.css">
+  <!-- 手機相機 1D 條碼與 QR Code 解碼套件 -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- 手機版登入畫面（保留官方 LINE 驗證空位，關閉即登出） -->
+  <div id="m-login-screen" class="m-login-screen">
+    <div class="m-login-card">
+      <div class="m-brand">is Meya</div>
+      <h1>手機現場作業專區</h1>
+      <p id="m-login-desc" class="m-desc">正在連線驗證模式...</p>
+
+      <!-- 官方 LINE 驗證預留空位（之後接上 LIFF 與 CRM 權限即刻啟用鎖定操作人員） -->
+      <div id="m-line-auth-slot" class="m-line-slot">
+        <span>🛡️ 官方 LINE 人員驗證模組：預留待接軌</span>
+        <small>目前採標準密鑰登入（無時間限制・關閉視窗即登出）</small>
+      </div>
+
+      <form id="m-login-form">
+        <input type="password" id="m-token-input" class="m-input" placeholder="請輸入管理密鑰 (ADMIN_TOKEN)" autocomplete="current-password">
+        <div id="m-login-error" class="m-error" style="display:none;"></div>
+        <button type="submit" id="m-login-btn" class="m-btn m-btn-primary">🔒 進入手機作業區</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 手機主作業區 -->
+  <div id="m-app" class="m-app">
+    <header class="m-topbar">
+      <div>
+        <div class="m-topbar-title">MEYA 現場作業</div>
+        <div id="m-operator-label" class="m-operator-sub">操作人員：待鎖定</div>
+      </div>
+      <div class="m-topbar-actions">
+        <button id="m-btn-sync" class="m-chip-btn">同步</button>
+        <button id="m-btn-logout" class="m-chip-btn m-chip-danger">登出</button>
+      </div>
+    </header>
+
+    <!-- 共用掃碼中樞（鏡頭觀景窗 ＋ 藍牙槍狀態 ＋ 手動條碼輸入） -->
+    <section class="m-scanner-card">
+      <div class="m-scanner-head">
+        <span id="m-scan-status" class="m-scan-status">🔵 藍牙條碼槍待命中（或點右側開鏡頭）</span>
+        <button id="m-btn-toggle-cam" class="m-btn-sm m-btn-cam">📷 開啟鏡頭</button>
+      </div>
+
+      <div id="m-camera-wrap" class="m-camera-wrap" style="display:none;">
+        <div id="m-qr-reader"></div>
+      </div>
+
+      <form id="m-manual-scan-form" class="m-manual-bar">
+        <input type="text" id="m-manual-input" class="m-input m-input-sm" placeholder="手動輸入或藍牙槍刷入商品編號 / 條碼...">
+        <button type="submit" class="m-btn-sm m-btn-dark">送出</button>
+      </form>
+
+      <!-- 掃碼即時紅綠警報回饋橫幅 -->
+      <div id="m-scan-toast" class="m-scan-toast" style="display:none;"></div>
+    </section>
+
+    <!-- 主要工作面板 -->
+    <main class="m-content">
+      <!-- 模式 1：出貨掃碼核對撿貨 -->
+      <section id="m-panel-picking" class="m-panel active">
+        <div class="m-card">
+          <div class="m-card-head">
+            <h3>📦 出貨掃碼核對撿貨</h3>
+            <button id="m-btn-demo-order" class="m-btn-sm m-btn-accent">載入實品測試單</button>
+          </div>
+          <div class="m-order-bar">
+            <input type="text" id="m-order-id-input" class="m-input m-input-sm" placeholder="輸入或掃描訂單編號（如 ORD-20261121）">
+            <button id="m-btn-add-pick-sku" class="m-btn-sm m-btn-outline">＋加測試品</button>
+          </div>
+          <div id="m-pick-progress" class="m-pick-progress">尚未載入出貨單（可先點「載入實品測試單」體驗掃碼核對）</div>
+          <div id="m-pick-list" class="m-list"></div>
+          <button id="m-btn-finish-pick" class="m-btn m-btn-success" style="margin-top:12px;" disabled>✅ 核對完成・標記準備出貨</button>
+        </div>
+      </section>
+
+      <!-- 模式 2：即時掃碼查貨與盤點（直連現有資料庫全部商品） -->
+      <section id="m-panel-lookup" class="m-panel">
+        <div class="m-card">
+          <div class="m-card-head">
+            <h3>🔍 掃碼即時查貨與盤點</h3>
+            <span id="m-db-count-pill" class="m-pill">載入中...</span>
+          </div>
+          <p class="m-hint">刷條碼或手動輸入任一商品編號／條碼，立刻顯示售價、圖片與資料庫欄位。</p>
+          <div id="m-lookup-result" class="m-lookup-box">
+            等待掃描商品條碼...
+          </div>
+        </div>
+      </section>
+
+      <!-- 模式 3：POS 快速收銀草稿（第二階段接 DB_POS） -->
+      <section id="m-panel-pos" class="m-panel">
+        <div class="m-card">
+          <div class="m-card-head">
+            <h3>🧾 POS 快速收銀（架構草稿）</h3>
+            <button id="m-btn-clear-cart" class="m-btn-sm m-btn-outline">清空</button>
+          </div>
+          <p class="m-hint">刷條碼直接加入結帳清單，待第二階段開通 <code>DB_POS</code> 寫入與扣庫存即可正式結帳。</p>
+          <div id="m-pos-cart-list" class="m-list">
+            <div class="m-empty">購物車目前為空，請掃描商品加入</div>
+          </div>
+          <div class="m-pos-total-bar">
+            <span>合計金額</span>
+            <strong id="m-pos-total-amount">NT$ 0</strong>
+          </div>
+          <button id="m-btn-pos-checkout" class="m-btn m-btn-primary" disabled>確認結帳（第二階段接軌 DB_POS）</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- 底部單手切換導覽列 -->
+    <nav class="m-bottom-nav">
+      <button class="m-nav-btn active" data-mode="picking">
+        <span class="m-nav-ico">📦</span>
+        <span>撿貨核對</span>
+      </button>
+      <button class="m-nav-btn" data-mode="lookup">
+        <span class="m-nav-ico">🔍</span>
+        <span>查貨盤點</span>
+      </button>
+      <button class="m-nav-btn" data-mode="pos">
+        <span class="m-nav-ico">🧾</span>
+        <span>快速收銀</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="./js/config.js"></script>
+  <script src="./js/scanner-engine.js"></script>
+  <script src="./js/mobile-ops.js"></script>
+</body>
+</html>
