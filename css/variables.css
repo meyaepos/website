@@ -1,20 +1,17 @@
 :root {
-  /* MEYA 韓系極簡核心色票 */
+  /* is Meya 韓系極簡核心色票 */
   --color-primary: #D9D2C5;
+  --color-primary-soft: #F3EFE8;
   --color-primary-dark: #bfb6a5;
   --color-text-main: #333333;
-  --color-text-muted: #888888;
+  --color-text-muted: #777777;
   --color-bg-white: #FFFFFF;
-  --color-bg-light: #FAFAFA;
-  --color-border: #EEEEEE;
+  --color-bg-footer: #F6F6F6;
+  --color-border: #ECECEC;
 
-  /* 排版間距與圓角 */
+  /* 間距與動畫 */
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 32px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-
-  /* 轉場速度 */
-  --transition-speed: 0.3s ease;
+  --transition-speed: 0.28s ease;
 }
