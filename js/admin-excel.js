@@ -1,7 +1,7 @@
 /**
  * 模組 3：Excel / CSV 智慧辨識建庫與標準匯出引擎
  */
-const AdminExcel = {
+window.AdminExcel = {
   IMPORT_CHUNK_SIZE: 500,
 
   CORE_SYNONYMS: {
@@ -144,7 +144,7 @@ const AdminExcel = {
     if (this.importMode !== 'MERGE_PRODUCTS') {
       return '<span class="pill pill-new">新資料表欄位</span>';
     }
-    if (CORE_PRODUCT_KEYS.includes(targetName)) {
+    if (window.CORE_PRODUCT_KEYS.includes(targetName)) {
       return '<span class="pill pill-ok">核心商品欄位</span>';
     }
     if (AdminState.productHeaders.includes(targetName)) {
