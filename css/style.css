@@ -27,7 +27,7 @@ body.cart-disabled .btn-add-to-cart {
   display: none !important;
 }
 
-/* 1. 頂部跑馬燈（全裝置統一從最右側進場、等速向左捲動） */
+/* 1. 頂部跑馬燈（由 JS 動態運算最右邊界進場，CSS 預先停在螢幕右側避免閃現） */
 .announcement-bar {
   background-color: var(--color-primary-soft);
   color: #555555;
@@ -40,6 +40,7 @@ body.cart-disabled .btn-add-to-cart {
 }
 
 .marquee-container {
+  position: relative;
   width: 100%;
   overflow: hidden;
   display: block;
@@ -48,21 +49,13 @@ body.cart-disabled .btn-add-to-cart {
 .marquee-content {
   display: inline-block;
   white-space: nowrap;
+  animation: none !important;
+  transform: translate3d(100vw, 0, 0);
   will-change: transform;
-  animation: marquee-rtl var(--marquee-duration, 18s) linear infinite;
 }
 
 #marquee-content-clone {
   display: none !important;
-}
-
-.marquee-container:hover .marquee-content {
-  animation-play-state: paused;
-}
-
-@keyframes marquee-rtl {
-  0% { transform: translateX(100vw); }
-  100% { transform: translateX(-100%); }
 }
 
 /* 2. 主導覽列 */
