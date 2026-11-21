@@ -1,0 +1,311 @@
+@import url('variables.css');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: #f1f5f9;
+  color: #1e293b;
+  min-height: 100vh;
+}
+
+/* 登入畫面 */
+.m-login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: linear-gradient(155deg, #1f2d3d 0%, #2c3e50 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.m-login-screen.hidden { display: none; }
+
+.m-login-card {
+  width: 100%;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 30px 24px;
+  text-align: center;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.m-brand { font-size: 24px; font-weight: 700; letter-spacing: 4px; color: #1f2d3d; margin-bottom: 4px; }
+.m-login-card h1 { font-size: 17px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+.m-desc { font-size: 12px; color: #64748b; margin-bottom: 16px; }
+
+.m-line-slot {
+  background: #f0fdf4;
+  border: 1px dashed #86efac;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: #166534;
+}
+
+.m-line-slot small { color: #64748b; font-size: 11px; }
+
+.m-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 15px;
+  background: #ffffff;
+}
+
+.m-input-sm { padding: 9px 11px; font-size: 13px; }
+.m-error { margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: #fee2e2; color: #b91c1c; font-size: 12px; }
+
+.m-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.m-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.m-btn-primary { background: #1f2d3d; color: #ffffff; }
+.m-btn-success { background: #16a34a; color: #ffffff; }
+
+.m-btn-sm {
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.m-btn-cam { background: #2563eb; color: #ffffff; }
+.m-btn-cam.active { background: #dc2626; }
+.m-btn-dark { background: #1f2d3d; color: #ffffff; }
+.m-btn-accent { background: var(--color-primary); color: #1f2d3d; }
+.m-btn-outline { background: #ffffff; color: #334155; border: 1px solid #cbd5e1; }
+
+/* 主畫面與置頂列 */
+.m-app {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 72px;
+}
+
+.m-app.unlocked { display: flex; }
+
+.m-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: #1f2d3d;
+  color: #ffffff;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.m-topbar-title { font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+.m-operator-sub { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
+.m-topbar-actions { display: flex; gap: 8px; }
+
+.m-chip-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.m-chip-danger { background: rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.5); }
+
+/* 掃碼中樞 */
+.m-scanner-card {
+  background: #ffffff;
+  margin: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.m-scanner-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.m-scan-status { font-size: 12px; color: #475569; flex: 1; }
+
+.m-camera-wrap {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000000;
+}
+
+.m-manual-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.m-scan-toast {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.m-scan-toast.toast-ok { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.m-scan-toast.toast-err { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.m-scan-toast.toast-info { background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
+
+/* 內容卡片與清單 */
+.m-content { padding: 0 12px 16px; flex: 1; }
+.m-panel { display: none; }
+.m-panel.active { display: block; }
+
+.m-card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.m-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.m-card-head h3 { font-size: 15px; color: #1f2d3d; }
+.m-hint { font-size: 12px; color: #64748b; margin-bottom: 12px; line-height: 1.5; }
+.m-pill { padding: 3px 9px; border-radius: 12px; font-size: 11px; background: #e0f2fe; color: #075985; font-weight: 600; }
+
+.m-order-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+.m-pick-progress { font-size: 12px; color: #475569; padding: 8px 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 10px; }
+
+.m-list { display: flex; flex-direction: column; gap: 8px; }
+.m-empty { text-align: center; padding: 24px 10px; font-size: 13px; color: #94a3b8; }
+
+.m-pick-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.m-pick-item.done {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.m-pick-meta { flex: 1; min-width: 0; }
+.m-pick-sku { font-size: 13px; font-weight: 700; color: #1e293b; }
+.m-pick-name { font-size: 12px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-pick-badge { font-size: 14px; font-weight: 700; padding: 4px 10px; border-radius: 16px; background: #f1f5f9; color: #334155; }
+.m-pick-item.done .m-pick-badge { background: #16a34a; color: #ffffff; }
+
+/* 查貨卡片 */
+.m-lookup-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.m-lookup-card {
+  display: flex;
+  gap: 12px;
+  text-align: left;
+  align-items: flex-start;
+}
+
+.m-lookup-img {
+  width: 82px;
+  height: 108px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #f1f5f9;
+  flex-shrink: 0;
+}
+
+/* POS 合計列 */
+.m-pos-total-bar {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+}
+
+.m-pos-total-bar strong { font-size: 20px; color: #1f2d3d; }
+
+/* 底部導覽列 */
+.m-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  height: 62px;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.m-nav-btn {
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 11px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.m-nav-btn.active {
+  color: #1f2d3d;
+  font-weight: 700;
+  background: #f8fafc;
+  border-top: 2px solid #1f2d3d;
+}
+
+.m-nav-ico { font-size: 18px; }
