@@ -1,63 +1,131 @@
-// ==========================================
-// 系統初始化與 API 對接
-// ==========================================
-const GAS_API_URL = "YOUR_GAS_WEB_APP_URL_HERE"; // 請貼上您的 Web App 網址
+let allPublishedProducts = [];
 
-document.addEventListener("DOMContentLoaded", () => {
-    fetchStoreData();
+document.addEventListener('DOMContentLoaded', () => {
+  initWebsite();
+  bindWebsiteEvents();
 });
 
-async function fetchStoreData() {
-    try {
-        const response = await fetch(GAS_API_URL);
-        const data = await response.json();
-        
-        // 資料載入成功，解除骨架屏，顯示主內容
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('app-content').style.display = 'block';
-        document.body.classList.remove('loading-state');
+async function initWebsite() {
+  try {
+    const response = await fetch(CONFIG.GAS_API_URL + '?action=getWebsiteInitData');
+    if (!response.ok) throw new Error('伺服器回應異常：' + response.status);
 
-        // 第一道防線：執行全域設定 (判斷是否顯示購物車)
-        applyConfig(data.config);
-        
-        // 第二道防線：渲染商品資料
-        renderProducts(data.products);
+    const data = await response.json();
+    if (data.status !== 'success') throw new Error(data.message || '資料載入失敗');
 
-    } catch (error) {
-        console.error("系統讀取失敗：", error);
-        document.getElementById('loader').innerHTML = "<p>資料讀取異常，請稍後再試。</p>";
-    }
+    renderConfig(data.config || {});
+    renderAnnouncements(data.announcements || []);
+    allPublishedProducts = data.products || [];
+    renderProducts(allPublishedProducts);
+  } catch (error) {
+    console.error('形象網站初始化失敗:', error);
+    document.getElementById('marquee-content').textContent = 'MEYA 官方形象網站維護更新中';
+    document.getElementById('catalog-count').textContent = '暫時無法連線至商品資料庫';
+    document.getElementById('product-grid').innerHTML =
+      '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px 0;">資料載入異常，請稍後重新整理頁面。</p>';
+  }
 }
 
-// 根據後端傳來的布林值，一鍵操控整站版面狀態
-function applyConfig(config) {
-    if (config.cart_enabled === false) {
-        // 為 body 加上 class，CSS 會自動把所有結帳相關按鈕與 Icon 隱藏
-        document.body.classList.add('cart-disabled');
-    }
-    
-    if (config.free_shipping) {
-        document.getElementById('free-shipping-text').textContent = 
-            `全館滿 NT$${config.free_shipping} 享免運服務。`;
-    }
+function renderConfig(config) {
+  // 預留購物車開關（Phase 1 預設為 false 隱藏購物車）
+  if (config.cart_enabled === false || config.cart_enabled === undefined) {
+    document.body.classList.add('cart-disabled');
+  } else {
+    document.body.classList.remove('cart-disabled');
+  }
+
+  if (config.free_shipping) {
+    const el = document.getElementById('free-shipping-text');
+    if (el) el.textContent = config.free_shipping;
+  }
 }
 
-// 動態組裝 HTML (安全渲染)
-function renderProducts(products) {
-    const grid = document.getElementById('product-grid');
-    grid.innerHTML = ''; // 清空預設內容
+function renderAnnouncements(newsList) {
+  const mainEl = document.getElementById('marquee-content');
+  const cloneEl = document.getElementById('marquee-content-clone');
+  const text = newsList.length > 0 ? newsList.join('　✦　') + '　✦　' : '歡迎蒞臨 MEYA 官方形象網站　✦　';
+  mainEl.textContent = text;
+  cloneEl.textContent = text;
+}
 
-    products.forEach(p => {
-        // 利用 Template Literals 組裝組件
-        const cardHTML = `
-            <div class="product-card">
-                <img src="${p['主圖網址']}" alt="${p['商品名稱']}" class="product-image">
-                <span class="product-tag">${p['狀態標籤']}</span>
-                <h3 class="product-title">${p['商品名稱']}</h3>
-                <div class="product-price">NT$ ${p['售價']}</div>
-                <button class="btn-add-to-cart">加入購物車</button>
-            </div>
-        `;
-        grid.innerHTML += cardHTML;
-    });
+function renderProducts(list) {
+  const grid = document.getElementById('product-grid');
+  const countEl = document.getElementById('catalog-count');
+  grid.innerHTML = '';
+
+  if (!list || list.length === 0) {
+    countEl.textContent = '目前尚無符合條件的商品';
+    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 40px 0;">敬請期待全新系列上架</p>';
+    return;
+  }
+
+  countEl.textContent = '共 ' + list.length + ' 件精選商品';
+
+  list.forEach(product => {
+    const card = document.createElement('div');
+    card.className = 'product-item';
+    card.addEventListener('click', () => openProductModal(product));
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'product-img-wrap';
+
+    const img = document.createElement('img');
+    img.src = product.image || '';
+    img.alt = product.name || '';
+    img.loading = 'lazy';
+    img.onerror = function() {
+      this.style.opacity = '0.2';
+    };
+    imgWrap.appendChild(img);
+
+    const skuEl = document.createElement('div');
+    skuEl.className = 'product-sku';
+    skuEl.textContent = product.id || '';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'product-name';
+    nameEl.textContent = product.name || '';
+
+    const priceEl = document.createElement('div');
+    priceEl.className = 'product-price';
+    priceEl.textContent = 'NT$ ' + Number(product.price || 0).toLocaleString();
+
+    card.appendChild(imgWrap);
+    card.appendChild(skuEl);
+    card.appendChild(nameEl);
+    card.appendChild(priceEl);
+    grid.appendChild(card);
+  });
+}
+
+function openProductModal(product) {
+  document.getElementById('modal-img').src = product.image || '';
+  document.getElementById('modal-sku').textContent = 'ITEM NO. ' + (product.id || '');
+  document.getElementById('modal-name').textContent = product.name || '';
+  document.getElementById('modal-price').textContent = 'NT$ ' + Number(product.price || 0).toLocaleString();
+  document.getElementById('product-modal-backdrop').classList.add('open');
+}
+
+function bindWebsiteEvents() {
+  // 即時搜尋商品名稱或編號
+  const searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', (e) => {
+    const keyword = e.target.value.trim().toLowerCase();
+    if (!keyword) {
+      renderProducts(allPublishedProducts);
+      return;
+    }
+    const filtered = allPublishedProducts.filter(p =>
+      String(p.id || '').toLowerCase().includes(keyword) ||
+      String(p.name || '').toLowerCase().includes(keyword)
+    );
+    renderProducts(filtered);
+  });
+
+  // 關閉商品細節預覽彈窗
+  const backdrop = document.getElementById('product-modal-backdrop');
+  document.getElementById('modal-close-btn').addEventListener('click', () => backdrop.classList.remove('open'));
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.classList.remove('open');
+  });
 }
