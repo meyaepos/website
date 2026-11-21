@@ -1,7 +1,7 @@
 /**
  * 模組 4：網站前台控制與系統異常報錯中心
  */
-const AdminSite = {
+window.AdminSite = {
   init: function() {
     document.getElementById('btn-add-news').addEventListener('click', () => this.addAnnouncement());
     document.getElementById('btn-save-config').addEventListener('click', () => this.saveGlobalConfig());
