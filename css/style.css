@@ -1,73 +1,425 @@
-/* ==========================================
-   CSS 變數：色彩與間距設定 (完美繼承品牌質感)
-   ========================================== */
-:root {
-    --color-primary: #D9D2C5; /* 奶茶/淺杏色 */
-    --color-text-dark: #333333; /* 極簡深灰 */
-    --color-bg-light: #FAFAFA;
-    --color-white: #FFFFFF;
-    --font-main: "Noto Sans TC", sans-serif;
+@import url('variables.css');
+
+/* 全域重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-    font-family: var(--font-main);
-    margin: 0;
-    padding: 0;
-    background-color: var(--color-bg-light);
-    color: var(--color-text-dark);
+  font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  color: var(--color-text-main);
+  background-color: var(--color-bg-white);
+  line-height: 1.6;
 }
 
-/* ==========================================
-   資安防護與狀態切換：依據 GAS 參數動態隱藏
-   ========================================== */
-/* 若 GAS 傳回 cart_enabled: false，JS 會為 body 加上此 class，強制隱藏所有購物車元素 */
+a { text-decoration: none; color: inherit; }
+button { background: none; border: none; cursor: pointer; font-family: inherit; }
+
+/* 狀態控制：後台關閉購物車時自動隱藏 */
 body.cart-disabled .cart-icon,
 body.cart-disabled .btn-add-to-cart {
-    display: none !important;
+  display: none !important;
 }
 
-/* ==========================================
-   排版設計
-   ========================================== */
-.header {
+/* 1. 頂部多則無縫跑馬燈 */
+.announcement-bar {
+  background-color: var(--color-primary);
+  color: #333333;
+  padding: 10px 0;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+}
+
+.marquee-container {
+  display: flex;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+.marquee-content {
+  display: flex;
+  padding-right: 60px;
+  animation: marquee 28s linear infinite;
+}
+
+.marquee-container:hover .marquee-content {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* 2. 主導覽列 (Sticky Header) */
+.site-header {
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.site-logo a {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--color-text-main);
+}
+
+.site-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .site-nav {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 5%;
-    background-color: var(--color-white);
-    border-bottom: 1px solid #EAEAEA;
+    gap: 32px;
+  }
+  .site-nav a {
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    color: var(--color-text-main);
+    transition: color var(--transition-speed);
+  }
+  .site-nav a:hover {
+    color: var(--color-text-muted);
+  }
 }
 
-.logo { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
-.nav-links a { margin: 0 15px; text-decoration: none; color: var(--color-text-dark); }
-.hero { text-align: center; padding: 60px 20px; background-color: var(--color-primary); color: var(--color-text-dark); }
-
-.curated-jewelry { padding: 40px 5%; text-align: center; }
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 30px;
-    margin-top: 30px;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-/* 商品卡片設計 */
-.product-card {
-    background: var(--color-white);
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    transition: transform 0.3s ease;
-}
-.product-card:hover { transform: translateY(-5px); }
-.product-image { width: 100%; height: 300px; object-fit: cover; border-radius: 4px; }
-.product-tag { color: #b33939; font-size: 12px; font-weight: bold; margin-top: 10px; display: block;}
-.product-title { font-size: 16px; margin: 10px 0; }
-.product-price { font-weight: bold; }
-.btn-add-to-cart { 
-    width: 100%; padding: 10px; margin-top: 15px; 
-    background-color: var(--color-text-dark); color: var(--color-white); 
-    border: none; cursor: pointer; border-radius: 4px;
+.search-input {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-light);
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  width: 140px;
+  transition: width var(--transition-speed), border-color var(--transition-speed);
 }
 
-.footer { text-align: center; padding: 40px 20px; background-color: var(--color-white); margin-top: 40px; font-size: 14px;}
-.loader { text-align: center; padding: 100px; font-size: 18px; color: var(--color-text-dark); }
+.search-input:focus {
+  outline: none;
+  width: 200px;
+  border-color: var(--color-primary);
+  background: var(--color-bg-white);
+}
+
+.icon-btn {
+  font-size: 18px;
+  padding: 4px 6px;
+  color: var(--color-text-main);
+}
+
+/* 3. 主視覺橫幅 (Hero Banner) */
+.hero-section {
+  width: 100%;
+  background: linear-gradient(135deg, #f3efe8 0%, #e5ded2 100%);
+  min-height: 52vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  margin-bottom: 56px;
+}
+
+.hero-inner h1 {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 300;
+  letter-spacing: 6px;
+  margin-bottom: 12px;
+}
+
+.hero-inner p {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  letter-spacing: 2px;
+  margin-bottom: 28px;
+}
+
+.hero-cta {
+  display: inline-block;
+  padding: 12px 32px;
+  background-color: var(--color-text-main);
+  color: var(--color-bg-white);
+  font-size: 13px;
+  letter-spacing: 2px;
+  transition: background-color var(--transition-speed);
+}
+
+.hero-cta:hover {
+  background-color: #555555;
+}
+
+/* 4. 主要展示區塊與 RWD 商品網格 */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 80px 24px;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  margin-bottom: 6px;
+}
+
+.section-header p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  letter-spacing: 1px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px 16px;
+}
+
+@media (min-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 36px 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px 24px;
+  }
+}
+
+.product-item {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-speed);
+}
+
+.product-item:hover {
+  transform: translateY(-4px);
+}
+
+.product-img-wrap {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background-color: var(--color-bg-light);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.product-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.product-item:hover .product-img-wrap img {
+  transform: scale(1.04);
+}
+
+.product-sku {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+
+.product-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-main);
+  margin-bottom: 4px;
+}
+
+.product-price {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* 骨架屏載入動畫 */
+@keyframes loading {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.loading-state {
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 50%, #f2f2f2 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+/* 5. 商品細節預覽彈窗 (Quick-View Modal，無購物車模式友善體驗) */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.product-modal {
+  background: var(--color-bg-white);
+  max-width: 780px;
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .product-modal {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-size: 22px;
+  color: var(--color-text-main);
+  z-index: 10;
+}
+
+.modal-img-box {
+  background: var(--color-bg-light);
+  aspect-ratio: 3 / 4;
+}
+
+.modal-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-info-box {
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.modal-info-box .sku-tag {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.modal-info-box h3 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.modal-info-box .price-tag {
+  font-size: 18px;
+  margin-bottom: 24px;
+}
+
+.modal-note {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
+
+/* 6. 品牌介紹與頁尾 */
+.about-section {
+  background-color: var(--color-bg-light);
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.about-section h2 {
+  font-size: 18px;
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+}
+
+.about-section p {
+  max-width: 600px;
+  margin: 0 auto;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.site-footer {
+  background-color: var(--color-bg-white);
+  border-top: 1px solid var(--color-border);
+  padding: 48px 24px 24px 24px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto 32px auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 32px;
+}
+
+.footer-column h4 {
+  color: var(--color-text-main);
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
+.footer-column a {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
