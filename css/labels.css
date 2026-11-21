@@ -1,0 +1,168 @@
+/* 條碼標籤對標設定與預覽樣式 */
+.label-layout-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .label-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.label-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.label-preview-stage {
+  background: #e2e8f0;
+  border-radius: 8px;
+  padding: 24px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* 單張條碼貼紙模擬框（放大 2.5 倍方便肉眼檢視中線切割位置） */
+.label-tag-demo {
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  position: relative;
+  transform: scale(1.6);
+  transform-origin: center;
+  margin: 28px 0;
+}
+
+.label-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.label-cut-line {
+  width: 100%;
+  border-top: 1px dashed #ef4444;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.label-cut-line::after {
+  content: '✂ 中線切割安全區';
+  position: absolute;
+  right: 2px;
+  top: -8px;
+  font-size: 6px;
+  color: #ef4444;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0 2px;
+}
+
+.label-text-line {
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.label-barcode-svg {
+  max-width: 96%;
+  height: auto;
+  display: block;
+}
+
+/* 專區入口導航卡片 */
+.portal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.portal-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.portal-card h4 {
+  font-size: 15px;
+  color: #1f2d3d;
+  margin-bottom: 4px;
+}
+
+.portal-card p {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* 實際列印專用區（平常隱藏，按下「列印標籤」才全頁輸出精準 mm 尺寸） */
+#label-print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .login-screen,
+  .admin-app,
+  .modal-overlay,
+  .hd-lightbox {
+    display: none !important;
+  }
+
+  #label-print-sheet {
+    display: grid !important;
+    align-content: start;
+    justify-content: start;
+    background: #ffffff !important;
+  }
+
+  .print-tag-cell {
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-cut-gap {
+    width: 100%;
+    flex-shrink: 0;
+  }
+}
