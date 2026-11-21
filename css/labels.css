@@ -30,7 +30,7 @@
   gap: 12px;
 }
 
-/* 單張條碼貼紙模擬框（放大 2.5 倍方便肉眼檢視中線切割位置） */
+/* 單張條碼貼紙模擬框 */
 .label-tag-demo {
   background: #ffffff;
   border: 1px solid #94a3b8;
@@ -91,6 +91,42 @@
   display: block;
 }
 
+/* 搜尋入庫與備選下拉區 */
+.lbl-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lbl-checkbox {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+  accent-color: #2563eb;
+  vertical-align: middle;
+}
+
+.lbl-fallback-details {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 13px;
+  color: #475569;
+}
+
+.lbl-fallback-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  user-select: none;
+}
+
+tr.lbl-row-in-db {
+  background-color: #f0fdf4;
+}
+
 /* 專區入口導航卡片 */
 .portal-cards-grid {
   display: grid;
@@ -121,7 +157,7 @@
   line-height: 1.6;
 }
 
-/* 實際列印專用區（平常隱藏，按下「列印標籤」才全頁輸出精準 mm 尺寸） */
+/* 實際列印專用區（平常隱藏） */
 #label-print-sheet {
   display: none;
 }
