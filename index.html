@@ -4,13 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>is Meya | 韓國精品服飾・純銀飾品</title>
+  <!-- 防止手機瀏覽器與 LINE 內建瀏覽器自動記住底部捲動位置或殘留錨點 -->
+  <script>
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    window.scrollTo(0, 0);
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/variables.css">
   <link rel="stylesheet" href="./css/style.css">
 </head>
-<!-- 預設掛上 cart-disabled，確保第一階段未啟用購物車時絕不閃現 -->
 <body class="cart-disabled">
 
   <!-- 1. 頂部輕量多則無縫跑馬燈 -->
@@ -21,18 +30,18 @@
     </div>
   </div>
 
-  <!-- 2. 主導覽列（復刻舊站純白極簡視覺） -->
+  <!-- 2. 主導覽列 -->
   <header class="site-header">
     <div class="header-container">
-      <a href="#top" class="site-logo" aria-label="is Meya 首頁">
+      <a href="#top" class="site-logo" data-scroll-target="top" aria-label="is Meya 首頁">
         <img src="./assets/images/logo.png" alt="Meya" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
         <span class="logo-script">Meya</span>
       </a>
 
       <nav class="site-nav" aria-label="主選單">
-        <a href="#catalog" data-nav="new">新品上市</a>
-        <a href="#catalog" data-nav="all">所有商品</a>
-        <a href="#contact">聯絡我們</a>
+        <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
+        <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
+        <a href="#contact" data-scroll-target="contact">聯絡我們</a>
       </nav>
 
       <div class="header-actions">
@@ -42,7 +51,7 @@
             <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
           </svg>
         </button>
-        <a href="#contact" class="icon-btn" title="門市與聯絡資訊" aria-label="門市與聯絡資訊">
+        <a href="#contact" class="icon-btn" data-scroll-target="contact" title="門市與聯絡資訊" aria-label="門市與聯絡資訊">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
             <circle cx="12" cy="10" r="3"></circle>
@@ -60,12 +69,12 @@
 
     <!-- 手機版中文導覽列 -->
     <nav class="mobile-nav" aria-label="行動裝置選單">
-      <a href="#catalog" data-nav="new">新品上市</a>
-      <a href="#catalog" data-nav="all">所有商品</a>
-      <a href="#contact">聯絡我們</a>
+      <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
+      <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
+      <a href="#contact" data-scroll-target="contact">聯絡我們</a>
     </nav>
 
-    <!-- 隱藏式極簡搜尋抽屜（點擊放大鏡才展開） -->
+    <!-- 隱藏式極簡搜尋抽屜 -->
     <div id="search-bar-drawer" class="search-drawer">
       <div class="search-drawer-inner">
         <input type="text" id="search-input" class="search-input" placeholder="輸入商品名稱、編號或分類關鍵字...">
@@ -74,14 +83,14 @@
     </div>
   </header>
 
-  <!-- 3. 滿版主視覺橫幅（上傳 assets/images/hero.jpg 即自動呈現） -->
+  <!-- 3. 滿版主視覺橫幅 -->
   <section id="top" class="hero-section">
     <img src="./assets/images/hero.jpg" alt="is Meya 形象視覺" class="hero-img" onerror="this.style.display='none'; document.getElementById('hero-fallback').style.display='flex';">
     <div id="hero-fallback" class="hero-fallback" style="display:none;">
       <span class="hero-script">is Meya</span>
       <h1>韓國精品服飾・純銀設計飾品</h1>
       <p>以柔和線條與細膩質感，詮釋日常優雅美學</p>
-      <a href="#catalog" class="hero-cta">探索新品上市</a>
+      <a href="#catalog" class="hero-cta" data-scroll-target="catalog">探索新品上市</a>
     </div>
   </section>
 
@@ -100,23 +109,23 @@
     </div>
   </main>
 
-  <!-- 5. 聯絡我們與頁尾（1:1 還原舊站結構，內嵌 Google 地圖，不含任何後台連結） -->
+  <!-- 5. 聯絡我們與頁尾 -->
   <footer id="contact" class="site-footer">
     <div class="footer-top">
-      <a href="#top" class="footer-logo" aria-label="回到頁首">
+      <a href="#top" class="footer-logo" data-scroll-target="top" aria-label="回到頁首">
         <img src="./assets/images/logo.png" alt="Meya" class="footer-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
         <span class="logo-script footer-script">Meya</span>
       </a>
 
       <div class="footer-nav">
-        <a href="#catalog" data-nav="new">新品上市</a>
+        <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
         <span class="divider">|</span>
-        <a href="#catalog" data-nav="all">所有商品</a>
+        <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
         <span class="divider">|</span>
-        <a href="#contact">聯絡我們</a>
+        <a href="#contact" data-scroll-target="contact">聯絡我們</a>
       </div>
 
-      <!-- 置中圓形社群圖示（請替換 href 為品牌正式社群網址） -->
+      <!-- 置中圓形社群圖示 -->
       <div class="footer-social">
         <a href="https://www.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"/></svg>
@@ -125,7 +134,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
         </a>
         <a href="https://line.me/" target="_blank" rel="noopener" aria-label="LINE 官方帳號" title="LINE 官方帳號">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.52 1.46 4.77 3.74 6.23-.15.56-.56 2.02-.64 2.34-.1.39.14.38.3.28.12-.08 1.94-1.32 2.72-1.85.59.17 1.22.26 1.88.26 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
+            <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+          </svg>
         </a>
       </div>
     </div>
@@ -156,6 +167,7 @@
           </a>
           <iframe
             title="is Meya 門市位置地圖"
+            tabindex="-1"
             src="https://maps.google.com/maps?q=%E9%87%91%E7%8E%89%E5%90%8D%E5%AA%9B%20%E5%8F%B0%E4%B8%AD%E5%B8%82%E5%8D%97%E5%B1%AF%E5%8D%80%E5%A4%A7%E5%A2%A9%E5%8D%81%E4%BA%8C%E8%A1%97642%E8%99%9F&t=&z=16&ie=UTF8&iwloc=&output=embed"
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
@@ -170,20 +182,22 @@
       <div class="footer-bottom-inner">
         <p>Copyright &copy; 2026 is Meya. All rights reserved.</p>
         <div class="footer-policies">
-          <a href="#contact">購物須知</a>
+          <a href="#contact" data-scroll-target="contact">購物須知</a>
           <span>/</span>
-          <a href="#contact">服務條款</a>
+          <a href="#contact" data-scroll-target="contact">服務條款</a>
           <span>/</span>
-          <a href="#contact">隱私權政策</a>
+          <a href="#contact" data-scroll-target="contact">隱私權政策</a>
         </div>
       </div>
     </div>
   </footer>
 
-  <!-- 6. 右下角懸浮社群與回到頂端列（復刻舊站） -->
+  <!-- 6. 右下角懸浮社群與回到頂端列（完整含 LINE 字樣圖標） -->
   <div class="floating-dock" aria-label="快速聯絡按鈕">
     <a href="https://line.me/" target="_blank" rel="noopener" class="dock-btn dock-line" title="LINE 官方帳號">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.52 1.46 4.77 3.74 6.23-.15.56-.56 2.02-.64 2.34-.1.39.14.38.3.28.12-.08 1.94-1.32 2.72-1.85.59.17 1.22.26 1.88.26 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
+        <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+      </svg>
     </a>
     <a href="https://www.facebook.com/" target="_blank" rel="noopener" class="dock-btn dock-fb" title="Facebook 粉絲專頁">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"/></svg>
