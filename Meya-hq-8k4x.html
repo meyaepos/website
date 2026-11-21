@@ -83,7 +83,6 @@
             </div>
           </div>
 
-          <!-- 有原圖待對標置頂提示橫幅 -->
           <div id="ready-priority-bar" class="ready-priority-bar" style="display:none;">
             <div id="ready-priority-text"></div>
             <button id="btn-filter-ready" class="btn btn-success">⚡ 只看有原圖待對標</button>
@@ -126,7 +125,6 @@
               </table>
             </div>
 
-            <!-- 分頁導覽列（避免一次渲染數百列拖慢瀏覽器） -->
             <div id="pagination-bar" class="pagination-bar"></div>
           </div>
         </section>
@@ -292,51 +290,67 @@
     </div>
   </div>
 
-  <!-- 彈窗 1：圖檔一對一對標、排版與 <2MB 壓縮 -->
+  <!-- 彈窗 1：多圖挑選、順序調整、主圖指定與 2K 高清 (<=1MB) 壓縮 -->
   <div id="match-modal" class="modal-overlay">
-    <div class="modal-box">
+    <div class="modal-box gallery-modal-box">
       <div class="modal-head">
-        <span id="match-modal-title">圖檔一對一對標與排版壓縮</span>
+        <span id="match-modal-title">多圖挑選、排序與主圖排版</span>
         <button id="btn-close-modal-x" class="btn btn-icon-close">✕</button>
       </div>
-      <div class="modal-body">
-        <div>
+      <div class="modal-body gallery-modal-body">
+        <!-- 左欄：勾選要／不要的照片 -->
+        <div class="modal-col">
           <div class="modal-col-head">
-            <strong>1. 選擇雲端原始照片</strong>
-            <input type="text" id="raw-img-search" class="input-ctrl search-mini" placeholder="篩選檔名...">
+            <strong>1. 勾選要採用的原圖</strong>
+            <div class="toolbar-group" style="gap:6px;">
+              <button type="button" id="btn-select-all-raw" class="btn btn-outline btn-xs">全選</button>
+              <button type="button" id="btn-clear-all-raw" class="btn btn-outline btn-xs">清空</button>
+              <input type="text" id="raw-img-search" class="input-ctrl search-mini" placeholder="篩選檔名...">
+            </div>
           </div>
-          <div id="drive-raw-list" class="drive-list">載入中...</div>
+          <div id="drive-raw-list" class="drive-list drive-list-tall">載入中...</div>
         </div>
 
-        <div>
+        <!-- 右欄：上方高清預覽 ＋ 下方排序與主圖設定 -->
+        <div class="modal-col">
           <div class="modal-col-head">
-            <strong>2. 排版預覽與壓縮（自動 &lt; 2MB）</strong>
+            <strong>2. 2K 高清排版預覽（95%品質｜上限 1MB）</strong>
             <select id="crop-ratio-select" class="input-ctrl">
               <option value="3:4">3:4 韓系直式排版（推薦）</option>
               <option value="1:1">1:1 正方形排版</option>
               <option value="original">保留原圖比例</option>
             </select>
           </div>
-          <div class="canvas-stage">
+          <div class="canvas-stage canvas-stage-compact">
             <canvas id="preview-canvas"></canvas>
           </div>
-          <div id="match-status-text" class="match-status">請從左側選擇一張原始照片進行預覽與排版。</div>
+          <div id="match-status-text" class="match-status">請勾選左側照片加入清單，點擊項目可檢查高清細節。</div>
+
+          <div class="queue-section">
+            <div class="modal-col-head" style="margin-bottom:6px;">
+              <strong>3. 已選照片排序與主圖設定</strong>
+              <span id="selected-queue-count" class="pill pill-new">已選 0 張</span>
+            </div>
+            <div id="selected-queue-list" class="queue-list">
+              <div class="queue-empty">尚未勾選任何照片（第 1 張將自動設為商品主圖）</div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
         <label class="checkbox-label">
           <input type="checkbox" id="chk-auto-publish" checked>
-          對標完成後同步將商品設為「上架」
+          全部轉存完成後同步將商品設為「上架」
         </label>
         <div class="toolbar-group">
           <button id="btn-cancel-modal" class="btn btn-outline">取消</button>
-          <button id="btn-upload-bind" class="btn btn-primary" disabled>✅ 確認排版、壓縮轉存並自動改名</button>
+          <button id="btn-upload-bind" class="btn btn-primary" disabled>✅ 確認轉存所選照片並對標</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗 2：商品完整數據編輯 / 新增視窗（動態渲染資料庫全部欄位） -->
+  <!-- 彈窗 2：商品完整數據編輯 / 新增視窗 -->
   <div id="edit-product-modal" class="modal-overlay">
     <div class="modal-box edit-modal-box">
       <div class="modal-head">
@@ -358,7 +372,6 @@
     </div>
   </div>
 
-  <!-- 模組化載入順序：設定檔 -> 核心中樞 -> 各領域功能模組 -->
   <script src="./js/config.js"></script>
   <script src="./js/admin-core.js"></script>
   <script src="./js/admin-products.js"></script>
