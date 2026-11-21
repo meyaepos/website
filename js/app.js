@@ -3,30 +3,27 @@ let activeCategory = 'ALL';
 let detectedCategoryKey = null;
 let userHasInteracted = false;
 
+let currentModalGallery = [];
+let currentModalImgIndex = 0;
+
 function forceScrollTop() {
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 }
 
-// 使用者只要手動觸碰或滑動，就不再介入捲動位置
 ['touchstart', 'wheel', 'mousedown'].forEach(evt => {
   window.addEventListener(evt, () => {
     userHasInteracted = true;
   }, { passive: true, once: true });
 });
 
-// 處理手機瀏覽器 / LINE 內建瀏覽器從快取返回時自動歸頂
 window.addEventListener('pageshow', () => {
-  if (!userHasInteracted) {
-    forceScrollTop();
-  }
+  if (!userHasInteracted) forceScrollTop();
 });
 
 window.addEventListener('load', () => {
-  if (!userHasInteracted) {
-    forceScrollTop();
-  }
+  if (!userHasInteracted) forceScrollTop();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -60,10 +57,7 @@ async function initWebsite() {
     document.getElementById('product-grid').innerHTML =
       '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
   } finally {
-    // 資料載入完畢造成版面高度變化時，若使用者尚未操作則維持在最頂端
-    if (!userHasInteracted) {
-      forceScrollTop();
-    }
+    if (!userHasInteracted) forceScrollTop();
   }
 }
 
@@ -90,7 +84,6 @@ function renderAnnouncements(newsList) {
   cloneEl.textContent = text;
 }
 
-// 若資料庫有「分類 / 類別 / category」欄位，自動生成極簡中文分類篩選鈕
 function detectAndRenderCategories(products) {
   if (!products || products.length === 0) return;
 
@@ -143,10 +136,25 @@ function applyFiltersAndRender() {
       if (String(p[detectedCategoryKey] || '').trim() !== activeCategory) return false;
     }
     if (!keyword) return true;
-    return Object.values(p).some(v => String(v || '').toLowerCase().includes(keyword));
+    return Object.keys(p)
+      .filter(k => k !== 'image' && k !== 'images')
+      .some(k => String(p[k] || '').toLowerCase().includes(keyword));
   });
 
   renderProducts(filtered);
+}
+
+function getProductGalleryUrls(product) {
+  const list = String(product.images || '')
+    .split(',')
+    .map(u => u.trim())
+    .filter(Boolean);
+
+  const cover = String(product.image || '').trim();
+  if (cover && !list.includes(cover)) {
+    list.unshift(cover);
+  }
+  return list;
 }
 
 function renderProducts(list) {
@@ -198,17 +206,21 @@ function renderProducts(list) {
 }
 
 function openProductModal(product) {
-  document.getElementById('modal-img').src = product.image || '';
+  currentModalGallery = getProductGalleryUrls(product);
+  currentModalImgIndex = 0;
+
   document.getElementById('modal-sku').textContent = '商品編號 ' + (product.id || '');
   document.getElementById('modal-name').textContent = product.name || '';
   document.getElementById('modal-price').textContent = 'NT$ ' + Number(product.price || 0).toLocaleString();
 
+  renderModalGallery();
+
   const specBox = document.getElementById('modal-dynamic-specs');
-  const coreKeys = new Set(['id', 'name', 'price', 'image', '狀態']);
+  const hiddenKeys = new Set(['id', 'name', 'price', 'image', 'images', '狀態']);
   specBox.innerHTML = '';
 
   Object.keys(product).forEach(k => {
-    if (coreKeys.has(k)) return;
+    if (hiddenKeys.has(k)) return;
     const val = String(product[k] || '').trim();
     if (!val) return;
     const line = document.createElement('div');
@@ -219,8 +231,56 @@ function openProductModal(product) {
   document.getElementById('product-modal-backdrop').classList.add('open');
 }
 
+function renderModalGallery() {
+  const imgBox = document.querySelector('.modal-img-box');
+  imgBox.style.position = 'relative';
+
+  const mainImg = document.getElementById('modal-img');
+  mainImg.src = currentModalGallery[currentModalImgIndex] || '';
+
+  // 清除先前的多圖控制元件
+  imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar').forEach(el => el.remove());
+
+  if (currentModalGallery.length <= 1) return;
+
+  // 左右切換按鈕
+  const makeNavBtn = (text, side, delta) => {
+    const btn = document.createElement('button');
+    btn.className = 'gallery-nav-btn';
+    btn.textContent = text;
+    btn.style.cssText = `position:absolute; top:45%; ${side}:10px; transform:translateY(-50%); width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.88); color:#333; font-size:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.16); z-index:4;`;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      currentModalImgIndex = (currentModalImgIndex + delta + currentModalGallery.length) % currentModalGallery.length;
+      renderModalGallery();
+    });
+    return btn;
+  };
+
+  imgBox.appendChild(makeNavBtn('‹', 'left', -1));
+  imgBox.appendChild(makeNavBtn('›', 'right', 1));
+
+  // 下方排序縮圖列
+  const strip = document.createElement('div');
+  strip.className = 'gallery-thumbs-bar';
+  strip.style.cssText = 'position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:6px; padding:0 10px; overflow-x:auto; z-index:4;';
+
+  currentModalGallery.forEach((url, idx) => {
+    const t = document.createElement('img');
+    t.src = url;
+    t.style.cssText = `width:42px; height:52px; object-fit:cover; border-radius:3px; cursor:pointer; background:#fff; border:2px solid ${idx === currentModalImgIndex ? '#333333' : 'rgba(255,255,255,0.85)'}; box-shadow:0 1px 4px rgba(0,0,0,0.22);`;
+    t.addEventListener('click', e => {
+      e.stopPropagation();
+      currentModalImgIndex = idx;
+      renderModalGallery();
+    });
+    strip.appendChild(t);
+  });
+
+  imgBox.appendChild(strip);
+}
+
 function bindWebsiteEvents() {
-  // 展開/關閉搜尋抽屜
   const drawer = document.getElementById('search-bar-drawer');
   const searchInput = document.getElementById('search-input');
 
@@ -237,7 +297,6 @@ function bindWebsiteEvents() {
 
   searchInput.addEventListener('input', applyFiltersAndRender);
 
-  // 統一攔截內部錨點點擊：平滑捲動且不把 #contact 寫進網址列，避免重開直接跳到底部
   document.querySelectorAll('[data-scroll-target]').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -263,12 +322,10 @@ function bindWebsiteEvents() {
     });
   });
 
-  // 回到頂端按鈕
   document.getElementById('btn-scroll-top').addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // 關閉商品彈窗
   const backdrop = document.getElementById('product-modal-backdrop');
   document.getElementById('modal-close-btn').addEventListener('click', () => backdrop.classList.remove('open'));
   backdrop.addEventListener('click', (e) => {
