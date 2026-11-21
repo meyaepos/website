@@ -1,6 +1,6 @@
 /**
  * MEYA 管理員專區核心腳本
- * 包含：儀表板同步、Excel 動態辨識建庫、標準匯出、圖檔排版壓縮 (<2MB)、跑馬燈與異常監控
+ * 包含：登入密鑰驗證鎖、儀表板同步、Excel 動態建庫、標準匯出、圖檔排版壓縮 (<2MB)、跑馬燈與異常監控
  */
 
 // ================= 全域參數與狀態 =================
@@ -24,14 +24,12 @@ const AdminState = {
   errors: [],
   rawDriveImages: [],
 
-  // Excel 建庫暫存
   workbook: null,
   fileName: '',
   rawMatrix: [],
   columnMappings: [],
   importMode: 'MERGE_PRODUCTS',
 
-  // 圖檔對標暫存
   activeProductId: '',
   loadedSourceImage: null
 };
@@ -39,10 +37,25 @@ const AdminState = {
 // ================= 初始化與事件綁定 =================
 document.addEventListener('DOMContentLoaded', () => {
   bindStaticEvents();
-  loadDashboard();
+
+  // 若本次瀏覽器工作階段已存有密鑰，直接嘗試自動驗證解鎖；否則停留在鎖定畫面
+  const savedToken = sessionStorage.getItem('MEYA_ADMIN_TOKEN');
+  if (savedToken !== null) {
+    document.getElementById('login-token-input').value = savedToken;
+    verifyAndUnlock(savedToken);
+  } else {
+    document.getElementById('login-token-input').focus();
+  }
 });
 
 function bindStaticEvents() {
+  // 登入驗證表單
+  document.getElementById('login-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const token = document.getElementById('login-token-input').value.trim();
+    verifyAndUnlock(token);
+  });
+
   // 側邊欄分頁切換
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -55,8 +68,8 @@ function bindStaticEvents() {
   });
 
   // 頂部工具列
-  document.getElementById('btn-token').addEventListener('click', promptAdminToken);
   document.getElementById('btn-reload').addEventListener('click', loadDashboard);
+  document.getElementById('btn-logout').addEventListener('click', lockAndLogout);
 
   // 分頁 1：商品與對標
   document.getElementById('prod-search').addEventListener('input', renderProductTable);
@@ -89,20 +102,61 @@ function bindStaticEvents() {
   document.getElementById('btn-upload-bind').addEventListener('click', confirmCompressAndUpload);
 }
 
-// ================= 權限密鑰與 API 呼叫封裝 =================
+// ================= 權限驗證鎖與 API 封裝 =================
 function getAdminToken() {
   return sessionStorage.getItem('MEYA_ADMIN_TOKEN') || '';
 }
 
-function promptAdminToken() {
-  const input = prompt('請輸入後台管理密鑰 (ADMIN_TOKEN)：\n（若 GAS 尚未設定密鑰，留空按確定即可）', getAdminToken());
-  if (input !== null) {
-    sessionStorage.setItem('MEYA_ADMIN_TOKEN', input.trim());
-    loadDashboard();
+async function verifyAndUnlock(tokenInput) {
+  const errBox = document.getElementById('login-error-msg');
+  const btn = document.getElementById('btn-login-submit');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '⏳ 正在向 GAS 伺服器驗證密鑰...';
+
+  try {
+    sessionStorage.setItem('MEYA_ADMIN_TOKEN', tokenInput);
+    const data = await apiGet('getAdminDashboard');
+
+    if (data.status !== 'success') {
+      sessionStorage.removeItem('MEYA_ADMIN_TOKEN');
+      throw new Error(data.message || '驗證失敗');
+    }
+
+    // 驗證通過：解除鎖定並渲染後台
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('admin-app').classList.add('unlocked');
+    applyDashboardData(data);
+  } catch (err) {
+    errBox.textContent = String(err.message).includes('Unauthorized')
+      ? '管理密鑰錯誤，請重新輸入。'
+      : '連線驗證失敗：' + err.message;
+    errBox.style.display = 'block';
+    document.getElementById('login-token-input').select();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔒 驗證並進入系統';
   }
 }
 
+function lockAndLogout() {
+  sessionStorage.removeItem('MEYA_ADMIN_TOKEN');
+  AdminState.products = [];
+  AdminState.announcements = [];
+  AdminState.errors = [];
+  AdminState.rawDriveImages = [];
+
+  document.getElementById('admin-app').classList.remove('unlocked');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-token-input').value = '';
+  document.getElementById('login-error-msg').style.display = 'none';
+  document.getElementById('login-token-input').focus();
+}
+
 async function apiGet(action, extraParams = {}) {
+  if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
+    throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
+  }
   const query = new URLSearchParams({
     action: action,
     token: getAdminToken(),
@@ -114,6 +168,9 @@ async function apiGet(action, extraParams = {}) {
 }
 
 async function apiPost(action, payload = {}) {
+  if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
+    throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
+  }
   const res = await fetch(CONFIG.GAS_API_URL, {
     method: 'POST',
     body: JSON.stringify({
@@ -135,27 +192,30 @@ async function loadDashboard() {
     const data = await apiGet('getAdminDashboard');
     if (data.status !== 'success') {
       if (String(data.message).includes('Unauthorized')) {
-        alert('請先輸入正確的管理密鑰 (ADMIN_TOKEN)。');
-        promptAdminToken();
+        alert('管理密鑰已失效或變更，請重新登入。');
+        lockAndLogout();
         return;
       }
       throw new Error(data.message);
     }
-
-    AdminState.products = data.products || [];
-    AdminState.productHeaders = data.productHeaders || [...CORE_PRODUCT_KEYS];
-    AdminState.announcements = data.announcements || [];
-    AdminState.errors = data.errors || [];
-
-    updateKpis();
-    renderProductTable();
-    renderExportSheetOptions(data.sheetNames || ['商品列表']);
-    renderAnnouncementsTable();
-    renderGlobalConfigForm(data.config || {});
-    renderErrorTable();
+    applyDashboardData(data);
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty-cell" style="color:#e74c3c;">載入失敗：' + escapeHtml(err.message) + '</td></tr>';
   }
+}
+
+function applyDashboardData(data) {
+  AdminState.products = data.products || [];
+  AdminState.productHeaders = data.productHeaders || [...CORE_PRODUCT_KEYS];
+  AdminState.announcements = data.announcements || [];
+  AdminState.errors = data.errors || [];
+
+  updateKpis();
+  renderProductTable();
+  renderExportSheetOptions(data.sheetNames || ['商品列表']);
+  renderAnnouncementsTable();
+  renderGlobalConfigForm(data.config || {});
+  renderErrorTable();
 }
 
 function updateKpis() {
