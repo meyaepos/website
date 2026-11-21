@@ -1,6 +1,5 @@
 /**
- * MEYA 管理員專區核心腳本
- * 包含：登入密鑰驗證鎖、儀表板同步、Excel 動態建庫、標準匯出、圖檔排版壓縮 (<2MB)、跑馬燈與異常監控
+ * is Meya 管理員專區核心腳本（標準模式登入 ＋ 商品編號子資料夾圖檔對標版）
  */
 
 // ================= 全域參數與狀態 =================
@@ -18,11 +17,14 @@ const CORE_SYNONYMS = {
 };
 
 const AdminState = {
+  authPolicy: { mode: 'STANDARD', requirePin: true },
+
   products: [],
   productHeaders: [...CORE_PRODUCT_KEYS],
   announcements: [],
   errors: [],
   rawDriveImages: [],
+  matchedFolderName: '',
 
   workbook: null,
   fileName: '',
@@ -34,29 +36,43 @@ const AdminState = {
   loadedSourceImage: null
 };
 
-// ================= 初始化與事件綁定 =================
-document.addEventListener('DOMContentLoaded', () => {
+// ================= 初始化流程 =================
+document.addEventListener('DOMContentLoaded', async () => {
   bindStaticEvents();
-
-  // 若本次瀏覽器工作階段已存有密鑰，直接嘗試自動驗證解鎖；否則停留在鎖定畫面
-  const savedToken = sessionStorage.getItem('MEYA_ADMIN_TOKEN');
-  if (savedToken !== null) {
-    document.getElementById('login-token-input').value = savedToken;
-    verifyAndUnlock(savedToken);
-  } else {
-    document.getElementById('login-token-input').focus();
-  }
+  await initStandardAuth();
 });
 
+async function initStandardAuth() {
+  if (getSessionToken()) {
+    const restored = await tryRestoreSession();
+    if (restored) return;
+  }
+
+  const descEl = document.getElementById('login-policy-desc');
+  try {
+    const res = await fetch(CONFIG.GAS_API_URL + '?action=getAuthPolicy');
+    const json = await res.json();
+    if (json.status === 'success' && json.policy) {
+      AdminState.authPolicy = json.policy;
+      if (json.policy.requirePin) {
+        descEl.textContent = '標準安全模式：請輸入管理密鑰以解鎖操作';
+      } else {
+        descEl.textContent = '開發測試模式（未設定密鑰）：直接點擊下方按鈕即可進入';
+        document.getElementById('login-token-input').placeholder = '目前免密鑰，直接按登入即可';
+      }
+    }
+  } catch (err) {
+    descEl.textContent = '無法連線至 GAS，請確認部署權限與 js/config.js';
+  }
+  document.getElementById('login-token-input').focus();
+}
+
 function bindStaticEvents() {
-  // 登入驗證表單
   document.getElementById('login-form').addEventListener('submit', e => {
     e.preventDefault();
-    const token = document.getElementById('login-token-input').value.trim();
-    verifyAndUnlock(token);
+    executeLogin();
   });
 
-  // 側邊欄分頁切換
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -67,7 +83,6 @@ function bindStaticEvents() {
     });
   });
 
-  // 頂部工具列
   document.getElementById('btn-reload').addEventListener('click', loadDashboard);
   document.getElementById('btn-logout').addEventListener('click', lockAndLogout);
 
@@ -102,45 +117,93 @@ function bindStaticEvents() {
   document.getElementById('btn-upload-bind').addEventListener('click', confirmCompressAndUpload);
 }
 
-// ================= 權限驗證鎖與 API 封裝 =================
-function getAdminToken() {
-  return sessionStorage.getItem('MEYA_ADMIN_TOKEN') || '';
+// ================= 通行證與登入邏輯 =================
+function getSessionToken() {
+  return sessionStorage.getItem('MEYA_SESSION_TOKEN') || '';
 }
 
-async function verifyAndUnlock(tokenInput) {
+function showLoginError(msg) {
+  const errBox = document.getElementById('login-error-msg');
+  errBox.textContent = msg;
+  errBox.style.display = 'block';
+}
+
+async function tryRestoreSession() {
+  try {
+    const data = await apiGet('getAdminDashboard');
+    if (data.status === 'success') {
+      unlockAdminUI(data);
+      return true;
+    }
+  } catch (_) {}
+  sessionStorage.removeItem('MEYA_SESSION_TOKEN');
+  return false;
+}
+
+async function executeLogin() {
   const errBox = document.getElementById('login-error-msg');
   const btn = document.getElementById('btn-login-submit');
+  const adminToken = document.getElementById('login-token-input').value.trim();
+
   errBox.style.display = 'none';
   btn.disabled = true;
-  btn.textContent = '⏳ 正在向 GAS 伺服器驗證密鑰...';
+  btn.textContent = '⏳ 驗證登入中...';
 
   try {
-    sessionStorage.setItem('MEYA_ADMIN_TOKEN', tokenInput);
-    const data = await apiGet('getAdminDashboard');
-
-    if (data.status !== 'success') {
-      sessionStorage.removeItem('MEYA_ADMIN_TOKEN');
-      throw new Error(data.message || '驗證失敗');
+    const res = await fetch(CONFIG.GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'adminLogin',
+        adminToken: adminToken
+      })
+    });
+    const loginJson = await res.json();
+    if (loginJson.status !== 'success') {
+      throw new Error(loginJson.message || '驗證失敗');
     }
 
-    // 驗證通過：解除鎖定並渲染後台
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('admin-app').classList.add('unlocked');
-    applyDashboardData(data);
+    sessionStorage.setItem('MEYA_SESSION_TOKEN', loginJson.data.sessionToken);
+
+    const dashData = await apiGet('getAdminDashboard');
+    if (dashData.status !== 'success') {
+      throw new Error(dashData.message || '讀取後台資料失敗');
+    }
+
+    unlockAdminUI(dashData);
   } catch (err) {
-    errBox.textContent = String(err.message).includes('Unauthorized')
-      ? '管理密鑰錯誤，請重新輸入。'
-      : '連線驗證失敗：' + err.message;
-    errBox.style.display = 'block';
+    showLoginError(err.message.replace(/^Unauthorized:\s*/, ''));
     document.getElementById('login-token-input').select();
   } finally {
     btn.disabled = false;
-    btn.textContent = '🔒 驗證並進入系統';
+    btn.textContent = '🔒 登入管理專區';
   }
 }
 
-function lockAndLogout() {
-  sessionStorage.removeItem('MEYA_ADMIN_TOKEN');
+function unlockAdminUI(dashData) {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('admin-app').classList.add('unlocked');
+
+  const idBadge = document.getElementById('admin-identity-badge');
+  if (dashData.admin) {
+    const groupText = dashData.admin.roleGroup ? ' [' + dashData.admin.roleGroup + ']' : '';
+    idBadge.textContent = '👤 ' + (dashData.admin.name || '管理員') + groupText;
+    idBadge.style.display = 'inline-block';
+  }
+  applyDashboardData(dashData);
+}
+
+async function lockAndLogout() {
+  const token = getSessionToken();
+  try {
+    if (token) {
+      await fetch(CONFIG.GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'adminLogout', token: token })
+      });
+    }
+  } catch (_) {}
+
+  sessionStorage.removeItem('MEYA_SESSION_TOKEN');
   AdminState.products = [];
   AdminState.announcements = [];
   AdminState.errors = [];
@@ -159,7 +222,7 @@ async function apiGet(action, extraParams = {}) {
   }
   const query = new URLSearchParams({
     action: action,
-    token: getAdminToken(),
+    token: getSessionToken(),
     ...extraParams
   });
   const res = await fetch(CONFIG.GAS_API_URL + '?' + query.toString());
@@ -175,12 +238,21 @@ async function apiPost(action, payload = {}) {
     method: 'POST',
     body: JSON.stringify({
       action: action,
-      token: getAdminToken(),
+      token: getSessionToken(),
       ...payload
     })
   });
   if (!res.ok) throw new Error('HTTP 狀態異常：' + res.status);
   return res.json();
+}
+
+function handleSessionExpiredIfNeeded(message) {
+  if (String(message).includes('Unauthorized')) {
+    alert('登入通行證已過期或權限不足，請重新登入。');
+    lockAndLogout();
+    return true;
+  }
+  return false;
 }
 
 // ================= 1. 載入管理儀表板 =================
@@ -191,11 +263,7 @@ async function loadDashboard() {
   try {
     const data = await apiGet('getAdminDashboard');
     if (data.status !== 'success') {
-      if (String(data.message).includes('Unauthorized')) {
-        alert('管理密鑰已失效或變更，請重新登入。');
-        lockAndLogout();
-        return;
-      }
+      if (handleSessionExpiredIfNeeded(data.message)) return;
       throw new Error(data.message);
     }
     applyDashboardData(data);
@@ -284,7 +352,7 @@ async function toggleProductStatus(productId, newStatus) {
   try {
     const json = await apiPost('updateProductStatus', { productId, newStatus });
     if (json.status === 'success') loadDashboard();
-    else alert('狀態更新失敗：' + json.message);
+    else if (!handleSessionExpiredIfNeeded(json.message)) alert('狀態更新失敗：' + json.message);
   } catch (err) {
     alert('狀態更新異常：' + err.message);
   }
@@ -509,7 +577,10 @@ async function executeDynamicBuild() {
         rows: chunk,
         sourceName: AdminState.fileName
       });
-      if (json.status !== 'success') throw new Error(json.message);
+      if (json.status !== 'success') {
+        if (handleSessionExpiredIfNeeded(json.message)) return;
+        throw new Error(json.message);
+      }
 
       totalInserted += json.data.insertedCount;
       totalUpdated += json.data.updatedCount;
@@ -552,7 +623,10 @@ async function exportSelectedSheet(format) {
   const sheetName = document.getElementById('export-sheet-select').value || '商品列表';
   try {
     const json = await apiGet('exportData', { sheetName, format });
-    if (json.status !== 'success') throw new Error(json.message);
+    if (json.status !== 'success') {
+      if (handleSessionExpiredIfNeeded(json.message)) return;
+      throw new Error(json.message);
+    }
 
     const d = json.data;
     const content = format === 'json' ? JSON.stringify(d.records, null, 2) : d.csvContent;
@@ -568,23 +642,26 @@ async function exportSelectedSheet(format) {
   }
 }
 
-// ================= 4. 圖檔一對一對標、排版與 <2MB 降檔 =================
+// ================= 4. 圖檔一對一對標（對標商品編號子資料夾） =================
 async function runAutoSuggestCheck() {
   const banner = document.getElementById('suggest-banner');
   banner.style.display = 'block';
-  banner.textContent = '正在比對缺圖商品與雲端原始資料夾...';
+  banner.textContent = '正在比對缺圖商品與原檔資料庫子資料夾...';
 
   try {
     const json = await apiGet('suggestImageMatches');
-    if (json.status !== 'success') throw new Error(json.message);
+    if (json.status !== 'success') {
+      if (handleSessionExpiredIfNeeded(json.message)) return;
+      throw new Error(json.message);
+    }
 
     const d = json.data;
-    const sampleMissing = (d.unmatchedProducts || []).slice(0, 10).map(x => x.id).join(', ');
+    const matchedPreview = (d.suggestions || []).slice(0, 8).map(x => x.productId).join(', ');
     banner.innerHTML =
       `<strong>規則檢查完成：</strong>缺圖商品共 <strong>${d.totalPendingProducts}</strong> 筆；` +
-      `已在雲端找到同編號原圖 <strong>${d.matchedCount}</strong> 筆（點進「對標排版」會以黃色高亮排在最上方），` +
-      `尚無對應照片 <strong>${d.unmatchedCount}</strong> 筆` +
-      (sampleMissing ? `（如：${escapeHtml(sampleMissing)}）` : '。');
+      `已在原檔資料庫找到同編號資料夾或圖片 <strong>${d.matchedCount}</strong> 筆` +
+      (matchedPreview ? `（已就緒編號：${escapeHtml(matchedPreview)}）` : '') +
+      `，尚無照片資料夾 <strong>${d.unmatchedCount}</strong> 筆。`;
   } catch (err) {
     banner.textContent = '檢查失敗：' + err.message;
   }
@@ -593,9 +670,10 @@ async function runAutoSuggestCheck() {
 async function openMatchModal(product) {
   AdminState.activeProductId = String(product.id);
   AdminState.loadedSourceImage = null;
+  AdminState.matchedFolderName = '';
 
   document.getElementById('match-modal-title').textContent = `對標與排版：[${product.id}] ${product.name}`;
-  document.getElementById('match-status-text').textContent = '請從左側選擇對應的原始照片。';
+  document.getElementById('match-status-text').textContent = '正在依商品編號尋找對應的雲端原圖資料夾...';
   document.getElementById('btn-upload-bind').disabled = true;
   document.getElementById('raw-img-search').value = '';
 
@@ -604,13 +682,22 @@ async function openMatchModal(product) {
   document.getElementById('match-modal').classList.add('open');
 
   const listEl = document.getElementById('drive-raw-list');
-  listEl.innerHTML = '讀取雲端原始圖片資料夾中...';
+  listEl.innerHTML = '讀取雲端資料夾 [' + escapeHtml(AdminState.activeProductId) + '] 中...';
 
   try {
-    const data = await apiGet('getRawImages');
-    if (data.status !== 'success') throw new Error(data.message);
+    // 傳入 productId，讓 GAS 直接精準抓該商品編號子資料夾內的照片
+    const data = await apiGet('getRawImages', { productId: AdminState.activeProductId });
+    if (data.status !== 'success') {
+      if (handleSessionExpiredIfNeeded(data.message)) return;
+      throw new Error(data.message);
+    }
+    AdminState.matchedFolderName = data.matchedFolderName || '';
     AdminState.rawDriveImages = data.images || [];
     renderRawImageList();
+
+    document.getElementById('match-status-text').textContent = AdminState.matchedFolderName
+      ? `✅ 已自動定位到子資料夾《${AdminState.matchedFolderName}》（共 ${AdminState.rawDriveImages.length} 張原圖），請點選左側照片進行排版預覽。`
+      : `找不到名為「${AdminState.activeProductId}」的子資料夾，請確認雲端原檔資料庫是否已建立對應編號資料夾。`;
   } catch (err) {
     listEl.innerHTML = '<p style="color:#e74c3c; padding:12px;">讀取失敗：' + escapeHtml(err.message) + '</p>';
   }
@@ -619,31 +706,32 @@ async function openMatchModal(product) {
 function renderRawImageList() {
   const listEl = document.getElementById('drive-raw-list');
   const kw = document.getElementById('raw-img-search').value.trim().toLowerCase();
-  const targetLower = AdminState.activeProductId.toLowerCase();
 
-  const filtered = AdminState.rawDriveImages
-    .filter(img => !kw || String(img.name).toLowerCase().includes(kw))
-    .sort((a, b) => {
-      const aHit = String(a.name).toLowerCase().includes(targetLower) ? 1 : 0;
-      const bHit = String(b.name).toLowerCase().includes(targetLower) ? 1 : 0;
-      return bHit - aHit;
-    });
+  const filtered = AdminState.rawDriveImages.filter(img =>
+    !kw || String(img.name).toLowerCase().includes(kw) || String(img.folderName || '').toLowerCase().includes(kw)
+  );
 
   if (filtered.length === 0) {
-    listEl.innerHTML = '<p style="padding:12px; color:#64748b;">資料夾中沒有符合的圖片</p>';
+    listEl.innerHTML = `<p style="padding:12px; color:#64748b;">在原檔資料庫中找不到「${escapeHtml(AdminState.activeProductId)}」對應子資料夾或符合的圖片。</p>`;
     return;
   }
 
   listEl.innerHTML = '';
   filtered.forEach(img => {
-    const isHit = String(img.name).toLowerCase().includes(targetLower);
+    const sizeText = img.sizeKb >= 1024 ? (img.sizeKb / 1024).toFixed(1) + ' MB' : img.sizeKb + ' KB';
+    const thumbHtml = img.thumbnail
+      ? `<img src="${escapeHtml(img.thumbnail)}" alt="">`
+      : '<div style="width:44px;height:44px;border-radius:4px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🖼️</div>';
+
     const item = document.createElement('div');
-    item.className = 'drive-item' + (isHit ? ' recommended' : '');
+    item.className = 'drive-item' + (img.isMatchedFolder ? ' recommended' : '');
     item.innerHTML = `
-      <img src="${escapeHtml(img.thumbnail)}" alt="">
+      ${thumbHtml}
       <div>
-        <div>${escapeHtml(img.name)}</div>
-        ${isHit ? '<span style="font-size:11px; color:#a16207;">⭐ 吻合商品編號</span>' : ''}
+        <div><strong>${escapeHtml(img.name)}</strong></div>
+        <span style="font-size:11px; color:${img.isMatchedFolder ? '#a16207' : '#64748b'};">
+          ${img.isMatchedFolder ? '📁 ' + escapeHtml(img.folderName) + ' ｜ ' : ''}${sizeText}
+        </span>
       </div>
     `;
     item.addEventListener('click', () => {
@@ -663,7 +751,10 @@ async function loadRawImageToCanvas(fileId, fileName) {
 
   try {
     const data = await apiGet('getImageBase64', { fileId });
-    if (data.status !== 'success') throw new Error(data.message);
+    if (data.status !== 'success') {
+      if (handleSessionExpiredIfNeeded(data.message)) return;
+      throw new Error(data.message);
+    }
 
     const img = new Image();
     img.onload = () => {
@@ -749,7 +840,10 @@ async function confirmCompressAndUpload() {
       autoPublish: document.getElementById('chk-auto-publish').checked
     });
 
-    if (result.status !== 'success') throw new Error(result.message);
+    if (result.status !== 'success') {
+      if (handleSessionExpiredIfNeeded(result.message)) return;
+      throw new Error(result.message);
+    }
 
     alert('✅ ' + result.message);
     closeMatchModal();
@@ -805,7 +899,7 @@ async function manageAnnouncement(operation, id, content = '') {
   try {
     const json = await apiPost('saveAnnouncement', { operation, id, content });
     if (json.status === 'success') loadDashboard();
-    else alert('操作失敗：' + json.message);
+    else if (!handleSessionExpiredIfNeeded(json.message)) alert('操作失敗：' + json.message);
   } catch (err) {
     alert('公告操作異常：' + err.message);
   }
@@ -825,7 +919,7 @@ async function saveGlobalConfig() {
       }
     });
     if (json.status === 'success') alert('✅ 形象網站全域設定已儲存！');
-    else alert('儲存失敗：' + json.message);
+    else if (!handleSessionExpiredIfNeeded(json.message)) alert('儲存失敗：' + json.message);
   } catch (err) {
     alert('儲存異常：' + err.message);
   }
@@ -863,6 +957,8 @@ async function resolveAllErrors() {
     if (json.status === 'success') {
       alert('已將 ' + json.data.resolvedCount + ' 筆紀錄標記為已處理。');
       loadDashboard();
+    } else {
+      handleSessionExpiredIfNeeded(json.message);
     }
   } catch (err) {
     alert('更新異常紀錄失敗：' + err.message);
