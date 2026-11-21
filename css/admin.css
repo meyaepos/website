@@ -81,7 +81,6 @@ body {
 .kpi-value { font-size: 24px; font-weight: 700; color: #2c3e50; }
 .kpi-highlight .kpi-value { color: #15803d; }
 
-/* 有原圖待對標置頂提示橫幅 */
 .ready-priority-bar {
   display: flex;
   justify-content: space-between;
@@ -103,7 +102,8 @@ body {
 
 /* 按鈕與輸入元件 */
 .btn { padding: 8px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-xs { padding: 4px 8px; font-size: 11px; }
 .btn-primary { background: #2c3e50; color: #ffffff; }
 .btn-primary:hover { background: #1a252f; }
 .btn-accent { background: var(--color-primary); color: var(--color-text-main); }
@@ -111,6 +111,7 @@ body {
 .btn-info { background: #3498db; color: #ffffff; }
 .btn-success { background: #27ae60; color: #ffffff; }
 .btn-success:hover { background: #219653; }
+.btn-warning { background: #f59e0b; color: #ffffff; }
 .btn-danger { background: #e74c3c; color: #ffffff; }
 .btn-outline { background: #ffffff; color: #333333; border: 1px solid #cbd5e1; }
 .btn-icon-close { background: transparent; color: #ffffff; font-size: 18px; padding: 4px 8px; }
@@ -118,9 +119,9 @@ body {
 .input-ctrl { padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; }
 .full-width { width: 100%; }
 .flex-1 { flex: 1; }
-.search-mini { width: 140px; }
+.search-mini { width: 118px; padding: 5px 8px; font-size: 12px; }
 
-/* 表格、置頂列樣式與分頁 */
+/* 表格與分頁 */
 .table-wrap { overflow-x: auto; }
 .scroll-box-md { max-height: 240px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 .scroll-box-sm { max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
@@ -142,6 +143,7 @@ tbody tr.row-ready-match:hover { background-color: #dcfce7; }
 .pill-off { background: #f1f5f9; color: #64748b; }
 .pill-err { background: #fee2e2; color: #991b1b; }
 .pill-new { background: #e0f2fe; color: #075985; }
+.pill-cover { background: #f59e0b; color: #ffffff; font-size: 11px; font-weight: 700; }
 
 .pagination-bar {
   display: flex;
@@ -181,27 +183,88 @@ tbody tr.row-ready-match:hover { background-color: #dcfce7; }
 .field-label-inline { font-size: 13px; }
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 
-/* 彈窗共用與圖檔對標彈窗 */
-.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+/* 彈窗共用與多圖排序彈窗 */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.62); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
 .modal-overlay.open { display: flex; }
 
-.modal-box { background: #ffffff; width: 920px; max-width: 100%; max-height: 92vh; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.modal-box { background: #ffffff; width: 920px; max-width: 100%; max-height: 94vh; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.gallery-modal-box { width: 1040px; }
 .edit-modal-box { width: 820px; }
+
 .modal-head { background: #1f2d3d; color: #ffffff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
-.modal-body { padding: 20px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; overflow-y: auto; }
-.modal-col-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; font-size: 14px; }
+.modal-body { padding: 18px 20px; display: grid; grid-template-columns: 1fr 1.25fr; gap: 20px; overflow-y: auto; }
+.modal-col { display: flex; flex-direction: column; min-width: 0; }
+.modal-col-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; font-size: 13px; }
 .modal-foot { padding: 14px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
+@media (max-width: 820px) {
+  .modal-body { grid-template-columns: 1fr; }
+}
+
 .drive-list { height: 340px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; }
+.drive-list-tall { height: 470px; }
+
 .drive-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 5px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
 .drive-item:hover { background: #f1f5f9; }
-.drive-item.selected { background: #e0f2fe; }
-.drive-item.recommended { background: #fef9c3; }
+.drive-item.recommended { background: #fefce8; }
+.drive-item.checked-item { background: #eff6ff; border-left: 3px solid #2563eb; }
+.drive-item.previewing { outline: 2px solid #2c3e50; }
 .drive-item img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.drive-item-check { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; accent-color: #2563eb; }
 
 .canvas-stage { height: 320px; background: #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 8px; }
+.canvas-stage-compact { height: 225px; }
 .canvas-stage canvas { max-width: 100%; max-height: 100%; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); background: #ffffff; }
-.match-status { margin-top: 10px; font-size: 13px; color: #475569; }
+.match-status { margin-top: 8px; font-size: 12px; color: #334155; min-height: 18px; }
+
+/* 已選照片排序佇列 */
+.queue-section { margin-top: 12px; }
+.queue-list { height: 195px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; background: #f8fafc; display: flex; flex-direction: column; gap: 6px; }
+.queue-empty { text-align: center; color: #64748b; font-size: 12px; padding: 56px 12px; }
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.queue-item.is-cover {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.queue-item img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.queue-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-item-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
 
 /* 商品全欄位動態編輯表單 */
 .edit-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
