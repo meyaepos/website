@@ -4,7 +4,7 @@
  */
 window.AdminProducts = {
   MAX_IMAGE_WIDTH: 2048,
-  MAX_BYTES_LIMIT: 1 * 1024 * 1024, // 單張上限 1MB
+  MAX_BYTES_LIMIT: 1 * 1024 * 1024,
   INIT_QUALITY: 0.95,
   PAGE_SIZE: 50,
 
@@ -17,8 +17,8 @@ window.AdminProducts = {
   previewingFileId: '',
   previewingFileName: '',
   loadedSourceImage: null,
-  lastPreviewInfo: null, // 儲存最新一次壓縮成品資訊供放大燈箱檢視
-  lightboxZoomMode: 'fit', // 'fit' | '100' | '150'
+  lastPreviewInfo: null,
+  lightboxZoomMode: 'fit',
 
   editMode: 'EDIT',
   editingProductId: '',
@@ -35,13 +35,11 @@ window.AdminProducts = {
     document.getElementById('kpi-card-ready').addEventListener('click', switchReadyFilter);
     document.getElementById('btn-filter-ready').addEventListener('click', switchReadyFilter);
 
-    // 新增與編輯商品彈窗
     document.getElementById('btn-create-product').addEventListener('click', () => this.openEditModal(null));
     document.getElementById('btn-close-edit-x').addEventListener('click', () => this.closeEditModal());
     document.getElementById('btn-cancel-edit').addEventListener('click', () => this.closeEditModal());
     document.getElementById('btn-save-edit').addEventListener('click', () => this.saveProductEdit());
 
-    // 多圖對標彈窗
     document.getElementById('btn-close-modal-x').addEventListener('click', () => this.closeMatchModal());
     document.getElementById('btn-cancel-modal').addEventListener('click', () => this.closeMatchModal());
     document.getElementById('raw-img-search').addEventListener('input', () => this.renderRawImageList());
@@ -50,7 +48,6 @@ window.AdminProducts = {
     document.getElementById('crop-ratio-select').addEventListener('change', () => this.redrawCanvasPreview());
     document.getElementById('btn-upload-bind').addEventListener('click', () => this.confirmBatchCompressAndUpload());
 
-    // 初始化 2K 預覽點擊放大燈箱（免修改 HTML 結構）
     this.setupHdLightbox();
   },
 
@@ -60,7 +57,6 @@ window.AdminProducts = {
     const stage = document.querySelector('.canvas-stage');
     const canvas = document.getElementById('preview-canvas');
 
-    // 在預覽區右下角加入可點擊的放大提示標籤
     if (stage && !document.getElementById('canvas-zoom-hint')) {
       const hint = document.createElement('button');
       hint.type = 'button';
@@ -77,7 +73,6 @@ window.AdminProducts = {
       canvas.addEventListener('click', () => this.openHdLightbox());
     }
 
-    // 動態建立全螢幕燈箱元件
     if (!document.getElementById('hd-zoom-lightbox')) {
       const box = document.createElement('div');
       box.id = 'hd-zoom-lightbox';
@@ -101,20 +96,14 @@ window.AdminProducts = {
       box.querySelectorAll('.hd-zoom-btn').forEach(btn => {
         btn.addEventListener('click', () => this.applyLightboxZoom(btn.dataset.zoom));
       });
-
       document.getElementById('btn-close-hd-lightbox').addEventListener('click', () => this.closeHdLightbox());
-
-      // 點擊背景空白處關閉燈箱
       document.getElementById('hd-lightbox-stage').addEventListener('click', e => {
         if (e.target.id === 'hd-lightbox-stage') this.closeHdLightbox();
       });
-
-      // 點擊圖片本身快速切換「適應螢幕 ↔ 100% 原寸」
       document.getElementById('hd-lightbox-img').addEventListener('click', e => {
         e.stopPropagation();
         this.applyLightboxZoom(this.lightboxZoomMode === 'fit' ? '100' : 'fit');
       });
-
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') this.closeHdLightbox();
       });
@@ -123,14 +112,10 @@ window.AdminProducts = {
 
   openHdLightbox: function() {
     if (!this.lastPreviewInfo || !this.lastPreviewInfo.dataUrl) return;
-
     const info = this.lastPreviewInfo;
-    const imgEl = document.getElementById('hd-lightbox-img');
-    imgEl.src = info.dataUrl;
-
+    document.getElementById('hd-lightbox-img').src = info.dataUrl;
     document.getElementById('hd-lightbox-meta').textContent =
       `${info.fileName} ｜ ${info.outW}×${info.outH}px ｜ 壓縮後 ${info.sizeKb} KB（品質 ${Math.round(info.quality * 100)}%）— 點擊圖片可快速切換原寸`;
-
     this.applyLightboxZoom('fit');
     document.getElementById('hd-zoom-lightbox').classList.add('open');
   },
@@ -157,8 +142,6 @@ window.AdminProducts = {
       imgEl.classList.add('zoomed');
       imgEl.style.width = Math.round(outW * scale) + 'px';
       imgEl.style.height = Math.round(outH * scale) + 'px';
-
-      // 放大後自動捲動到畫面正中央（飾品主體位置）
       requestAnimationFrame(() => {
         stageEl.scrollLeft = Math.max(0, (stageEl.scrollWidth - stageEl.clientWidth) / 2);
         stageEl.scrollTop = Math.max(0, (stageEl.scrollHeight - stageEl.clientHeight) / 2);
@@ -171,7 +154,7 @@ window.AdminProducts = {
     if (box) box.classList.remove('open');
   },
 
-  // ================= 1. 商品列表（自動置頂「有原圖待對標」＋ 高速分頁） =================
+  // ================= 1. 商品列表 =================
 
   renderTable: function(resetPage = false) {
     if (resetPage) this.currentPage = 1;
@@ -255,7 +238,7 @@ window.AdminProducts = {
         <td>${extraSummary || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
         <td><span class="pill ${statusClass}">${esc(p['狀態'] || '未設定')}</span></td>
         <td style="white-space:nowrap;">
-          <button class="btn ${p._readyToMatch ? 'btn-success' : 'btn-primary'} btn-open-match">對標排版</button>
+          <button class="btn ${p._readyToMatch ? 'btn-success' : 'btn-primary'} btn-open-match">圖庫與排版</button>
           <button class="btn btn-info btn-edit-prod">編輯資料</button>
           <button class="btn btn-outline btn-toggle-status">設為${nextStatus}</button>
         </td>
@@ -304,7 +287,7 @@ window.AdminProducts = {
     }
   },
 
-  // ================= 2. 商品全欄位編輯 / 新增視窗 =================
+  // ================= 2. 商品全欄位編輯 / 新增（整合雙區圖片上傳） =================
 
   openEditModal: function(product) {
     this.editMode = product ? 'EDIT' : 'CREATE';
@@ -312,7 +295,7 @@ window.AdminProducts = {
 
     document.getElementById('edit-modal-title').textContent = product
       ? `編輯商品數據：[${product.id}] ${product.name}`
-      : '＋ 新增商品至資料庫';
+      : '＋ 新增商品至資料庫（支援同步上傳雙區圖片）';
 
     const grid = document.getElementById('edit-fields-grid');
     grid.innerHTML = '';
@@ -350,11 +333,18 @@ window.AdminProducts = {
           input.readOnly = true;
           input.title = '商品編號為雲端圖庫對標鍵值，不可直接變更';
         }
+        if (colName === 'image' && this.editMode === 'CREATE') {
+          input.placeholder = '若於下方上傳照片，此欄將自動填入主圖網址';
+        }
         wrap.appendChild(input);
       }
 
       grid.appendChild(wrap);
     });
+
+    if (window.AdminMediaUpload) {
+      window.AdminMediaUpload.resetForModal(this.editMode, product);
+    }
 
     document.getElementById('edit-product-modal').classList.add('open');
   },
@@ -385,7 +375,21 @@ window.AdminProducts = {
         throw new Error(json.message);
       }
 
-      alert('✅ ' + (json.message || '儲存成功！'));
+      // 新增商品時若有挑選圖片，自動依序寫入原檔區與 2K 前端圖庫
+      if (this.editMode === 'CREATE' && window.AdminMediaUpload && AdminMediaUpload.hasPendingCreatePhotos()) {
+        try {
+          const mediaRes = await AdminMediaUpload.uploadCreateQueueForProduct(fields.id, msg => {
+            btn.textContent = msg;
+          });
+          if (!mediaRes) return;
+          alert(`✅ 新商品 [${fields.id}] 建檔成功，並已完成 ${mediaRes.uploadedCount} 張照片雙區（原檔區＋前端圖庫）同步上傳與排序！`);
+        } catch (uploadErr) {
+          alert(`⚠️ 商品 [${fields.id}] 已寫入資料庫，但圖片上傳過程發生中斷：\n${uploadErr.message}\n\n可點擊該商品的「圖庫與排版」繼續補傳。`);
+        }
+      } else {
+        alert('✅ ' + (json.message || '儲存成功！'));
+      }
+
       this.closeEditModal();
       AdminCore.loadDashboard();
     } catch (err) {
@@ -415,7 +419,7 @@ window.AdminProducts = {
     const hintEl = document.getElementById('canvas-zoom-hint');
     if (hintEl) hintEl.style.display = 'none';
 
-    document.getElementById('match-modal-title').textContent = `多圖挑選與排版：[${product.id}] ${product.name}`;
+    document.getElementById('match-modal-title').textContent = `圖庫管理、多圖排序與排版：[${product.id}] ${product.name}`;
     document.getElementById('match-status-text').textContent = '正在讀取對應編號的雲端原圖資料夾...';
     document.getElementById('raw-img-search').value = '';
 
@@ -438,8 +442,8 @@ window.AdminProducts = {
       this.renderRawImageList();
 
       document.getElementById('match-status-text').textContent = this.matchedFolderName
-        ? `✅ 已定位資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張原圖）。勾選照片後點擊預覽圖可放大確認細節。`
-        : `找不到名為「${this.activeProductId}」的子資料夾，請確認雲端原檔資料庫是否已建立對應編號資料夾。`;
+        ? `✅ 已定位原檔資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張）。可勾選照片、點「📤 上傳新圖」補圖，並調整順序與主圖。`
+        : `原檔資料庫尚無「${this.activeProductId}」資料夾 — 可直接點上方「📤 上傳新圖」自動建立資料夾並新增照片。`;
     } catch (err) {
       listEl.innerHTML = '<p style="color:#e74c3c; padding:12px;">讀取失敗：' + AdminCore.escapeHtml(err.message) + '</p>';
     }
@@ -488,7 +492,7 @@ window.AdminProducts = {
     );
 
     if (filtered.length === 0) {
-      listEl.innerHTML = `<p style="padding:12px; color:#64748b;">在原檔資料庫中找不到「${esc(this.activeProductId)}」對應子資料夾或符合的圖片。</p>`;
+      listEl.innerHTML = `<p style="padding:16px; color:#64748b; text-align:center;">尚無對應原圖 — 請點上方 <strong>「📤 上傳新圖」</strong> 直接新增並自動建立 <strong>${esc(this.activeProductId)}</strong> 資料夾。</p>`;
       return;
     }
 
@@ -531,11 +535,7 @@ window.AdminProducts = {
         e.stopPropagation();
         this.toggleImageSelection(img);
       });
-
-      item.addEventListener('click', () => {
-        this.loadRawImageToCanvas(img.id, img.name);
-      });
-
+      item.addEventListener('click', () => this.loadRawImageToCanvas(img.id, img.name));
       listEl.appendChild(item);
     });
   },
@@ -554,7 +554,7 @@ window.AdminProducts = {
       : '✅ 確認轉存所選照片並對標';
 
     if (total === 0) {
-      listEl.innerHTML = '<div class="queue-empty">尚未勾選任何照片（請於左側打勾，第 1 張自動成為商品主圖）</div>';
+      listEl.innerHTML = '<div class="queue-empty">尚未勾選任何照片（請於左側打勾或上傳新圖，第 1 張自動成為商品主圖）</div>';
       return;
     }
 
@@ -587,22 +587,10 @@ window.AdminProducts = {
       `;
 
       row.addEventListener('click', () => this.loadRawImageToCanvas(img.id, img.name));
-
       const coverBtn = row.querySelector('.btn-set-cover');
-      if (coverBtn) {
-        coverBtn.addEventListener('click', e => {
-          e.stopPropagation();
-          this.setAsCover(idx);
-        });
-      }
-      row.querySelector('.btn-move-up').addEventListener('click', e => {
-        e.stopPropagation();
-        this.moveQueueItem(idx, -1);
-      });
-      row.querySelector('.btn-move-down').addEventListener('click', e => {
-        e.stopPropagation();
-        this.moveQueueItem(idx, 1);
-      });
+      if (coverBtn) coverBtn.addEventListener('click', e => { e.stopPropagation(); this.setAsCover(idx); });
+      row.querySelector('.btn-move-up').addEventListener('click', e => { e.stopPropagation(); this.moveQueueItem(idx, -1); });
+      row.querySelector('.btn-move-down').addEventListener('click', e => { e.stopPropagation(); this.moveQueueItem(idx, 1); });
       row.querySelector('.btn-remove-q').addEventListener('click', e => {
         e.stopPropagation();
         this.selectedQueue.splice(idx, 1);
