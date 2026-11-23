@@ -300,9 +300,8 @@
           </div>
         </section>
 
-        <!-- 分頁 5：條碼標籤機對標列印（搜尋勾選入庫 ＋ 14天雲端待印資料庫） -->
+        <!-- 分頁 5：條碼標籤機對標列印 -->
         <section id="tab-labels" class="tab-panel">
-          <!-- 區塊 A：標籤機校準設定與即時預覽 -->
           <div class="card">
             <div class="card-head">
               <div>
@@ -383,7 +382,6 @@
             </div>
           </div>
 
-          <!-- 區塊 B：快速關鍵字／編號搜尋 ＋ 勾選或單鍵直接入庫 -->
           <div class="card">
             <div class="card-head">
               <div>
@@ -418,7 +416,6 @@
               </table>
             </div>
 
-            <!-- 備選方式：保留傳統下拉選單（預設收合不佔版面） -->
             <details class="lbl-fallback-details">
               <summary>備選方式：展開傳統下拉選單挑選商品</summary>
               <div class="toolbar-group" style="margin-top:10px;">
@@ -429,7 +426,6 @@
             </details>
           </div>
 
-          <!-- 區塊 C：雲端待印標籤資料庫（14 天自動清除 ＋ 批量刪除 ＋ 選擇列印） -->
           <div class="card">
             <div class="card-head">
               <div>
@@ -504,21 +500,23 @@
     </div>
   </div>
 
-  <!-- 實際列印專用容器（平時隱藏） -->
+  <!-- 實際列印專用容器 -->
   <div id="label-print-sheet"></div>
 
-  <!-- 彈窗 1：多圖挑選、順序調整、主圖指定與 2K 高清 (<=1MB) 壓縮 -->
+  <!-- 彈窗 1：圖庫管理、隨時上傳新原檔、多圖排序與 2K 高清 (<=1MB) 壓縮 -->
   <div id="match-modal" class="modal-overlay">
     <div class="modal-box gallery-modal-box">
       <div class="modal-head">
-        <span id="match-modal-title">多圖挑選、排序與主圖排版</span>
+        <span id="match-modal-title">圖庫管理、多圖排序與排版</span>
         <button id="btn-close-modal-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="modal-body gallery-modal-body">
         <div class="modal-col">
           <div class="modal-col-head">
-            <strong>1. 勾選要採用的原圖</strong>
+            <strong>1. 選擇或補傳原檔</strong>
             <div class="toolbar-group" style="gap:6px;">
+              <button type="button" id="btn-upload-raw-modal" class="btn btn-info btn-xs">📤 上傳新圖(入原檔區)</button>
+              <input type="file" id="inp-upload-raw-modal" accept="image/*" multiple style="display:none;">
               <button type="button" id="btn-select-all-raw" class="btn btn-outline btn-xs">全選</button>
               <button type="button" id="btn-clear-all-raw" class="btn btn-outline btn-xs">清空</button>
               <input type="text" id="raw-img-search" class="input-ctrl search-mini" placeholder="篩選檔名...">
@@ -539,7 +537,7 @@
           <div class="canvas-stage canvas-stage-compact">
             <canvas id="preview-canvas"></canvas>
           </div>
-          <div id="match-status-text" class="match-status">請勾選左側照片加入清單，點擊項目可檢查高清細節。</div>
+          <div id="match-status-text" class="match-status">請勾選左側照片或上傳新圖，點擊預覽圖可放大確認細節。</div>
 
           <div class="queue-section">
             <div class="modal-col-head" style="margin-bottom:6px;">
@@ -565,7 +563,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 2：商品完整數據編輯 / 新增視窗 -->
+  <!-- 彈窗 2：商品完整數據編輯 / 新增視窗（內建圖片上傳與排序區） -->
   <div id="edit-product-modal" class="modal-overlay">
     <div class="modal-box edit-modal-box">
       <div class="modal-head">
@@ -573,6 +571,43 @@
         <button id="btn-close-edit-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="edit-modal-body">
+        <!-- 新增商品專用：直接上傳圖片、排順序、設主圖並自動生成雙區雲端資料夾 -->
+        <div id="create-photo-panel" class="edit-photo-section" style="display:none;">
+          <div class="modal-col-head" style="margin-bottom:10px;">
+            <strong>📷 商品圖片上傳與排序（儲存時自動建立原檔區 ＋ 2K 前端圖庫資料夾）</strong>
+            <div class="toolbar-group" style="gap:8px;">
+              <select id="create-crop-ratio" class="input-ctrl" style="padding:4px 8px; font-size:12px;">
+                <option value="3:4">3:4 韓系直式（推薦）</option>
+                <option value="1:1">1:1 正方形</option>
+                <option value="original">保留原圖比例</option>
+              </select>
+              <span id="create-photo-count" class="pill pill-new">待上傳 0 張</span>
+            </div>
+          </div>
+
+          <div id="create-photo-dropzone" class="create-photo-dropzone">
+            <strong>📤 點擊挑選或將商品照片拖曳至此（可一次多選）</strong>
+            <span>原檔自動歸檔至原檔資料庫，同時產出 2K 壓縮圖存入前端優化圖庫</span>
+            <input type="file" id="inp-create-photos" accept="image/*" multiple style="display:none;">
+          </div>
+
+          <div id="create-photo-queue" class="queue-list" style="height:auto; max-height:190px; margin-top:10px;"></div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="create-chk-publish" checked>
+              圖片上傳完成後自動將新商品設為「上架」
+            </label>
+            <span id="create-photo-status" style="font-size:12px; color:#2563eb; font-weight:500;"></span>
+          </div>
+        </div>
+
+        <!-- 編輯既有商品專用：一鍵跳轉隨時加圖與調順序 -->
+        <div id="edit-photo-shortcut" class="edit-photo-shortcut" style="display:none;">
+          <div id="edit-photo-summary" style="font-size:13px; color:#334155;"></div>
+          <button type="button" id="btn-jump-to-match" class="btn btn-info">🖼️ 新增原檔照片 / 調整排序與主圖</button>
+        </div>
+
         <form id="edit-product-form">
           <div id="edit-fields-grid" class="edit-fields-grid"></div>
         </form>
@@ -590,6 +625,7 @@
   <script src="./js/config.js"></script>
   <script src="./js/admin-core.js"></script>
   <script src="./js/admin-products.js"></script>
+  <script src="./js/admin-media-upload.js"></script>
   <script src="./js/admin-excel.js"></script>
   <script src="./js/admin-labels.js"></script>
   <script src="./js/admin-site.js"></script>
