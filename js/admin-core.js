@@ -18,6 +18,7 @@ window.AdminCore = {
     this.bindCoreEvents();
 
     if (window.AdminProducts) window.AdminProducts.init();
+    if (window.AdminMediaUpload) window.AdminMediaUpload.init();
     if (window.AdminExcel) window.AdminExcel.init();
     if (window.AdminLabels) window.AdminLabels.init();
     if (window.AdminSite) window.AdminSite.init();
@@ -44,8 +45,6 @@ window.AdminCore = {
     document.getElementById('btn-reload').addEventListener('click', () => this.loadDashboard());
     document.getElementById('btn-logout').addEventListener('click', () => this.lockAndLogout());
   },
-
-  // ================= 關閉即登出（無時間限制）認證邏輯 =================
 
   getSessionToken: function() {
     return sessionStorage.getItem('MEYA_SESSION_TOKEN') || '';
@@ -154,8 +153,6 @@ window.AdminCore = {
     document.getElementById('login-error-msg').style.display = 'none';
     document.getElementById('login-token-input').focus();
   },
-
-  // ================= 統一 API 呼叫與資料分發 =================
 
   apiGet: async function(action, extraParams = {}) {
     if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
