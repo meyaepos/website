@@ -1,16 +1,28 @@
+const OFFICIAL_LINE_URL = 'https://lin.ee/7gVn9gX';
+
 let allPublishedProducts = [];
 let activeCategory = 'ALL';
 let detectedCategoryKey = null;
 let userHasInteracted = false;
 
+let currentModalProduct = null;
 let currentModalGallery = [];
 let currentModalImgIndex = 0;
 
-// 依據展示情境自動附加 Google CDN 動態縮放參數（列表 =w800 秒開，詳情彈窗 =w1600 高清）
+// 嚴格檢查有效售價：空值、非數字、0 或負數一律視為無售價（絕對禁止顯示 NT$ 0）
+function parseValidPrice(rawPrice) {
+  if (rawPrice === null || rawPrice === undefined) return 0;
+  const cleaned = String(rawPrice).replace(/[^0-9.-]/g, '').trim();
+  if (!cleaned) return 0;
+  const num = Number(cleaned);
+  return Number.isFinite(num) && num > 0 ? num : 0;
+}
+
+// 依據展示情境自動附加 Google CDN 動態縮放參數（列表 =w800，彈窗 =w1600，放大燈箱 =w2048）
 function formatCdnImageUrl(rawUrl, widthPx) {
   const url = String(rawUrl || '').trim();
   if (!url) return '';
-  if (url.indexOf('[googleusercontent.com/](https://googleusercontent.com/)') !== -1 && !/=w\d+|=s\d+/i.test(url)) {
+  if (url.indexOf('googleusercontent.com/') !== -1 && !/=w\d+|=s\d+/i.test(url)) {
     return url + '=w' + widthPx;
   }
   return url;
@@ -74,6 +86,137 @@ const MarqueeRunner = {
     if (!bar) return;
     bar.addEventListener('mouseenter', () => { this.paused = true; });
     bar.addEventListener('mouseleave', () => { this.paused = false; });
+  }
+};
+
+// 前台 2K 高清全螢幕放大燈箱（支援三段縮放與多圖連續瀏覽）
+const FrontLightbox = {
+  zoomMode: 'fit', // 'fit' | '100' | '150'
+
+  ensureDom: function() {
+    if (document.getElementById('front-hd-lightbox')) return;
+
+    const el = document.createElement('div');
+    el.id = 'front-hd-lightbox';
+    el.className = 'front-lightbox';
+    el.innerHTML = `
+      <div class="front-lightbox-bar">
+        <div id="front-lb-meta" class="front-lightbox-meta"></div>
+        <div class="front-lightbox-controls">
+          <button type="button" class="front-lb-btn front-lb-zoom active" data-zoom="fit">適應螢幕</button>
+          <button type="button" class="front-lb-btn front-lb-zoom" data-zoom="100">100% 細節</button>
+          <button type="button" class="front-lb-btn front-lb-zoom" data-zoom="150">150% 微距</button>
+          <button type="button" id="front-lb-close" class="front-lb-btn front-lb-close">✕ 關閉</button>
+        </div>
+      </div>
+      <div class="front-lightbox-body">
+        <button type="button" id="front-lb-prev" class="front-lb-nav front-lb-prev" aria-label="上一張">‹</button>
+        <div id="front-lb-stage" class="front-lightbox-stage">
+          <img id="front-lb-img" class="front-lightbox-img" src="" alt="商品高清放大圖">
+        </div>
+        <button type="button" id="front-lb-next" class="front-lb-nav front-lb-next" aria-label="下一張">›</button>
+      </div>
+    `;
+    document.body.appendChild(el);
+
+    el.querySelectorAll('.front-lb-zoom').forEach(btn => {
+      btn.addEventListener('click', () => this.applyZoom(btn.dataset.zoom));
+    });
+
+    document.getElementById('front-lb-close').addEventListener('click', () => this.close());
+    document.getElementById('front-lb-prev').addEventListener('click', () => this.step(-1));
+    document.getElementById('front-lb-next').addEventListener('click', () => this.step(1));
+
+    document.getElementById('front-lb-stage').addEventListener('click', e => {
+      if (e.target.id === 'front-lb-stage') this.close();
+    });
+
+    const imgEl = document.getElementById('front-lb-img');
+    imgEl.addEventListener('click', e => {
+      e.stopPropagation();
+      this.applyZoom(this.zoomMode === 'fit' ? '100' : 'fit');
+    });
+
+    document.addEventListener('keydown', e => {
+      const box = document.getElementById('front-hd-lightbox');
+      if (!box || !box.classList.contains('open')) return;
+      if (e.key === 'Escape') this.close();
+      else if (e.key === 'ArrowLeft') this.step(-1);
+      else if (e.key === 'ArrowRight') this.step(1);
+    });
+  },
+
+  open: function() {
+    if (!currentModalGallery || currentModalGallery.length === 0) return;
+    this.ensureDom();
+    this.renderCurrentImage();
+    document.getElementById('front-hd-lightbox').classList.add('open');
+  },
+
+  renderCurrentImage: function() {
+    const rawUrl = currentModalGallery[currentModalImgIndex] || '';
+    const hdUrl = formatCdnImageUrl(rawUrl, 2048);
+    const imgEl = document.getElementById('front-lb-img');
+    const metaEl = document.getElementById('front-lb-meta');
+    const prevBtn = document.getElementById('front-lb-prev');
+    const nextBtn = document.getElementById('front-lb-next');
+
+    const title = currentModalProduct ? (currentModalProduct.name || currentModalProduct.id || '') : '';
+    const counter = currentModalGallery.length > 1
+      ? `（${currentModalImgIndex + 1} / ${currentModalGallery.length}）`
+      : '';
+    metaEl.textContent = `${title} ${counter}`;
+
+    const showNav = currentModalGallery.length > 1;
+    prevBtn.style.display = showNav ? 'flex' : 'none';
+    nextBtn.style.display = showNav ? 'flex' : 'none';
+
+    imgEl.onload = () => {
+      if (this.zoomMode !== 'fit') this.applyZoom(this.zoomMode);
+    };
+    imgEl.src = hdUrl;
+    this.applyZoom('fit');
+  },
+
+  applyZoom: function(mode) {
+    this.zoomMode = mode;
+    const imgEl = document.getElementById('front-lb-img');
+    const stageEl = document.getElementById('front-lb-stage');
+
+    document.querySelectorAll('.front-lb-zoom').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.zoom === mode);
+    });
+
+    if (mode === 'fit') {
+      imgEl.classList.remove('zoomed');
+      imgEl.style.width = '';
+      imgEl.style.height = '';
+      stageEl.scrollTo(0, 0);
+    } else {
+      const natW = imgEl.naturalWidth || 1600;
+      const natH = imgEl.naturalHeight || 2133;
+      const scale = mode === '150' ? 1.5 : 1;
+      imgEl.classList.add('zoomed');
+      imgEl.style.width = Math.round(natW * scale) + 'px';
+      imgEl.style.height = Math.round(natH * scale) + 'px';
+
+      requestAnimationFrame(() => {
+        stageEl.scrollLeft = Math.max(0, (stageEl.scrollWidth - stageEl.clientWidth) / 2);
+        stageEl.scrollTop = Math.max(0, (stageEl.scrollHeight - stageEl.clientHeight) / 2);
+      });
+    }
+  },
+
+  step: function(delta) {
+    if (currentModalGallery.length <= 1) return;
+    currentModalImgIndex = (currentModalImgIndex + delta + currentModalGallery.length) % currentModalGallery.length;
+    renderModalGallery();
+    this.renderCurrentImage();
+  },
+
+  close: function() {
+    const box = document.getElementById('front-hd-lightbox');
+    if (box) box.classList.remove('open');
   }
 };
 
@@ -264,8 +407,14 @@ function renderProducts(list) {
     nameEl.textContent = product.name || '';
 
     const priceEl = document.createElement('div');
-    priceEl.className = 'product-price';
-    priceEl.textContent = 'NT$ ' + Number(product.price || 0).toLocaleString();
+    const validPrice = parseValidPrice(product.price);
+    if (validPrice > 0) {
+      priceEl.className = 'product-price';
+      priceEl.textContent = 'NT$ ' + validPrice.toLocaleString();
+    } else {
+      priceEl.className = 'product-price price-inquiry';
+      priceEl.textContent = '價格請洽官方 LINE / 門市';
+    }
 
     card.appendChild(imgWrap);
     card.appendChild(skuEl);
@@ -276,12 +425,26 @@ function renderProducts(list) {
 }
 
 function openProductModal(product) {
+  currentModalProduct = product;
   currentModalGallery = getProductGalleryUrls(product);
   currentModalImgIndex = 0;
 
   document.getElementById('modal-sku').textContent = '商品編號 ' + (product.id || '');
   document.getElementById('modal-name').textContent = product.name || '';
-  document.getElementById('modal-price').textContent = 'NT$ ' + Number(product.price || 0).toLocaleString();
+
+  const priceEl = document.getElementById('modal-price');
+  const addCartBtn = document.querySelector('.product-modal .btn-add-to-cart');
+  const validPrice = parseValidPrice(product.price);
+
+  if (validPrice > 0) {
+    priceEl.className = 'price-tag';
+    priceEl.textContent = 'NT$ ' + validPrice.toLocaleString();
+    if (addCartBtn) addCartBtn.style.display = '';
+  } else {
+    priceEl.className = 'price-tag price-inquiry';
+    priceEl.innerHTML = `價格請洽 <a href="${OFFICIAL_LINE_URL}" target="_blank" rel="noopener noreferrer" class="price-inquiry-link">官方 LINE ↗</a> 或門市洽詢`;
+    if (addCartBtn) addCartBtn.style.display = 'none';
+  }
 
   renderModalGallery();
 
@@ -306,9 +469,23 @@ function renderModalGallery() {
   imgBox.style.position = 'relative';
 
   const mainImg = document.getElementById('modal-img');
-  mainImg.src = formatCdnImageUrl(currentModalGallery[currentModalImgIndex] || '', 1600);
+  const currentUrl = currentModalGallery[currentModalImgIndex] || '';
+  mainImg.src = formatCdnImageUrl(currentUrl, 1600);
+  mainImg.title = '點擊放大檢視 2K 高清細節';
 
-  imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar').forEach(el => el.remove());
+  imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar, .modal-zoom-badge').forEach(el => el.remove());
+
+  if (currentUrl) {
+    const zoomBadge = document.createElement('button');
+    zoomBadge.type = 'button';
+    zoomBadge.className = 'modal-zoom-badge';
+    zoomBadge.textContent = '🔍 點擊放大細節';
+    zoomBadge.addEventListener('click', e => {
+      e.stopPropagation();
+      FrontLightbox.open();
+    });
+    imgBox.appendChild(zoomBadge);
+  }
 
   if (currentModalGallery.length <= 1) return;
 
@@ -393,10 +570,22 @@ function bindWebsiteEvents() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
+  // 點擊商品彈窗主圖直接開啟 2K 全螢幕放大燈箱
+  const modalImg = document.getElementById('modal-img');
+  if (modalImg) {
+    modalImg.addEventListener('click', () => FrontLightbox.open());
+  }
+
   const backdrop = document.getElementById('product-modal-backdrop');
-  document.getElementById('modal-close-btn').addEventListener('click', () => backdrop.classList.remove('open'));
+  document.getElementById('modal-close-btn').addEventListener('click', () => {
+    FrontLightbox.close();
+    backdrop.classList.remove('open');
+  });
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) backdrop.classList.remove('open');
+    if (e.target === backdrop) {
+      FrontLightbox.close();
+      backdrop.classList.remove('open');
+    }
   });
 }
 
