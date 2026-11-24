@@ -1,12 +1,9 @@
 /**
- * 模組 6：本機圖片直傳與雙區同步引擎（原檔區 RAW_FOLDER_ID ＋ 前端 2K 優化區 OPT_FOLDER_ID）
- * 負責：
- * 1. 「新增商品」彈窗內的圖片拖曳／挑選、排序、設主圖與儲存後自動雙區上傳
- * 2. 「對標排版」彈窗內隨時上傳本機新照片（自動存原檔區並直接加入右側排序佇列）
+ * 模組 6：本機原圖直傳引擎（零拷貝版：只上傳至原檔區 RAW_FOLDER_ID，並直接綁定 File ID 至形象網站庫）
  */
 window.AdminMediaUpload = {
   MAX_RAW_FILE_MB: 15,
-  createQueue: [], // [{ localId, name, mimeType, rawBase64, dataUrl, sizeKb }]
+  createQueue: [],
   editingProductRef: null,
 
   init: function() {
@@ -64,8 +61,6 @@ window.AdminMediaUpload = {
     });
   },
 
-  // ================= 1. 新增／編輯商品彈窗狀態切換 =================
-
   resetForModal: function(mode, product) {
     this.createQueue = [];
     this.editingProductRef = product || null;
@@ -89,18 +84,16 @@ window.AdminMediaUpload = {
   renderEditShortcutInfo: function(product) {
     const infoEl = document.getElementById('edit-photo-summary');
     if (!infoEl || !product) return;
-    const urls = String(product.images || '').split(',').map(s => s.trim()).filter(Boolean);
-    const count = urls.length > 0 ? urls.length : (product.image ? 1 : 0);
+    const web = product._web || {};
+    const count = Array.isArray(web.galleryIds) ? web.galleryIds.length : 0;
     infoEl.innerHTML = count > 0
-      ? `目前已有 <strong>${count}</strong> 張前端商品圖（可隨時點右側按鈕上傳新原檔、增刪或重排順序）`
-      : '此商品目前尚未對標前端圖片（點右側按鈕可直接上傳本機新照片或挑選雲端原圖）';
+      ? `形象網站狀態：<strong>${AdminCore.escapeHtml(web.status || '下架')}</strong>（已綁定 <strong>${count}</strong> 張原圖，點右側可隨時增刪或調順序）`
+      : '此商品尚未轉存至形象網站呈現庫（點右側按鈕可挑原圖並設定官網上架）';
   },
 
   hasPendingCreatePhotos: function() {
     return this.createQueue.length > 0;
   },
-
-  // ================= 2. 新增商品：本機挑圖、排序與設主圖 =================
 
   readFileAsDataUrl: function(file) {
     return new Promise((resolve, reject) => {
@@ -168,7 +161,7 @@ window.AdminMediaUpload = {
         <img src="${esc(item.dataUrl)}" alt="">
         <div class="queue-item-info">
           <div class="queue-item-name">${esc(item.name)}</div>
-          <div style="font-size:11px; color:#64748b;">原檔 ${sizeText} ➔ 同步存原檔區 ＋ 2K 前端圖</div>
+          <div style="font-size:11px; color:#64748b;">原檔 ${sizeText} ➔ 只存原檔區並直連官網</div>
         </div>
         <div class="queue-item-actions">
           ${!isCover ? '<button type="button" class="btn btn-warning btn-xs btn-c-cover">設為主圖</button>' : ''}
@@ -210,16 +203,14 @@ window.AdminMediaUpload = {
   },
 
   /**
-   * 新增商品建檔成功後執行：逐張存入原檔區 -> 2K 壓縮存入前端區 -> 寫回主圖與多圖排序欄位
+   * 新增商品建檔成功後執行：逐張存入原檔區 -> 直接將 File ID 寫入形象網站呈現庫（零第二資料夾複製）
    */
   uploadCreateQueueForProduct: async function(productId, onProgress) {
     if (this.createQueue.length === 0) return { uploadedCount: 0 };
 
     const statusEl = document.getElementById('create-photo-status');
-    const ratioMode = document.getElementById('create-crop-ratio').value || '3:4';
     const autoPublish = document.getElementById('create-chk-publish').checked;
-    const workCanvas = document.createElement('canvas');
-    const uploadedUrls = [];
+    const uploadedIds = [];
     const total = this.createQueue.length;
 
     const notify = msg => {
@@ -229,64 +220,44 @@ window.AdminMediaUpload = {
 
     for (let i = 0; i < total; i++) {
       const item = this.createQueue[i];
-      const isCover = i === 0;
-      const targetFileName = isCover
-        ? `${productId}_01_cover.jpg`
-        : `${productId}_${String(i + 1).padStart(2, '0')}.jpg`;
-
-      // 步驟 1：寫入原檔區 RAW_FOLDER_ID/{productId}/
       notify(`⏳ [${i + 1}/${total}] 上傳原檔至原檔區：${item.name}...`);
+
       const rawRes = await AdminCore.apiPost('uploadRawProductImage', {
         productId: productId,
         fileName: item.name,
         mimeType: item.mimeType,
         base64Data: item.rawBase64
       });
+
       if (rawRes.status !== 'success') {
         if (AdminCore.handleAuthFailure(rawRes.message)) return null;
         throw new Error(`第 ${i + 1} 張原檔上傳失敗：` + rawRes.message);
       }
 
-      // 步驟 2：2K 排版壓縮 (<=1MB) 並寫入前端優化區 OPT_FOLDER_ID/{productId}/
-      notify(`⏳ [${i + 1}/${total}] 轉存 2K 前端圖：${targetFileName}...`);
-      const imgEl = await AdminProducts.loadImageElementFromBase64(item.mimeType + ';base64,' + item.rawBase64);
-      AdminProducts.renderImageToCanvas(workCanvas, imgEl, ratioMode);
-      const compressed = AdminProducts.compressCanvasUnder1MB(workCanvas);
-
-      const optRes = await AdminCore.apiPost('uploadSingleProductImage', {
-        productId: productId,
-        fileName: targetFileName,
-        mimeType: 'image/jpeg',
-        base64Data: compressed.dataUrl.split(',')[1],
-        clearFolder: isCover
-      });
-      if (optRes.status !== 'success') {
-        if (AdminCore.handleAuthFailure(optRes.message)) return null;
-        throw new Error(`第 ${i + 1} 張前端優化圖上傳失敗：` + optRes.message);
-      }
-
-      uploadedUrls.push(optRes.data.imageUrl);
+      uploadedIds.push(rawRes.data.id);
     }
 
-    // 步驟 3：寫回主圖與多圖排序欄位至試算表
-    notify('💾 正在寫入主圖與多圖排序至商品資料庫...');
-    const finalRes = await AdminCore.apiPost('finalizeProductImages', {
+    notify('⚡ 正在將原圖 File ID 寫入形象網站呈現庫...');
+    const bindRes = await AdminCore.apiPost('bindWebsiteShowcase', {
       productId: productId,
-      coverUrl: uploadedUrls[0],
-      imageUrls: uploadedUrls,
-      autoPublish: autoPublish
+      status: autoPublish ? '上架' : '下架',
+      sortOrder: 100,
+      coverId: uploadedIds[0],
+      galleryIds: uploadedIds
     });
-    if (finalRes.status !== 'success') {
-      if (AdminCore.handleAuthFailure(finalRes.message)) return null;
-      throw new Error(finalRes.message);
+
+    if (bindRes.status !== 'success') {
+      if (AdminCore.handleAuthFailure(bindRes.message)) return null;
+      throw new Error(bindRes.message);
     }
 
     this.createQueue = [];
-    return { uploadedCount: uploadedUrls.length };
+    return { uploadedCount: uploadedIds.length };
   },
 
-  // ================= 3. 既有商品隨時加圖（於對標排版彈窗直接上傳入原檔區） =================
-
+  /**
+   * 既有商品隨時補傳新原圖：只上傳至原檔區並加入右側排序佇列
+   */
   uploadNewPhotosIntoMatchModal: async function(fileList) {
     const productId = AdminProducts.activeProductId;
     if (!productId) return;
@@ -308,7 +279,7 @@ window.AdminMediaUpload = {
           continue;
         }
 
-        statusEl.textContent = `⏳ 正在將新照片 (${i + 1}/${files.length}) 存入原檔區 [${productId}]：${file.name}...`;
+        statusEl.textContent = `⏳ 正在將新原圖 (${i + 1}/${files.length}) 存入原檔區 [${productId}]：${file.name}...`;
         const dataUrl = await this.readFileAsDataUrl(file);
         const commaIdx = dataUrl.indexOf(',');
         const rawBase64 = dataUrl.slice(commaIdx + 1);
@@ -326,17 +297,13 @@ window.AdminMediaUpload = {
           throw new Error(res.message);
         }
 
-        // 直接將本機 Base64 寫入快取，待會壓縮與預覽免重抓
         const newImgObj = {
-          id: res.data.id,
-          name: res.data.name,
-          folderName: res.data.folderName || productId,
-          isMatchedFolder: true,
-          sizeKb: res.data.sizeKb,
-          thumbnail: dataUrl
+          ...res.data,
+          thumbnail: res.data.thumbnail || dataUrl,
+          previewUrl: res.data.previewUrl || dataUrl,
+          ultraHdUrl: res.data.ultraHdUrl || dataUrl
         };
 
-        AdminProducts.base64Cache[newImgObj.id] = mimeType + ';base64,' + rawBase64;
         AdminProducts.rawDriveImages.push(newImgObj);
         AdminProducts.selectedQueue.push(newImgObj);
         lastAdded = newImgObj;
@@ -347,8 +314,8 @@ window.AdminMediaUpload = {
       AdminProducts.renderSelectedQueue();
 
       if (lastAdded) {
-        await AdminProducts.loadRawImageToCanvas(lastAdded.id, lastAdded.name);
-        statusEl.textContent = `✅ 已將新照片存入原檔區並加入排序清單！調整好順序與主圖後，按右下角「確認轉存」即可同步前端。`;
+        AdminProducts.previewImageItem(lastAdded);
+        statusEl.textContent = `✅ 已將新照片存入原檔區並加入排序清單！排好順序與主圖後，按右下角「確認寫入形象網站呈現庫」即可完成。`;
       }
     } catch (err) {
       statusEl.textContent = '❌ 上傳新原檔失敗：' + err.message;
