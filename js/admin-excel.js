@@ -1,8 +1,16 @@
 /**
  * 模組 3：Excel / CSV 智慧辨識建庫（寫入進銷存商品主檔）與跨資料庫標準匯出引擎
+ * 內建多組備援 CDN 自動補載機制，防止單一 CDN 瞬斷導致 XLSX is not defined
  */
 window.AdminExcel = {
   IMPORT_CHUNK_SIZE: 500,
+
+  XLSX_CDN_FALLBACKS: [
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ],
 
   CORE_SYNONYMS: {
     id: ['id', 'sku', '貨號', '品號', '商品編號', '編號', '產品代碼', '款號'],
@@ -31,6 +39,43 @@ window.AdminExcel = {
     document.getElementById('btn-export-json').addEventListener('click', () => this.exportSelectedSheet('json'));
   },
 
+  /**
+   * 確保 SheetJS (XLSX) 已載入；若主線路失效則自動輪詢備援 CDN 動態載入
+   */
+  ensureXlsxLoaded: async function() {
+    if (typeof window.XLSX !== 'undefined') return true;
+
+    const loadScript = url => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = url;
+      s.async = true;
+      const timer = setTimeout(() => {
+        s.remove();
+        reject(new Error('載入逾時'));
+      }, 8000);
+      s.onload = () => {
+        clearTimeout(timer);
+        if (typeof window.XLSX !== 'undefined') resolve(true);
+        else reject(new Error('套件未初始化'));
+      };
+      s.onerror = () => {
+        clearTimeout(timer);
+        s.remove();
+        reject(new Error('連線失敗'));
+      };
+      document.head.appendChild(s);
+    });
+
+    for (const url of this.XLSX_CDN_FALLBACKS) {
+      try {
+        await loadScript(url);
+        if (typeof window.XLSX !== 'undefined') return true;
+      } catch (_) {}
+    }
+
+    throw new Error('所有 Excel 解析元件線路皆無法連線，請檢查網路環境或稍後重新整理頁面。');
+  },
+
   bindDropzone: function() {
     const dz = document.getElementById('file-dropzone');
     const input = document.getElementById('local-sheet-input');
@@ -48,12 +93,28 @@ window.AdminExcel = {
     });
   },
 
-  loadLocalFile: function(file) {
+  loadLocalFile: async function(file) {
     this.fileName = file.name;
+    const dzTitle = document.querySelector('#file-dropzone .dropzone-title');
+    const originalTitle = dzTitle ? dzTitle.textContent : '';
+
+    try {
+      if (typeof window.XLSX === 'undefined') {
+        if (dzTitle) dzTitle.textContent = '⏳ 正在自動切換備援線路載入 Excel 解析元件...';
+        await this.ensureXlsxLoaded();
+      }
+    } catch (err) {
+      if (dzTitle) dzTitle.textContent = originalTitle;
+      alert('讀取 Excel/CSV 失敗：' + err.message);
+      return;
+    } finally {
+      if (dzTitle && originalTitle) dzTitle.textContent = originalTitle;
+    }
+
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        this.workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        this.workbook = window.XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
         const select = document.getElementById('excel-sheet-select');
         select.innerHTML = '';
         this.workbook.SheetNames.forEach(name => {
@@ -76,7 +137,7 @@ window.AdminExcel = {
   onWorksheetChange: function() {
     const sheetName = document.getElementById('excel-sheet-select').value;
     const ws = this.workbook.Sheets[sheetName];
-    const rawMatrix = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const rawMatrix = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
     this.rawMatrix = rawMatrix.filter(row => Array.isArray(row) && row.some(cell => String(cell).trim() !== ''));
     if (this.rawMatrix.length < 2) {
