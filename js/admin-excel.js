@@ -1,6 +1,6 @@
 /**
  * 模組 3：Excel / CSV 智慧辨識建庫（寫入進銷存商品主檔）與跨資料庫標準匯出引擎
- * 內建多組備援 CDN 自動補載機制，防止單一 CDN 瞬斷導致 XLSX is not defined
+ * 內建多組備援 CDN 自動補載機制，並優先對標「現在售價」
  */
 window.AdminExcel = {
   IMPORT_CHUNK_SIZE: 500,
@@ -15,7 +15,7 @@ window.AdminExcel = {
   CORE_SYNONYMS: {
     id: ['id', 'sku', '貨號', '品號', '商品編號', '編號', '產品代碼', '款號'],
     name: ['name', 'title', '品名', '商品名稱', '產品名稱', '名稱'],
-    price: ['price', '售價', '定價', '單價', '價格', '門市價', '牌價', '零售價'],
+    price: ['現在售價', 'price', '售價', '零售價', '門市價', '單價', '價格', '牌價', '定價'],
     '條碼': ['條碼', 'barcode', '國際條碼', 'ean'],
     '庫存數量': ['庫存', '庫存數量', 'stock', 'qty', '數量'],
     '商品狀態': ['商品狀態', '狀態', 'status']
@@ -39,9 +39,6 @@ window.AdminExcel = {
     document.getElementById('btn-export-json').addEventListener('click', () => this.exportSelectedSheet('json'));
   },
 
-  /**
-   * 確保 SheetJS (XLSX) 已載入；若主線路失效則自動輪詢備援 CDN 動態載入
-   */
   ensureXlsxLoaded: async function() {
     if (typeof window.XLSX !== 'undefined') return true;
 
