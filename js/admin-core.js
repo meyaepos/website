@@ -1,8 +1,8 @@
 /**
  * 模組 1：管理員專區核心中樞
- * 負責：共用狀態、無時限關閉即登出驗證、原圖資料夾自動比對、API 封裝與分頁協調
+ * 負責：共用狀態、無時限關閉即登出驗證、原圖資料夾自動比對、API 封裝與雙資料庫 KPI 協調
  */
-window.CORE_PRODUCT_KEYS = ['id', 'name', 'price', 'image', '狀態'];
+window.CORE_PRODUCT_KEYS = ['id', 'name', 'price', '條碼', '庫存數量', '商品狀態', '更新時間'];
 
 window.AdminState = {
   authPolicy: { mode: 'STANDARD_NO_TIMEOUT', requirePin: true },
@@ -195,7 +195,7 @@ window.AdminCore = {
 
   loadDashboard: async function() {
     const tbody = document.getElementById('product-tbody');
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">同步資料庫與雲端原圖資料夾中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">同步進銷存主檔與形象網站庫中...</td></tr>';
 
     try {
       const data = await this.apiGet('getAdminDashboard');
@@ -223,7 +223,7 @@ window.AdminCore = {
     AdminState.products = (data.products || []).map(p => {
       const prodId = String(p.id || '').trim();
       const prodLower = prodId.toLowerCase();
-      const hasImage = Boolean(p.image && String(p.image).trim() !== '');
+      const isPublishedOnWeb = p['狀態'] === '上架';
       let matchedFolder = '';
 
       if (prodLower && folderPairs.length > 0) {
@@ -234,13 +234,13 @@ window.AdminCore = {
       return {
         ...p,
         _matchedFolder: matchedFolder,
-        _readyToMatch: !hasImage && Boolean(matchedFolder)
+        _readyToMatch: !isPublishedOnWeb && Boolean(matchedFolder)
       };
     });
 
     this.updateKpis();
     if (window.AdminProducts) window.AdminProducts.renderTable(true);
-    if (window.AdminExcel) window.AdminExcel.renderExportOptions(data.sheetNames || ['商品列表']);
+    if (window.AdminExcel) window.AdminExcel.renderExportOptions(data.exportSheets || []);
     if (window.AdminLabels) window.AdminLabels.syncData(data.config || {}, data.labelQueue || [], data.labelDbSource || '');
     if (window.AdminSite) window.AdminSite.renderAll(data.config || {});
   },
@@ -248,13 +248,13 @@ window.AdminCore = {
   updateKpis: function() {
     const total = AdminState.products.length;
     const active = AdminState.products.filter(p => p['狀態'] === '上架').length;
-    const pending = AdminState.products.filter(p => !p.image || String(p.image).trim() === '').length;
+    const notOnWeb = total - active;
     const readyList = AdminState.products.filter(p => p._readyToMatch);
 
     document.getElementById('kpi-ready').textContent = readyList.length;
     document.getElementById('kpi-total').textContent = total;
     document.getElementById('kpi-active').textContent = active;
-    document.getElementById('kpi-pending').textContent = pending;
+    document.getElementById('kpi-pending').textContent = notOnWeb;
 
     const readyBadge = document.getElementById('nav-ready-badge');
     readyBadge.textContent = readyList.length;
@@ -264,7 +264,7 @@ window.AdminCore = {
     if (readyList.length > 0) {
       const previewIds = readyList.slice(0, 6).map(x => x.id).join('、');
       document.getElementById('ready-priority-text').innerHTML =
-        `<strong>⚡ 系統自動偵測到 ${readyList.length} 筆商品已有原圖資料夾待對標</strong>（已自動置頂排序）：${this.escapeHtml(previewIds)}${readyList.length > 6 ? ' 等...' : ''}`;
+        `<strong>⚡ 系統自動偵測到 ${readyList.length} 筆商品已有原圖資料夾待上架官網</strong>（已自動置頂排序）：${this.escapeHtml(previewIds)}${readyList.length > 6 ? ' 等...' : ''}`;
       priorityBar.style.display = 'flex';
     } else {
       priorityBar.style.display = 'none';
