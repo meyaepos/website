@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>MEYA 內部管理專區</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="[https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap](https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap)" rel="stylesheet">
   <link rel="stylesheet" href="./css/admin.css">
   <link rel="stylesheet" href="./css/labels.css">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js](https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js)"></script>
+  <script src="[https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js](https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js)"></script>
 </head>
 <body>
 
-  <!-- 標準模式登入驗證畫面（保留官方 LINE 驗證空位，無時限、關閉即登出） -->
+  <!-- 標準模式登入驗證畫面（無時限、關閉即登出） -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
       <div class="login-brand">is Meya</div>
@@ -37,9 +37,9 @@
     <aside class="sidebar">
       <div class="brand-box">MEYA 管理專區</div>
 
-      <div class="nav-group-label">形象網站與資料庫核心</div>
+      <div class="nav-group-label">進銷存與形象網站核心</div>
       <div class="nav-item active" data-tab="tab-products">
-        <span>商品與圖檔對標</span>
+        <span>商品主檔與官網上架</span>
         <span id="nav-ready-badge" class="badge badge-ready" style="display:none;">0</span>
       </div>
       <div class="nav-item" data-tab="tab-excel-builder">
@@ -65,7 +65,7 @@
 
     <div class="main-wrap">
       <header class="topbar">
-        <div class="topbar-title" id="topbar-title">商品與圖檔對標</div>
+        <div class="topbar-title" id="topbar-title">商品主檔與官網上架</div>
         <div class="topbar-tools">
           <span id="admin-identity-badge" class="pill pill-ok" style="display:none;"></span>
           <a href="./index.html" target="_blank" class="btn btn-outline">預覽形象網站</a>
@@ -75,47 +75,46 @@
       </header>
 
       <main class="content-scroll">
-        <!-- 分頁 1：商品與圖檔對標 -->
+        <!-- 分頁 1：進銷存商品主檔與形象網站零拷貝上架 -->
         <section id="tab-products" class="tab-panel active">
           <div class="kpi-grid">
-            <div class="kpi-card kpi-highlight" id="kpi-card-ready" title="點擊立即只看有原圖待對標商品">
-              <div class="kpi-label">⚡ 有原圖待對標（最優先）</div>
+            <div class="kpi-card kpi-highlight" id="kpi-card-ready" title="點擊立即只看有原圖待上架商品">
+              <div class="kpi-label">⚡ 有原圖待上架官網</div>
               <div class="kpi-value" id="kpi-ready">-</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">資料庫商品總數</div>
+              <div class="kpi-label">進銷存商品主檔總數</div>
               <div class="kpi-value" id="kpi-total">-</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">已上架公開商品</div>
+              <div class="kpi-label">形象網站已上架</div>
               <div class="kpi-value" id="kpi-active">-</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">缺圖待對標商品</div>
+              <div class="kpi-label">尚未上架官網</div>
               <div class="kpi-value" id="kpi-pending">-</div>
             </div>
           </div>
 
           <div id="ready-priority-bar" class="ready-priority-bar" style="display:none;">
             <div id="ready-priority-text"></div>
-            <button id="btn-filter-ready" class="btn btn-success">⚡ 只看有原圖待對標</button>
+            <button id="btn-filter-ready" class="btn btn-success">⚡ 只看有原圖待上架</button>
           </div>
 
           <div class="card">
             <div class="card-head">
               <div class="toolbar-group">
-                <input type="text" id="prod-search" class="input-ctrl" placeholder="搜尋編號、品名或任一欄位...">
+                <input type="text" id="prod-search" class="input-ctrl" placeholder="搜尋編號、品名、分類或條碼...">
                 <select id="prod-filter" class="input-ctrl">
-                  <option value="ALL">全部商品（有原圖者自動置頂）</option>
-                  <option value="READY_MATCH">⚡ 有原圖待對標專區</option>
-                  <option value="NO_IMAGE">全部缺圖商品</option>
-                  <option value="上架">已上架</option>
-                  <option value="待對標">待對標</option>
-                  <option value="下架">已下架</option>
+                  <option value="ALL">全部商品（有原圖待上架置頂）</option>
+                  <option value="READY_MATCH">⚡ 有原圖待上架專區</option>
+                  <option value="上架">官網已上架</option>
+                  <option value="下架">官網已下架</option>
+                  <option value="未上架">尚未上架官網</option>
                 </select>
               </div>
               <div class="toolbar-group">
-                <button id="btn-create-product" class="btn btn-success">＋ 新增商品</button>
+                <button id="btn-create-product" class="btn btn-success">＋ 新增商品至主檔</button>
               </div>
             </div>
 
@@ -123,12 +122,12 @@
               <table>
                 <thead>
                   <tr>
-                    <th>縮圖</th>
+                    <th>官網主圖</th>
                     <th>商品編號 (id)</th>
-                    <th>商品名稱</th>
-                    <th>售價</th>
-                    <th>附加欄位摘要</th>
-                    <th>狀態</th>
+                    <th>商品名稱（主檔 / 前台）</th>
+                    <th>售價（主檔 / 前台）</th>
+                    <th>官網分類與圖數</th>
+                    <th>官網狀態</th>
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -142,19 +141,19 @@
           </div>
         </section>
 
-        <!-- 分頁 2：Excel 智慧建庫與匯出 -->
+        <!-- 分頁 2：Excel 智慧建庫與跨庫匯出 -->
         <section id="tab-excel-builder" class="tab-panel">
           <div class="card">
             <div class="card-head">
               <div>
                 <h3>Excel / CSV 智慧辨識建庫區</h3>
-                <p class="card-desc">直接將 Excel (.xlsx / .xls) 或 CSV 丟進下方區域，系統會自動辨識工作表與所有欄位，並擴充或長出對應的資料庫。</p>
+                <p class="card-desc">匯入資料預設進入「進銷存資料庫 (DB_INVENTORY) ➔ 商品主檔」，與形象網站呈現層完全分離，不互相覆蓋。</p>
               </div>
             </div>
 
             <div id="file-dropzone" class="dropzone">
               <p class="dropzone-title">📂 點擊選擇或直接將 Excel / CSV 拖曳至此</p>
-              <p class="dropzone-sub">支援一鍵擴充「商品列表」新欄位，或依原表結構自動長出全新資料表分頁</p>
+              <p class="dropzone-sub">支援一鍵擴充進銷存「商品主檔」新欄位，或依原表結構自動長出全新資料表分頁</p>
               <input type="file" id="local-sheet-input" accept=".xlsx,.xls,.csv" style="display:none;">
             </div>
 
@@ -172,11 +171,11 @@
 
               <div class="mode-grid">
                 <div id="mode-card-merge" class="mode-card selected" data-mode="MERGE_PRODUCTS">
-                  <strong>模式 A：整合至「商品列表」並自動擴充新欄位</strong>
-                  <span>自動對標 id / name / price / 狀態，Excel 多出的欄位會自動長在資料庫右側，且不覆蓋已對標好的圖片。</span>
+                  <strong>模式 A：整合至進銷存「商品主檔」並擴充新欄位</strong>
+                  <span>自動對標 id / name / price，Excel 多出的欄位自動長在右側（絕不影響形象網站已設定好的圖文）。</span>
                 </div>
                 <div id="mode-card-new" class="mode-card" data-mode="CREATE_NEW_TABLE">
-                  <strong>模式 B：依此檔案自動長出全新資料表分頁</strong>
+                  <strong>模式 B：依此檔案長出全新資料表分頁（進銷存庫）</strong>
                   <span>以原欄位完整建立一張新分頁（若分頁已存在則自動追加欄位與資料列）。</span>
                   <div class="new-table-input-wrap">
                     <input type="text" id="new-table-name-input" class="input-ctrl full-width" placeholder="輸入新資料表分頁名稱">
@@ -211,7 +210,7 @@
 
               <div class="action-right">
                 <button id="btn-reset-excel" class="btn btn-outline">清除重選</button>
-                <button id="btn-execute-build" class="btn btn-success">🚀 確認欄位結構，開始自動建置資料庫</button>
+                <button id="btn-execute-build" class="btn btn-success">🚀 確認欄位結構，寫入進銷存資料庫</button>
               </div>
             </div>
           </div>
@@ -219,7 +218,7 @@
           <div class="card">
             <div class="card-head">
               <div>
-                <h3>資料庫標準匯出</h3>
+                <h3>雙資料庫標準匯出（進銷存庫 ＋ 形象網站庫）</h3>
                 <p class="card-desc">自動合併所有自動分頁（_1, _2），匯出 Excel 不亂碼 CSV 或標準 JSON。</p>
               </div>
               <div class="toolbar-group">
@@ -277,7 +276,7 @@
             <div class="card-head">
               <div>
                 <h3>系統異常與報錯監控中心</h3>
-                <p class="card-desc">自動記錄匯入缺少編號、未授權登入嘗試、圖檔對標異常或 API 錯誤狀況。</p>
+                <p class="card-desc">自動記錄匯入缺少編號、未授權登入嘗試、操作異常或 API 錯誤狀況。</p>
               </div>
               <button id="btn-resolve-errors" class="btn btn-outline">✅ 全部標記為已處理</button>
             </div>
@@ -394,7 +393,7 @@
             </div>
 
             <div class="lbl-search-bar">
-              <input type="text" id="lbl-search-input" class="input-ctrl flex-1" placeholder="輸入商品編號、條碼或關鍵字快速搜尋（例如：3822039、莫桑石、手環）...">
+              <input type="text" id="lbl-search-input" class="input-ctrl flex-1" placeholder="輸入商品編號、條碼或關鍵字快速搜尋...">
               <span id="lbl-search-count" class="pill pill-off">顯示前 25 筆</span>
             </div>
 
@@ -475,21 +474,21 @@
               <div class="portal-card">
                 <div>
                   <h4>📱 手機掃碼作業專區（已上線基礎邏輯）</h4>
-                  <p>專屬單手介面：整合手機鏡頭與藍牙條碼槍，支援<strong>出貨掃碼撿貨核對</strong>、<strong>即時查貨盤點</strong>與<strong>快速收銀草稿</strong>。已保留官方 LINE 驗證空位，後續可直接鎖定操作人員。</p>
+                  <p>專屬單手介面：整合手機鏡頭與藍牙條碼槍，支援<strong>出貨掃碼撿貨核對</strong>、<strong>即時查貨盤點</strong>與<strong>快速收銀草稿</strong>。</p>
                 </div>
                 <a href="./Meya-m-7p2v.html" target="_blank" class="btn btn-primary">開啟手機作業專區 ↗</a>
               </div>
               <div class="portal-card">
                 <div>
                   <h4>🧾 門市收銀 POS 主系統（第二階段接入）</h4>
-                  <p>對接 <code>DB_POS</code>、<code>DB_CRM</code> 與 <code>DB_INVENTORY</code>，支援藍牙槍連刷結帳、會員集點折扣、交班日結與發票／收據串接。</p>
+                  <p>對接 <code>DB_POS</code>、<code>DB_CRM</code> 與 <code>DB_INVENTORY</code>，支援藍牙槍連刷結帳、會員集點折扣與日結報表。</p>
                 </div>
                 <button type="button" class="btn btn-outline" disabled>架構已預留・待第二階段啟用</button>
               </div>
               <div class="portal-card">
                 <div>
                   <h4>🛡️ 官方 LINE 多分組權限鎖定（待接入）</h4>
-                  <p>已於 CRM 資料庫預建「<code>權限管理</code>」多分組表，待官方 LINE LIFF 資訊齊備後即可一鍵開啟人員身分綁定與操作軌跡紀錄。</p>
+                  <p>已於 CRM 資料庫預建「<code>權限管理</code>」多分組表，待官方 LINE LIFF 資訊齊備後即可開啟人員鎖定。</p>
                 </div>
                 <button type="button" class="btn btn-outline" disabled>認證插槽已就緒</button>
               </div>
@@ -503,19 +502,20 @@
   <!-- 實際列印專用容器 -->
   <div id="label-print-sheet"></div>
 
-  <!-- 彈窗 1：圖庫管理、隨時上傳新原檔、多圖排序與 2K 高清 (<=1MB) 壓縮 -->
+  <!-- 彈窗 1：零拷貝圖庫選圖、排序與形象網站櫥窗設定 -->
   <div id="match-modal" class="modal-overlay">
     <div class="modal-box gallery-modal-box">
       <div class="modal-head">
-        <span id="match-modal-title">圖庫管理、多圖排序與排版</span>
+        <span id="match-modal-title">形象網站圖庫對標與上架設定（零拷貝直連）</span>
         <button id="btn-close-modal-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="modal-body gallery-modal-body">
+        <!-- 左欄：原檔區選圖或上傳新原檔 -->
         <div class="modal-col">
           <div class="modal-col-head">
-            <strong>1. 選擇或補傳原檔</strong>
+            <strong>1. 選擇或補傳原檔（直接連結原檔 ID）</strong>
             <div class="toolbar-group" style="gap:6px;">
-              <button type="button" id="btn-upload-raw-modal" class="btn btn-info btn-xs">📤 上傳新圖(入原檔區)</button>
+              <button type="button" id="btn-upload-raw-modal" class="btn btn-info btn-xs">📤 上傳新原圖</button>
               <input type="file" id="inp-upload-raw-modal" accept="image/*" multiple style="display:none;">
               <button type="button" id="btn-select-all-raw" class="btn btn-outline btn-xs">全選</button>
               <button type="button" id="btn-clear-all-raw" class="btn btn-outline btn-xs">清空</button>
@@ -525,69 +525,85 @@
           <div id="drive-raw-list" class="drive-list drive-list-tall">載入中...</div>
         </div>
 
+        <!-- 右欄：上方 CDN 預覽 ＋ 中段已選排序 ＋ 下段網站呈現欄位 -->
         <div class="modal-col">
           <div class="modal-col-head">
-            <strong>2. 2K 高清排版預覽（95%品質｜上限 1MB）</strong>
-            <select id="crop-ratio-select" class="input-ctrl">
-              <option value="3:4">3:4 韓系直式排版（推薦）</option>
-              <option value="1:1">1:1 正方形排版</option>
-              <option value="original">保留原圖比例</option>
-            </select>
+            <strong>2. 原圖高清預覽（點擊可放大 2K 檢視細節）</strong>
+            <span id="selected-queue-count" class="pill pill-new">已選 0 張</span>
           </div>
-          <div class="canvas-stage canvas-stage-compact">
-            <canvas id="preview-canvas"></canvas>
+          <div class="canvas-stage" style="height:175px;">
+            <img id="preview-cdn-img" src="" alt="" style="display:none; max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 2px 10px rgba(0,0,0,0.18); background:#fff; cursor:zoom-in;">
+            <span id="preview-empty-hint" style="font-size:12px; color:#64748b;">點選左側照片可即時預覽</span>
           </div>
-          <div id="match-status-text" class="match-status">請勾選左側照片或上傳新圖，點擊預覽圖可放大確認細節。</div>
+          <div id="match-status-text" class="match-status">勾選左側照片後排定主圖與順序，無需壓縮複製即可秒存上架。</div>
 
-          <div class="queue-section">
-            <div class="modal-col-head" style="margin-bottom:6px;">
-              <strong>3. 已選照片排序與主圖設定</strong>
-              <span id="selected-queue-count" class="pill pill-new">已選 0 張</span>
+          <!-- 已選照片排序佇列 -->
+          <div class="queue-section" style="margin-top:8px;">
+            <div id="selected-queue-list" class="queue-list" style="height:135px;">
+              <div class="queue-empty" style="padding:36px 10px;">尚未勾選任何照片（第 1 張自動成為網站主圖）</div>
             </div>
-            <div id="selected-queue-list" class="queue-list">
-              <div class="queue-empty">尚未勾選任何照片（第 1 張將自動設為商品主圖）</div>
+          </div>
+
+          <!-- 形象網站專屬呈現欄位（獨立存於 DB_WEBSITE，不影響進銷存主檔） -->
+          <div style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0; display:grid; grid-template-columns:repeat(2, 1fr); gap:8px 10px;">
+            <div>
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">網站上架狀態</label>
+              <select id="web-inp-status" class="input-ctrl full-width" style="padding:5px 8px; font-size:12px;">
+                <option value="上架">上架（公開顯示）</option>
+                <option value="下架">下架（暫時隱藏）</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台排序權重（數字越小越前面）</label>
+              <input type="number" id="web-inp-sort" class="input-ctrl full-width" value="100" style="padding:5px 8px; font-size:12px;">
+            </div>
+            <div>
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台分類（選填，留空沿用主檔）</label>
+              <input type="text" id="web-inp-category" class="input-ctrl full-width" placeholder="如：純銀項鍊、耳環" style="padding:5px 8px; font-size:12px;">
+            </div>
+            <div>
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台售價（選填，留空沿用主檔）</label>
+              <input type="number" id="web-inp-price" class="input-ctrl full-width" placeholder="留空即抓主檔售價" style="padding:5px 8px; font-size:12px;">
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台行銷品名（選填，留空沿用主檔品名）</label>
+              <input type="text" id="web-inp-title" class="input-ctrl full-width" placeholder="留空即顯示進銷存主檔品名" style="padding:5px 8px; font-size:12px;">
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台商品文案說明（選填）</label>
+              <input type="text" id="web-inp-desc" class="input-ctrl full-width" placeholder="例如：925純銀電鍍18K金・抗過敏親膚材質" style="padding:5px 8px; font-size:12px;">
             </div>
           </div>
         </div>
       </div>
       <div class="modal-foot">
-        <label class="checkbox-label">
-          <input type="checkbox" id="chk-auto-publish" checked>
-          全部轉存完成後同步將商品設為「上架」
-        </label>
+        <span style="font-size:12px; color:#64748b;">⚡ 零拷貝架構：直接寫入原檔 File ID 至形象網站庫（秒存完成）</span>
         <div class="toolbar-group">
           <button id="btn-cancel-modal" class="btn btn-outline">取消</button>
-          <button id="btn-upload-bind" class="btn btn-primary" disabled>✅ 確認轉存所選照片並對標</button>
+          <button id="btn-upload-bind" class="btn btn-success" disabled>✅ 確認寫入形象網站呈現庫</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗 2：商品完整數據編輯 / 新增視窗（內建圖片上傳與排序區） -->
+  <!-- 彈窗 2：進銷存「商品主檔」編輯 / 新增視窗 -->
   <div id="edit-product-modal" class="modal-overlay">
     <div class="modal-box edit-modal-box">
       <div class="modal-head">
-        <span id="edit-modal-title">編輯商品完整數據</span>
+        <span id="edit-modal-title">編輯進銷存商品主檔</span>
         <button id="btn-close-edit-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="edit-modal-body">
-        <!-- 新增商品專用：直接上傳圖片、排順序、設主圖並自動生成雙區雲端資料夾 -->
+        <!-- 新增商品專用：直接上傳原圖並同步上架形象網站 -->
         <div id="create-photo-panel" class="edit-photo-section" style="display:none;">
           <div class="modal-col-head" style="margin-bottom:10px;">
-            <strong>📷 商品圖片上傳與排序（儲存時自動建立原檔區 ＋ 2K 前端圖庫資料夾）</strong>
-            <div class="toolbar-group" style="gap:8px;">
-              <select id="create-crop-ratio" class="input-ctrl" style="padding:4px 8px; font-size:12px;">
-                <option value="3:4">3:4 韓系直式（推薦）</option>
-                <option value="1:1">1:1 正方形</option>
-                <option value="original">保留原圖比例</option>
-              </select>
-              <span id="create-photo-count" class="pill pill-new">待上傳 0 張</span>
-            </div>
+            <strong>📷 上傳商品原圖並同步設定形象網站（只存原檔區，零重複佔用空間）</strong>
+            <span id="create-photo-count" class="pill pill-new">待上傳 0 張</span>
           </div>
 
           <div id="create-photo-dropzone" class="create-photo-dropzone">
             <strong>📤 點擊挑選或將商品照片拖曳至此（可一次多選）</strong>
-            <span>原檔自動歸檔至原檔資料庫，同時產出 2K 壓縮圖存入前端優化圖庫</span>
+            <span>原檔自動歸檔至原檔區對應編號資料夾，並自動將 File ID 綁定至形象網站呈現庫</span>
             <input type="file" id="inp-create-photos" accept="image/*" multiple style="display:none;">
           </div>
 
@@ -596,16 +612,16 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
             <label class="checkbox-label">
               <input type="checkbox" id="create-chk-publish" checked>
-              圖片上傳完成後自動將新商品設為「上架」
+              圖片上傳完成後同步上架至形象網站
             </label>
             <span id="create-photo-status" style="font-size:12px; color:#2563eb; font-weight:500;"></span>
           </div>
         </div>
 
-        <!-- 編輯既有商品專用：一鍵跳轉隨時加圖與調順序 -->
+        <!-- 編輯既有商品專用：快捷跳轉官網呈現設定 -->
         <div id="edit-photo-shortcut" class="edit-photo-shortcut" style="display:none;">
           <div id="edit-photo-summary" style="font-size:13px; color:#334155;"></div>
-          <button type="button" id="btn-jump-to-match" class="btn btn-info">🖼️ 新增原檔照片 / 調整排序與主圖</button>
+          <button type="button" id="btn-jump-to-match" class="btn btn-info">🖼️ 管理網站圖庫 / 排序與上下架</button>
         </div>
 
         <form id="edit-product-form">
@@ -613,10 +629,10 @@
         </form>
       </div>
       <div class="modal-foot">
-        <span id="edit-modal-hint" style="font-size:12px; color:#64748b;">修改後會直接同步寫入 Google 試算表資料庫</span>
+        <span id="edit-modal-hint" style="font-size:12px; color:#64748b;">此表單修改寫入「進銷存資料庫 ➔ 商品主檔」</span>
         <div class="toolbar-group">
           <button id="btn-cancel-edit" class="btn btn-outline">取消</button>
-          <button id="btn-save-edit" class="btn btn-success">💾 儲存變更</button>
+          <button id="btn-save-edit" class="btn btn-success">💾 儲存主檔變更</button>
         </div>
       </div>
     </div>
