@@ -208,9 +208,10 @@ window.AdminProducts = {
         ? `<div>${esc(p.name)}</div><div style="font-size:11px; color:#2563eb;">官網：${esc(web.title)}</div>`
         : `<div>${esc(p.name)}</div>`;
 
+      const masterPriceNum = Number(p.price || 0);
       const priceHtml = web.price !== '' && web.price !== undefined
-        ? `<div>NT$ ${Number(p.price || 0).toLocaleString()}</div><div style="font-size:11px; color:#15803d;">官網：NT$ ${Number(web.price).toLocaleString()}</div>`
-        : `<div>NT$ ${Number(p.price || 0).toLocaleString()}</div>`;
+        ? `<div>NT$ ${masterPriceNum.toLocaleString()}</div><div style="font-size:11px; color:#15803d;">官網：NT$ ${Number(web.price).toLocaleString()}</div>`
+        : `<div>NT$ ${masterPriceNum.toLocaleString()}</div>`;
 
       const webTags = [];
       if (photoCount > 0) webTags.push(`<span class="pill pill-new" style="margin:2px;">🖼️ ${photoCount} 張原圖</span>`);
@@ -412,12 +413,19 @@ window.AdminProducts = {
     this.matchedFolderName = '';
 
     const web = product._web || {};
+    const masterPrice = Number(product.price || 0);
 
-    // 預填該商品既有的形象網站呈現設定
+    // 預填該商品既有的形象網站呈現設定，並明確提示主檔實際抓到的售價
     document.getElementById('web-inp-status').value = (web.status === '下架') ? '下架' : '上架';
     document.getElementById('web-inp-sort').value = web.sortOrder !== undefined ? web.sortOrder : 100;
     document.getElementById('web-inp-category').value = web.category || '';
-    document.getElementById('web-inp-price').value = web.price || '';
+
+    const priceInp = document.getElementById('web-inp-price');
+    priceInp.value = web.price || '';
+    priceInp.placeholder = masterPrice > 0
+      ? `留空即抓主檔售價（目前主檔：NT$ ${masterPrice.toLocaleString()}）`
+      : '留空即抓主檔售價（主檔目前無售價，前台將顯示洽詢）';
+
     document.getElementById('web-inp-title').value = web.title || '';
     document.getElementById('web-inp-desc').value = web.description || '';
 
@@ -442,7 +450,6 @@ window.AdminProducts = {
       this.matchedFolderName = data.matchedFolderName || '';
       this.rawDriveImages = data.images || [];
 
-      // 若該商品已在「網站呈現庫」綁定過照片，依原排序自動還原勾選狀態
       if (Array.isArray(web.galleryIds) && web.galleryIds.length > 0) {
         web.galleryIds.forEach(fid => {
           const hit = this.rawDriveImages.find(img => img.id === fid);
@@ -455,9 +462,9 @@ window.AdminProducts = {
               folderName: this.activeProductId,
               isMatchedFolder: true,
               sizeKb: 0,
-              thumbnail: `[https://lh3.googleusercontent.com/d/$](https://lh3.googleusercontent.com/d/$){fid}=w300`,
-              previewUrl: `[https://lh3.googleusercontent.com/d/$](https://lh3.googleusercontent.com/d/$){fid}=w1600`,
-              ultraHdUrl: `[https://lh3.googleusercontent.com/d/$](https://lh3.googleusercontent.com/d/$){fid}=w2048`
+              thumbnail: `https://lh3.googleusercontent.com/d/${fid}=w300`,
+              previewUrl: `https://lh3.googleusercontent.com/d/${fid}=w1600`,
+              ultraHdUrl: `https://lh3.googleusercontent.com/d/${fid}=w2048`
             });
           }
         });
@@ -690,9 +697,6 @@ window.AdminProducts = {
     this.renderSelectedQueue();
   },
 
-  /**
-   * 1 秒內直接將所選原檔 ID 與呈現欄位寫入 DB_WEBSITE「網站呈現庫」
-   */
   confirmBindShowcase: async function() {
     if (this.selectedQueue.length === 0 || !this.activeProductId) return;
 
