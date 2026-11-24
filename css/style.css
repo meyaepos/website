@@ -27,7 +27,7 @@ body.cart-disabled .btn-add-to-cart {
   display: none !important;
 }
 
-/* 1. 頂部跑馬燈（由 JS 動態運算最右邊界進場，CSS 預先停在螢幕右側避免閃現） */
+/* 1. 頂部跑馬燈（由 JS 動態運算最右邊界進場） */
 .announcement-bar {
   background-color: var(--color-primary-soft);
   color: #555555;
@@ -358,6 +358,13 @@ body.cart-disabled .btn-add-to-cart {
   color: #666666;
 }
 
+/* 無售價時的質感洽詢文案樣式（嚴格取代 NT$ 0） */
+.product-price.price-inquiry {
+  font-size: 12px;
+  color: #8C7B6B;
+  letter-spacing: 0.8px;
+}
+
 /* 骨架屏 */
 @keyframes loading {
   0% { background-position: 100% 50%; }
@@ -638,10 +645,11 @@ body.cart-disabled .btn-add-to-cart {
 
 .product-modal {
   background: #FFFFFF;
-  max-width: 780px;
+  max-width: 820px;
   width: 100%;
+  max-height: 92vh;
   border-radius: 4px;
-  overflow: hidden;
+  overflow-y: auto;
   display: grid;
   grid-template-columns: 1fr;
   position: relative;
@@ -650,6 +658,7 @@ body.cart-disabled .btn-add-to-cart {
 @media (min-width: 640px) {
   .product-modal {
     grid-template-columns: 1fr 1fr;
+    overflow: hidden;
   }
 }
 
@@ -663,14 +672,42 @@ body.cart-disabled .btn-add-to-cart {
 }
 
 .modal-img-box {
+  position: relative;
   background: #F6F6F6;
   aspect-ratio: 3 / 4;
+  overflow: hidden;
 }
 
-.modal-img-box img {
+.modal-img-box > img#modal-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  cursor: zoom-in;
+  display: block;
+}
+
+/* 彈窗主圖左上角放大提示膠囊（避開右上角關閉鍵與下方縮圖列） */
+.modal-zoom-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 5px 11px;
+  border-radius: 20px;
+  background: rgba(30, 30, 30, 0.68);
+  color: #FFFFFF;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: zoom-in;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s;
+}
+
+.modal-zoom-badge:hover {
+  background: rgba(20, 20, 20, 0.9);
 }
 
 .modal-info-box {
@@ -698,6 +735,37 @@ body.cart-disabled .btn-add-to-cart {
   margin-bottom: 18px;
 }
 
+.price-tag.price-inquiry {
+  font-size: 14px;
+  color: #6B5B4B;
+  background: #F8F5F0;
+  border: 1px solid #EAE2D6;
+  padding: 10px 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.price-inquiry-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 14px;
+  background-color: #06C755;
+  color: #FFFFFF !important;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: opacity 0.2s;
+}
+
+.price-inquiry-link:hover {
+  opacity: 0.88;
+}
+
 .modal-specs {
   margin-bottom: 18px;
   font-size: 13px;
@@ -712,3 +780,125 @@ body.cart-disabled .btn-add-to-cart {
   border-top: 1px solid var(--color-border);
   padding-top: 16px;
 }
+
+/* 8. 前台 2K 高清全螢幕放大燈箱 */
+.front-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(18, 18, 18, 0.94);
+  flex-direction: column;
+}
+
+.front-lightbox.open {
+  display: flex;
+}
+
+.front-lightbox-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(18, 18, 18, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #F5F5F5;
+  z-index: 10;
+}
+
+.front-lightbox-meta {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: #E5E5E5;
+}
+
+.front-lightbox-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.front-lb-btn {
+  padding: 5px 11px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  font-size: 12px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.front-lb-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.front-lb-btn.active {
+  background: #FFFFFF;
+  color: #222222;
+  border-color: #FFFFFF;
+  font-weight: 500;
+}
+
+.front-lb-close {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.front-lightbox-body {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+.front-lightbox-stage {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  padding: 20px;
+}
+
+.front-lightbox-img {
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #FFFFFF;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+  cursor: zoom-in;
+  display: block;
+}
+
+.front-lightbox-img.zoomed {
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
+}
+
+.front-lb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  color: #222222;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  z-index: 12;
+  transition: opacity 0.2s;
+}
+
+.front-lb-nav:hover {
+  background: #FFFFFF;
+}
+
+.front-lb-prev { left: 16px; }
+.front-lb-next { right: 16px; }
