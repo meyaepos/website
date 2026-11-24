@@ -6,13 +6,23 @@ let userHasInteracted = false;
 let currentModalGallery = [];
 let currentModalImgIndex = 0;
 
-// JS 動態跑馬燈控制器（徹底取代 CSS animation，保證全裝置從最右側開始）
+// 依據展示情境自動附加 Google CDN 動態縮放參數（列表 =w800 秒開，詳情彈窗 =w1600 高清）
+function formatCdnImageUrl(rawUrl, widthPx) {
+  const url = String(rawUrl || '').trim();
+  if (!url) return '';
+  if (url.indexOf('[googleusercontent.com/](https://googleusercontent.com/)') !== -1 && !/=w\d+|=s\d+/i.test(url)) {
+    return url + '=w' + widthPx;
+  }
+  return url;
+}
+
+// JS 動態跑馬燈控制器（全裝置統一從最右側進場、等速向左捲動）
 const MarqueeRunner = {
   rafId: null,
   x: 0,
   lastTime: 0,
   paused: false,
-  speedPxPerSec: 72, // 手機、平板、電腦統一每秒移動 72px
+  speedPxPerSec: 72,
 
   start: function(text) {
     const mainEl = document.getElementById('marquee-content');
@@ -22,7 +32,6 @@ const MarqueeRunner = {
     const container = mainEl.parentElement;
     if (cloneEl) cloneEl.style.display = 'none';
 
-    // 強制覆寫樣式，避免舊版 CSS 快取干擾
     container.style.display = 'block';
     container.style.width = '100%';
     container.style.overflow = 'hidden';
@@ -34,14 +43,12 @@ const MarqueeRunner = {
 
     if (this.rafId) cancelAnimationFrame(this.rafId);
 
-    // 動態讀取當下螢幕最右邊界作為起點
     this.x = container.clientWidth || window.innerWidth;
     this.lastTime = 0;
     mainEl.style.transform = `translate3d(${this.x}px, 0, 0)`;
 
     const step = (now) => {
       if (!this.lastTime) this.lastTime = now;
-      // 限制單幀最大時間差，避免切換分頁回來時文字跳躍
       const dt = Math.min((now - this.lastTime) / 1000, 0.05);
       this.lastTime = now;
 
@@ -50,7 +57,6 @@ const MarqueeRunner = {
         const textWidth = mainEl.offsetWidth || 200;
         const containerWidth = container.clientWidth || window.innerWidth;
 
-        // 完全滑出左側邊界後，重新從最右側進場
         if (this.x < -textWidth) {
           this.x = containerWidth;
         }
@@ -243,7 +249,7 @@ function renderProducts(list) {
     imgWrap.className = 'product-img-wrap';
 
     const img = document.createElement('img');
-    img.src = product.image || '';
+    img.src = formatCdnImageUrl(product.image, 800);
     img.alt = product.name || '';
     img.loading = 'lazy';
     img.onerror = function() { this.style.opacity = '0.2'; };
@@ -300,7 +306,7 @@ function renderModalGallery() {
   imgBox.style.position = 'relative';
 
   const mainImg = document.getElementById('modal-img');
-  mainImg.src = currentModalGallery[currentModalImgIndex] || '';
+  mainImg.src = formatCdnImageUrl(currentModalGallery[currentModalImgIndex] || '', 1600);
 
   imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar').forEach(el => el.remove());
 
@@ -328,7 +334,7 @@ function renderModalGallery() {
 
   currentModalGallery.forEach((url, idx) => {
     const t = document.createElement('img');
-    t.src = url;
+    t.src = formatCdnImageUrl(url, 200);
     t.style.cssText = `width:42px; height:52px; object-fit:cover; border-radius:3px; cursor:pointer; background:#fff; border:2px solid ${idx === currentModalImgIndex ? '#333333' : 'rgba(255,255,255,0.85)'}; box-shadow:0 1px 4px rgba(0,0,0,0.22);`;
     t.addEventListener('click', e => {
       e.stopPropagation();
