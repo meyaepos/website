@@ -1,5 +1,5 @@
 /**
- * 模組 3：Excel / CSV 智慧辨識建庫與標準匯出引擎
+ * 模組 3：Excel / CSV 智慧辨識建庫（寫入進銷存商品主檔）與跨資料庫標準匯出引擎
  */
 window.AdminExcel = {
   IMPORT_CHUNK_SIZE: 500,
@@ -8,8 +8,9 @@ window.AdminExcel = {
     id: ['id', 'sku', '貨號', '品號', '商品編號', '編號', '產品代碼', '款號'],
     name: ['name', 'title', '品名', '商品名稱', '產品名稱', '名稱'],
     price: ['price', '售價', '定價', '單價', '價格', '門市價', '牌價', '零售價'],
-    image: ['image', 'img', '圖片', '圖片網址', '照片', '主圖'],
-    '狀態': ['狀態', 'status', '上下架', '上架狀態']
+    '條碼': ['條碼', 'barcode', '國際條碼', 'ean'],
+    '庫存數量': ['庫存', '庫存數量', 'stock', 'qty', '數量'],
+    '商品狀態': ['商品狀態', '狀態', 'status']
   },
 
   workbook: null,
@@ -145,7 +146,7 @@ window.AdminExcel = {
       return '<span class="pill pill-new">新資料表欄位</span>';
     }
     if (window.CORE_PRODUCT_KEYS.includes(targetName)) {
-      return '<span class="pill pill-ok">核心商品欄位</span>';
+      return '<span class="pill pill-ok">核心主檔欄位</span>';
     }
     if (AdminState.productHeaders.includes(targetName)) {
       return '<span class="pill pill-off">對齊既有欄位</span>';
@@ -208,12 +209,12 @@ window.AdminExcel = {
     const targetHeaders = activeCols.map(c => c.targetName);
     if (this.importMode === 'MERGE_PRODUCTS') {
       if (!targetHeaders.includes('id') || !targetHeaders.includes('name')) {
-        return alert('整合至「商品列表」時，必須包含對應到「id」與「name」的欄位！\n請在上方表格將商品編號與商品名稱欄位改名為 id 與 name。');
+        return alert('整合至進銷存「商品主檔」時，必須包含對應到「id」與「name」的欄位！');
       }
     }
 
     const targetSheetName = this.importMode === 'MERGE_PRODUCTS'
-      ? '商品列表'
+      ? '商品主檔'
       : document.getElementById('new-table-name-input').value.trim();
 
     if (!targetSheetName) return alert('請輸入要建立的新資料表名稱！');
@@ -234,7 +235,7 @@ window.AdminExcel = {
 
     const btn = document.getElementById('btn-execute-build');
     btn.disabled = true;
-    btn.textContent = '⏳ 正在自動建置與寫入資料庫...';
+    btn.textContent = '⏳ 正在寫入進銷存資料庫...';
 
     try {
       let totalInserted = 0;
@@ -246,6 +247,7 @@ window.AdminExcel = {
         const chunk = records.slice(i, i + this.IMPORT_CHUNK_SIZE);
         const json = await AdminCore.apiPost('importDynamicDataset', {
           mode: this.importMode,
+          dbType: 'INVENTORY',
           sheetName: targetSheetName,
           headers: targetHeaders,
           rows: chunk,
@@ -263,14 +265,14 @@ window.AdminExcel = {
       }
 
       const addedMsg = allAddedCols.size > 0 ? '\n自動新增欄位：' + Array.from(allAddedCols).join(', ') : '';
-      alert(`✅ 資料庫建置完成！\n目標分頁：《${targetSheetName}》\n新增 ${totalInserted} 筆｜更新 ${totalUpdated} 筆｜略過 ${totalSkipped} 筆${addedMsg}`);
+      alert(`✅ 進銷存資料庫建置完成！\n目標分頁：《${targetSheetName}》\n新增 ${totalInserted} 筆｜更新 ${totalUpdated} 筆｜略過 ${totalSkipped} 筆${addedMsg}`);
       this.resetPanel();
       AdminCore.loadDashboard();
     } catch (err) {
       alert('❌ 建庫過程發生錯誤：' + err.message);
     } finally {
       btn.disabled = false;
-      btn.textContent = '🚀 確認欄位結構，開始自動建置資料庫';
+      btn.textContent = '🚀 確認欄位結構，寫入進銷存資料庫';
     }
   },
 
@@ -281,21 +283,30 @@ window.AdminExcel = {
     document.getElementById('excel-analyze-panel').style.display = 'none';
   },
 
-  renderExportOptions: function(sheetNames) {
+  renderExportOptions: function(exportList) {
     const sel = document.getElementById('export-sheet-select');
     sel.innerHTML = '';
-    sheetNames.forEach(name => {
+    const list = (Array.isArray(exportList) && exportList.length > 0)
+      ? exportList
+      : [
+          { dbType: 'INVENTORY', sheetName: '商品主檔', label: '[進銷存庫] 商品主檔' },
+          { dbType: 'WEBSITE', sheetName: '網站呈現庫', label: '[形象網站庫] 網站呈現庫' }
+        ];
+
+    list.forEach(item => {
       const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = '資料表：' + name;
+      opt.value = `${item.dbType}::${item.sheetName}`;
+      opt.textContent = item.label;
       sel.appendChild(opt);
     });
   },
 
   exportSelectedSheet: async function(format) {
-    const sheetName = document.getElementById('export-sheet-select').value || '商品列表';
+    const rawVal = document.getElementById('export-sheet-select').value || 'INVENTORY::商品主檔';
+    const [dbType, sheetName] = rawVal.split('::');
+
     try {
-      const json = await AdminCore.apiGet('exportData', { sheetName, format });
+      const json = await AdminCore.apiGet('exportData', { dbType, sheetName, format });
       if (json.status !== 'success') {
         if (AdminCore.handleAuthFailure(json.message)) return;
         throw new Error(json.message);
