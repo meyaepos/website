@@ -1,6 +1,5 @@
 /**
- * 模組 3：Excel / CSV 智慧辨識建庫（寫入進銷存商品主檔）與跨資料庫標準匯出引擎
- * 內建多組備援 CDN 自動補載機制，並優先對標「現在售價」
+ * 模組 3：Excel / CSV 智慧增量建庫（阻擋既有重複編碼 ＋ 自動僅導入新商品）與跨資料庫匯出引擎
  */
 window.AdminExcel = {
   IMPORT_CHUNK_SIZE: 500,
@@ -26,8 +25,10 @@ window.AdminExcel = {
   rawMatrix: [],
   columnMappings: [],
   importMode: 'MERGE_PRODUCTS',
+  scanReport: null,
 
   init: function() {
+    this.updateModeCardCopy();
     this.bindDropzone();
     document.getElementById('excel-sheet-select').addEventListener('change', () => this.onWorksheetChange());
     document.getElementById('mode-card-merge').addEventListener('click', () => this.selectImportMode('MERGE_PRODUCTS'));
@@ -37,6 +38,15 @@ window.AdminExcel = {
     document.getElementById('btn-execute-build').addEventListener('click', () => this.executeDynamicBuild());
     document.getElementById('btn-export-csv').addEventListener('click', () => this.exportSelectedSheet('csv'));
     document.getElementById('btn-export-json').addEventListener('click', () => this.exportSelectedSheet('json'));
+  },
+
+  updateModeCardCopy: function() {
+    const mergeCard = document.getElementById('mode-card-merge');
+    if (!mergeCard) return;
+    const titleEl = mergeCard.querySelector('strong');
+    const descEl = mergeCard.querySelector('span');
+    if (titleEl) titleEl.textContent = '模式 A：增量匯入進銷存「商品主檔」（自動略過既有編碼・只導新商品）';
+    if (descEl) descEl.textContent = '依商品編號 (id) 極速比對：已存在的商品自動阻擋不覆蓋，尚未建檔的新商品直接一鍵匯入。';
   },
 
   ensureXlsxLoaded: async function() {
@@ -184,6 +194,7 @@ window.AdminExcel = {
       sheetName === 'Sheet1' ? this.fileName.replace(/\.[^.]+$/, '') : sheetName;
 
     this.renderHeaderMappingTable();
+    this.evaluateIncrementalScan();
     this.renderPreviewTable();
   },
 
@@ -196,7 +207,180 @@ window.AdminExcel = {
       m.targetName = (mode === 'MERGE_PRODUCTS' && m.autoCoreName) ? m.autoCoreName : m.rawName;
     });
     this.renderHeaderMappingTable();
+    this.evaluateIncrementalScan();
     this.renderPreviewTable();
+  },
+
+  // ================= 增量編碼極速比對（O(N) 毫秒級分類：新商品 vs 既有阻擋） =================
+
+  analyzeIncrementalRows: function() {
+    const dataRows = this.rawMatrix.slice(1);
+    const result = {
+      isMergeMode: this.importMode === 'MERGE_PRODUCTS',
+      totalRows: dataRows.length,
+      newRowIndices: [],
+      dbDupList: [],
+      fileDupList: [],
+      emptyIdCount: 0,
+      rowStatus: []
+    };
+
+    if (this.importMode !== 'MERGE_PRODUCTS' || dataRows.length === 0) {
+      dataRows.forEach((_, idx) => {
+        result.newRowIndices.push(idx);
+        result.rowStatus[idx] = { type: 'NEW', label: '✅ 寫入新表' };
+      });
+      return result;
+    }
+
+    const idMapping = this.columnMappings.find(m => m.include && m.targetName === 'id');
+    if (!idMapping) {
+      dataRows.forEach((_, idx) => {
+        result.rowStatus[idx] = { type: 'EMPTY', label: '⚠️ 未對標 id' };
+      });
+      return result;
+    }
+
+    // 1. 建立現有資料庫編碼雜湊集合（僅掃描編碼，毫秒級完成）
+    const existingNormSet = new Set();
+    (AdminState.products || []).forEach(p => {
+      const norm = String(p.id || '').trim().toUpperCase();
+      if (norm) existingNormSet.add(norm);
+    });
+
+    // 2. 掃描檔案內每一列：既有 -> 阻擋；檔內重複 -> 阻擋；全新 -> 放入匯入清單
+    const seenNewInFile = new Map(); // norm -> firstDataNo
+
+    dataRows.forEach((row, idx) => {
+      const rawId = String(row[idMapping.colIdx] !== undefined ? row[idMapping.colIdx] : '').trim();
+      const dataNo = idx + 1;
+
+      if (!rawId) {
+        result.emptyIdCount++;
+        result.rowStatus[idx] = { type: 'EMPTY', label: '略過(無編碼)' };
+        return;
+      }
+
+      const norm = rawId.toUpperCase();
+      if (existingNormSet.has(norm)) {
+        result.dbDupList.push({ id: rawId, dataNo: dataNo });
+        result.rowStatus[idx] = { type: 'DB_DUP', label: '⛔ 既有阻擋' };
+        return;
+      }
+
+      if (seenNewInFile.has(norm)) {
+        result.fileDupList.push({ id: rawId, dataNo: dataNo, firstDataNo: seenNewInFile.get(norm) });
+        result.rowStatus[idx] = { type: 'FILE_DUP', label: '⚠️ 檔內重複阻擋' };
+        return;
+      }
+
+      seenNewInFile.set(norm, dataNo);
+      result.newRowIndices.push(idx);
+      result.rowStatus[idx] = { type: 'NEW', label: '✅ 新商品匯入' };
+    });
+
+    return result;
+  },
+
+  ensureScanBannerEl: function() {
+    let banner = document.getElementById('excel-dup-alert-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'excel-dup-alert-banner';
+      banner.style.cssText = 'display:none; margin:14px 0; padding:14px 16px; border-radius:8px; font-size:13px; line-height:1.65;';
+      const modeGrid = document.querySelector('#excel-analyze-panel .mode-grid');
+      if (modeGrid && modeGrid.parentNode) {
+        modeGrid.parentNode.insertBefore(banner, modeGrid.nextSibling);
+      }
+    }
+    return banner;
+  },
+
+  evaluateIncrementalScan: function() {
+    const report = this.analyzeIncrementalRows();
+    this.scanReport = report;
+
+    const banner = this.ensureScanBannerEl();
+    const buildBtn = document.getElementById('btn-execute-build');
+    const esc = AdminCore.escapeHtml;
+
+    if (!report.isMergeMode) {
+      banner.style.display = 'none';
+      if (buildBtn) {
+        buildBtn.disabled = false;
+        buildBtn.className = 'btn btn-success';
+        buildBtn.textContent = `🚀 建立新資料表並匯入全部 ${report.totalRows} 筆`;
+      }
+      return report;
+    }
+
+    const newCount = report.newRowIndices.length;
+    const dbBlockedCount = report.dbDupList.length;
+    const fileBlockedCount = report.fileDupList.length;
+    const totalBlocked = dbBlockedCount + fileBlockedCount;
+
+    if (newCount === 0 && totalBlocked > 0) {
+      // 全部都是既有商品，沒有任何新商品可匯入
+      banner.style.background = '#fef2f2';
+      banner.style.border = '2px solid #ef4444';
+      banner.style.color = '#991b1b';
+      const sample = report.dbDupList.slice(0, 12).map(x => `<code>${esc(x.id)}</code>`).join('、');
+      banner.innerHTML = `
+        <div style="font-weight:700; font-size:14px; margin-bottom:4px;">⛔ 掃描完畢：檔案內全部 ${totalBlocked} 筆皆為已存在或重複編碼，無新商品可匯入</div>
+        <div>• 資料庫既有編碼（已阻擋）：${sample}${dbBlockedCount > 12 ? ` 等共 ${dbBlockedCount} 筆` : ''}</div>
+        <div style="font-size:12px; margin-top:4px; color:#7f1d1d;">若要修改既有商品資料，請直接於「商品主檔與官網上架 ➔ 編修主檔」進行調整。</div>
+      `;
+      banner.style.display = 'block';
+
+      if (buildBtn) {
+        buildBtn.disabled = true;
+        buildBtn.className = 'btn btn-danger';
+        buildBtn.textContent = '⛔ 無新商品可匯入（已全數阻擋）';
+      }
+      return report;
+    }
+
+    if (totalBlocked > 0 && newCount > 0) {
+      // 混合狀態：自動阻擋既有編碼，放行導入新商品
+      banner.style.background = '#fffbeb';
+      banner.style.border = '2px solid #f59e0b';
+      banner.style.color = '#92400e';
+
+      const parts = [
+        `<div style="font-weight:700; font-size:14px; margin-bottom:6px;">⚡ 增量編碼掃描完成：將導入 <span style="color:#15803d;">${newCount} 筆新商品</span>，自動阻擋 <span style="color:#b91c1c;">${totalBlocked} 筆重複編碼</span></div>`
+      ];
+      if (dbBlockedCount > 0) {
+        const sample = report.dbDupList.slice(0, 12).map(x => `<code>${esc(x.id)}</code>`).join('、');
+        parts.push(`<div>• <strong>已自動阻擋（資料庫既有 ${dbBlockedCount} 筆，絕不覆蓋）：</strong>${sample}${dbBlockedCount > 12 ? ' 等...' : ''}</div>`);
+      }
+      if (fileBlockedCount > 0) {
+        const sample = report.fileDupList.slice(0, 10).map(x => `<code>${esc(x.id)}</code>(第${x.dataNo}筆)`).join('、');
+        parts.push(`<div>• <strong>已自動阻擋（檔案內部重複 ${fileBlockedCount} 筆，僅保留首筆）：</strong>${sample}${fileBlockedCount > 10 ? ' 等...' : ''}</div>`);
+      }
+      banner.innerHTML = parts.join('');
+      banner.style.display = 'block';
+
+      if (buildBtn) {
+        buildBtn.disabled = false;
+        buildBtn.className = 'btn btn-success';
+        buildBtn.textContent = `🚀 僅匯入 ${newCount} 筆新商品（自動略過 ${totalBlocked} 筆重複）`;
+      }
+      return report;
+    }
+
+    // 全部皆為新商品
+    banner.style.background = '#f0fdf4';
+    banner.style.border = '1px solid #86efac';
+    banner.style.color = '#166534';
+    banner.innerHTML = `<strong>✅ 編碼掃描通過：</strong>偵測到 <strong>${newCount} 筆全新商品</strong>，無重複編碼衝突，可直接寫入進銷存主檔。`;
+    banner.style.display = 'block';
+
+    if (buildBtn) {
+      buildBtn.disabled = newCount === 0;
+      buildBtn.className = 'btn btn-success';
+      buildBtn.textContent = `🚀 確認匯入全部 ${newCount} 筆新商品`;
+    }
+    return report;
   },
 
   getColumnStatusTagHtml: function(targetName) {
@@ -229,12 +413,14 @@ window.AdminExcel = {
 
       tr.querySelector('.chk-col').addEventListener('change', e => {
         this.columnMappings[idx].include = e.target.checked;
+        this.evaluateIncrementalScan();
         this.renderPreviewTable();
       });
       tr.querySelector('.inp-target').addEventListener('input', e => {
         const val = e.target.value.trim();
         this.columnMappings[idx].targetName = val;
         tr.querySelector('.col-status-cell').innerHTML = this.getColumnStatusTagHtml(val);
+        this.evaluateIncrementalScan();
         this.renderPreviewTable();
       });
 
@@ -242,6 +428,9 @@ window.AdminExcel = {
     });
   },
 
+  /**
+   * 預覽表：增量模式下優先把「即將匯入的新商品」排在最前面檢視，並清楚標記每列判定狀態
+   */
   renderPreviewTable: function() {
     const table = document.getElementById('excel-preview-table');
     const esc = AdminCore.escapeHtml;
@@ -252,9 +441,43 @@ window.AdminExcel = {
       return;
     }
 
-    let html = '<thead><tr>' + activeCols.map(c => `<th>${esc(c.targetName)}</th>`).join('') + '</tr></thead><tbody>';
-    this.rawMatrix.slice(1, 11).forEach(row => {
-      html += '<tr>' + activeCols.map(c => `<td>${esc(row[c.colIdx] !== undefined ? row[c.colIdx] : '')}</td>`).join('') + '</tr>';
+    const dataRows = this.rawMatrix.slice(1);
+    const report = this.scanReport || this.analyzeIncrementalRows();
+
+    // 優先展示新商品（最多 8 筆）＋ 抽樣展示阻擋項目，避免大檔案裡新商品藏在最後面看不到
+    let previewIndices = [];
+    if (report.isMergeMode && report.newRowIndices.length > 0) {
+      previewIndices = report.newRowIndices.slice(0, 8);
+      for (let i = 0; i < dataRows.length && previewIndices.length < 10; i++) {
+        if (!previewIndices.includes(i)) previewIndices.push(i);
+      }
+    } else {
+      previewIndices = dataRows.slice(0, 10).map((_, i) => i);
+    }
+
+    let html = '<thead><tr><th>匯入判定</th>' + activeCols.map(c => `<th>${esc(c.targetName)}</th>`).join('') + '</tr></thead><tbody>';
+    previewIndices.forEach(idx => {
+      const row = dataRows[idx];
+      const st = report.rowStatus[idx] || { type: 'NEW', label: '✅ 寫入' };
+      let rowBg = '';
+      let pillClass = 'pill-ok';
+
+      if (st.type === 'DB_DUP') {
+        rowBg = ' style="background:#fef2f2; color:#991b1b;"';
+        pillClass = 'pill-err';
+      } else if (st.type === 'FILE_DUP') {
+        rowBg = ' style="background:#fffbeb; color:#92400e;"';
+        pillClass = 'pill-wait';
+      } else if (st.type === 'EMPTY') {
+        rowBg = ' style="background:#f8fafc; color:#64748b;"';
+        pillClass = 'pill-off';
+      } else {
+        rowBg = ' style="background:#f0fdf4;"';
+      }
+
+      html += `<tr${rowBg}><td><span class="pill ${pillClass}">${esc(st.label)}</span></td>` +
+        activeCols.map(c => `<td>${esc(row[c.colIdx] !== undefined ? row[c.colIdx] : '')}</td>`).join('') +
+        '</tr>';
     });
     html += '</tbody>';
     table.innerHTML = html;
@@ -265,9 +488,14 @@ window.AdminExcel = {
     if (activeCols.length === 0) return alert('請至少勾選一個有效欄位！');
 
     const targetHeaders = activeCols.map(c => c.targetName);
+    const report = this.evaluateIncrementalScan();
+
     if (this.importMode === 'MERGE_PRODUCTS') {
       if (!targetHeaders.includes('id') || !targetHeaders.includes('name')) {
-        return alert('整合至進銷存「商品主檔」時，必須包含對應到「id」與「name」的欄位！');
+        return alert('匯入進銷存「商品主檔」時，必須包含對應到「id」與「name」的欄位！');
+      }
+      if (report.newRowIndices.length === 0) {
+        return alert('⛔ 此檔案沒有任何尚未建檔的新商品（既有編碼皆已自動阻擋），無須執行匯入。');
       }
     }
 
@@ -277,7 +505,14 @@ window.AdminExcel = {
 
     if (!targetSheetName) return alert('請輸入要建立的新資料表名稱！');
 
-    const records = this.rawMatrix.slice(1).map(rawRow => {
+    // 前端已先過濾出「真正要寫入的新商品」，大幅減少網路傳輸與 GAS 運算負擔
+    const dataRows = this.rawMatrix.slice(1);
+    const targetIndices = this.importMode === 'MERGE_PRODUCTS'
+      ? report.newRowIndices
+      : dataRows.map((_, i) => i);
+
+    const recordsToSend = targetIndices.map(rowIdx => {
+      const rawRow = dataRows[rowIdx];
       const obj = {};
       activeCols.forEach(c => {
         let val = rawRow[c.colIdx] !== undefined ? rawRow[c.colIdx] : '';
@@ -293,16 +528,17 @@ window.AdminExcel = {
 
     const btn = document.getElementById('btn-execute-build');
     btn.disabled = true;
-    btn.textContent = '⏳ 正在寫入進銷存資料庫...';
+    btn.textContent = `⏳ 正在寫入 ${recordsToSend.length} 筆新商品至進銷存資料庫...`;
 
     try {
       let totalInserted = 0;
-      let totalUpdated = 0;
-      let totalSkipped = 0;
+      let totalSkipped = report.emptyIdCount || 0;
+      const backendBlockedDb = [];
+      const backendBlockedFile = [];
       const allAddedCols = new Set();
 
-      for (let i = 0; i < records.length; i += this.IMPORT_CHUNK_SIZE) {
-        const chunk = records.slice(i, i + this.IMPORT_CHUNK_SIZE);
+      for (let i = 0; i < recordsToSend.length; i += this.IMPORT_CHUNK_SIZE) {
+        const chunk = recordsToSend.slice(i, i + this.IMPORT_CHUNK_SIZE);
         const json = await AdminCore.apiPost('importDynamicDataset', {
           mode: this.importMode,
           dbType: 'INVENTORY',
@@ -316,21 +552,48 @@ window.AdminExcel = {
           throw new Error(json.message);
         }
 
-        totalInserted += json.data.insertedCount;
-        totalUpdated += json.data.updatedCount;
-        totalSkipped += json.data.skippedCount;
+        totalInserted += json.data.insertedCount || 0;
+        totalSkipped += json.data.skippedCount || 0;
+        (json.data.blockedDbIds || []).forEach(id => backendBlockedDb.push(id));
+        (json.data.blockedFileIds || []).forEach(id => backendBlockedFile.push(id));
         (json.data.addedColumns || []).forEach(col => allAddedCols.add(col));
       }
 
-      const addedMsg = allAddedCols.size > 0 ? '\n自動新增欄位：' + Array.from(allAddedCols).join(', ') : '';
-      alert(`✅ 進銷存資料庫建置完成！\n目標分頁：《${targetSheetName}》\n新增 ${totalInserted} 筆｜更新 ${totalUpdated} 筆｜略過 ${totalSkipped} 筆${addedMsg}`);
+      const allBlockedDb = [
+        ...report.dbDupList.map(x => x.id),
+        ...backendBlockedDb
+      ];
+      const allBlockedFile = [
+        ...report.fileDupList.map(x => x.id),
+        ...backendBlockedFile
+      ];
+
+      const summaryLines = [
+        `✅ 進銷存增量匯入完成！（目標分頁：《${targetSheetName}》）`,
+        `• 成功導入新商品：${totalInserted} 筆`
+      ];
+      if (allBlockedDb.length > 0) {
+        const sample = allBlockedDb.slice(0, 10).join('、') + (allBlockedDb.length > 10 ? ' 等...' : '');
+        summaryLines.push(`• 自動阻擋（既有編碼不覆蓋）：${allBlockedDb.length} 筆（${sample}）`);
+      }
+      if (allBlockedFile.length > 0) {
+        summaryLines.push(`• 自動阻擋（檔內重複列）：${allBlockedFile.length} 筆`);
+      }
+      if (totalSkipped > 0) {
+        summaryLines.push(`• 空白編號略過：${totalSkipped} 筆`);
+      }
+      if (allAddedCols.size > 0) {
+        summaryLines.push(`• 自動擴充新欄位：${Array.from(allAddedCols).join(', ')}`);
+      }
+
+      alert(summaryLines.join('\n'));
       this.resetPanel();
       AdminCore.loadDashboard();
     } catch (err) {
-      alert('❌ 建庫過程發生錯誤：' + err.message);
+      alert('❌ 匯入過程發生錯誤：' + err.message);
     } finally {
       btn.disabled = false;
-      btn.textContent = '🚀 確認欄位結構，寫入進銷存資料庫';
+      this.evaluateIncrementalScan();
     }
   },
 
@@ -338,6 +601,9 @@ window.AdminExcel = {
     this.workbook = null;
     this.rawMatrix = [];
     this.columnMappings = [];
+    this.scanReport = null;
+    const banner = document.getElementById('excel-dup-alert-banner');
+    if (banner) banner.style.display = 'none';
     document.getElementById('excel-analyze-panel').style.display = 'none';
   },
 
