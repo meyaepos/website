@@ -1,9 +1,13 @@
 const OFFICIAL_LINE_URL = 'https://lin.ee/7gVn9gX';
+const PUBLIC_CACHE_KEY = 'MEYA_PUBLIC_WEBSITE_CACHE_V1';
 
 let allPublishedProducts = [];
 let activeCategory = 'ALL';
 let detectedCategoryKey = null;
 let userHasInteracted = false;
+
+let lastRenderedAnnouncementsKey = '';
+let lastRenderedProductsKey = '';
 
 let currentModalProduct = null;
 let currentModalGallery = [];
@@ -18,7 +22,7 @@ function parseValidPrice(rawPrice) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
-// 依據展示情境自動附加 Google CDN 動態縮放參數（列表 =w800，彈窗 =w1600，放大燈箱 =w2048）
+// 依據展示情境自動附加 Google CDN 三段分級縮放參數（列表 =w480 秒開、彈窗 =w1200、2K放大 =w2048、縮圖列 =w160）
 function formatCdnImageUrl(rawUrl, widthPx) {
   const url = String(rawUrl || '').trim();
   if (!url) return '';
@@ -91,7 +95,7 @@ const MarqueeRunner = {
 
 // 前台 2K 高清全螢幕放大燈箱（支援三段縮放與多圖連續瀏覽）
 const FrontLightbox = {
-  zoomMode: 'fit', // 'fit' | '100' | '150'
+  zoomMode: 'fit',
 
   ensureDom: function() {
     if (document.getElementById('front-hd-lightbox')) return;
@@ -247,7 +251,44 @@ document.addEventListener('DOMContentLoaded', () => {
   bindWebsiteEvents();
 });
 
+/**
+ * 將網站資料套用至畫面（若背景更新資料與快取完全一致，則不重繪避免畫面閃動）
+ */
+function applyWebsitePayload(data) {
+  renderConfig(data.config || {});
+
+  const announcements = data.announcements || [];
+  const annKey = JSON.stringify(announcements);
+  if (annKey !== lastRenderedAnnouncementsKey) {
+    lastRenderedAnnouncementsKey = annKey;
+    renderAnnouncements(announcements);
+  }
+
+  const products = data.products || [];
+  const prodKey = JSON.stringify(products);
+  if (prodKey !== lastRenderedProductsKey) {
+    lastRenderedProductsKey = prodKey;
+    allPublishedProducts = products;
+    detectAndRenderCategories(allPublishedProducts);
+    applyFiltersAndRender();
+  }
+}
+
 async function initWebsite() {
+  // 1. 先嘗試讀取本機快取秒開呈現（0.05 秒直接顯示上次商品）
+  let hasLocalCache = false;
+  try {
+    const cachedRaw = localStorage.getItem(PUBLIC_CACHE_KEY);
+    if (cachedRaw) {
+      const cached = JSON.parse(cachedRaw);
+      if (cached && Array.isArray(cached.products)) {
+        applyWebsitePayload(cached);
+        hasLocalCache = true;
+      }
+    }
+  } catch (_) {}
+
+  // 2. 背景同步向 GAS 記憶體快取取得最新資料並無縫校對更新
   try {
     if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
       throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
@@ -259,18 +300,23 @@ async function initWebsite() {
     const data = await response.json();
     if (data.status !== 'success') throw new Error(data.message || '資料庫回傳異常');
 
-    renderConfig(data.config || {});
-    renderAnnouncements(data.announcements || []);
-    allPublishedProducts = data.products || [];
+    try {
+      localStorage.setItem(PUBLIC_CACHE_KEY, JSON.stringify({
+        config: data.config || {},
+        announcements: data.announcements || [],
+        products: data.products || []
+      }));
+    } catch (_) {}
 
-    detectAndRenderCategories(allPublishedProducts);
-    applyFiltersAndRender();
+    applyWebsitePayload(data);
   } catch (error) {
     console.error('[is Meya] 資料庫連線診斷：', error);
-    renderAnnouncements(['is Meya 韓國精品服飾・純銀飾品']);
-    document.getElementById('catalog-count').textContent = '目前尚未連線至商品資料庫，請確認 GAS 部署權限設為「所有人」與 js/config.js 網址';
-    document.getElementById('product-grid').innerHTML =
-      '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
+    if (!hasLocalCache) {
+      renderAnnouncements(['is Meya 韓國精品服飾・純銀飾品']);
+      document.getElementById('catalog-count').textContent = '目前尚未連線至商品資料庫，請確認 GAS 部署權限設為「所有人」與 js/config.js 網址';
+      document.getElementById('product-grid').innerHTML =
+        '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
+    }
   } finally {
     if (!userHasInteracted) forceScrollTop();
   }
@@ -383,7 +429,7 @@ function renderProducts(list) {
 
   countEl.textContent = '共 ' + list.length + ' 件商品';
 
-  list.forEach(product => {
+  list.forEach((product, idx) => {
     const card = document.createElement('div');
     card.className = 'product-item';
     card.addEventListener('click', () => openProductModal(product));
@@ -392,9 +438,14 @@ function renderProducts(list) {
     imgWrap.className = 'product-img-wrap';
 
     const img = document.createElement('img');
-    img.src = formatCdnImageUrl(product.image, 800);
+    img.src = formatCdnImageUrl(product.image, 480);
     img.alt = product.name || '';
-    img.loading = 'lazy';
+    img.decoding = 'async';
+    if (idx < 4) {
+      img.fetchPriority = 'high';
+    } else {
+      img.loading = 'lazy';
+    }
     img.onerror = function() { this.style.opacity = '0.2'; };
     imgWrap.appendChild(img);
 
@@ -470,7 +521,8 @@ function renderModalGallery() {
 
   const mainImg = document.getElementById('modal-img');
   const currentUrl = currentModalGallery[currentModalImgIndex] || '';
-  mainImg.src = formatCdnImageUrl(currentUrl, 1600);
+  mainImg.src = formatCdnImageUrl(currentUrl, 1200);
+  mainImg.decoding = 'async';
   mainImg.title = '點擊放大檢視 2K 高清細節';
 
   imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar, .modal-zoom-badge').forEach(el => el.remove());
@@ -511,7 +563,8 @@ function renderModalGallery() {
 
   currentModalGallery.forEach((url, idx) => {
     const t = document.createElement('img');
-    t.src = formatCdnImageUrl(url, 200);
+    t.src = formatCdnImageUrl(url, 160);
+    t.decoding = 'async';
     t.style.cssText = `width:42px; height:52px; object-fit:cover; border-radius:3px; cursor:pointer; background:#fff; border:2px solid ${idx === currentModalImgIndex ? '#333333' : 'rgba(255,255,255,0.85)'}; box-shadow:0 1px 4px rgba(0,0,0,0.22);`;
     t.addEventListener('click', e => {
       e.stopPropagation();
@@ -570,7 +623,6 @@ function bindWebsiteEvents() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // 點擊商品彈窗主圖直接開啟 2K 全螢幕放大燈箱
   const modalImg = document.getElementById('modal-img');
   if (modalImg) {
     modalImg.addEventListener('click', () => FrontLightbox.open());
