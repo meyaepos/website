@@ -1,11 +1,14 @@
 /**
- * 模組 1：管理員專區核心中樞
- * 負責：共用狀態、無時限關閉即登出驗證、原圖資料夾自動比對、API 封裝與雙資料庫 KPI 協調
+ * 模組 1：管理員專區核心中樞（第一階段基礎資安加固版）
+ * 防護：
+ * 1. 所有受保護 API 全面改走 POST JSON Body，杜絕 Session Token 暴露於 URL Query String
+ * 2. 登出時主動呼叫後端 adminLogout 撤銷憑證
+ * 3. 移除免密鑰開發測試提示，並強化 escapeHtml (含單引號) 與圖片協定檢查
  */
 window.CORE_PRODUCT_KEYS = ['id', 'name', 'price', '條碼', '庫存數量', '商品狀態', '更新時間'];
 
 window.AdminState = {
-  authPolicy: { mode: 'STANDARD_NO_TIMEOUT', requirePin: true },
+  authPolicy: { mode: 'STRICT_SESSION', requirePin: true },
   products: [],
   productHeaders: [...window.CORE_PRODUCT_KEYS],
   rawFolderNames: [],
@@ -62,22 +65,17 @@ window.AdminCore = {
       const json = await res.json();
       if (json.status === 'success' && json.policy) {
         AdminState.authPolicy = json.policy;
-        if (json.policy.requirePin) {
-          descEl.textContent = '標準安全模式（無時間限制，關閉分頁即自動登出）';
-        } else {
-          descEl.textContent = '開發測試模式（未設定密鑰）：直接點擊下方按鈕即可進入';
-          document.getElementById('login-token-input').placeholder = '目前免密鑰，直接按登入即可';
-        }
+        descEl.textContent = '嚴格安全驗證模式（後端強制驗權・關閉分頁即登出）';
       }
-    } catch (err) {
-      descEl.textContent = '無法連線至 GAS，請確認部署權限與 js/config.js';
+    } catch (_) {
+      descEl.textContent = '無法連線至驗證伺服器，請確認網路與 GAS 部署設定';
     }
     document.getElementById('login-token-input').focus();
   },
 
   tryRestoreSession: async function() {
     try {
-      const data = await this.apiGet('getAdminDashboard');
+      const data = await this.apiPost('getAdminDashboard');
       if (data.status === 'success') {
         this.unlockAdminUI(data);
         return true;
@@ -91,6 +89,12 @@ window.AdminCore = {
     const errBox = document.getElementById('login-error-msg');
     const btn = document.getElementById('btn-login-submit');
     const adminToken = document.getElementById('login-token-input').value.trim();
+
+    if (!adminToken) {
+      errBox.textContent = '請輸入管理密鑰';
+      errBox.style.display = 'block';
+      return;
+    }
 
     errBox.style.display = 'none';
     btn.disabled = true;
@@ -111,7 +115,7 @@ window.AdminCore = {
 
       sessionStorage.setItem('MEYA_SESSION_TOKEN', loginJson.data.sessionToken);
 
-      const dashData = await this.apiGet('getAdminDashboard');
+      const dashData = await this.apiPost('getAdminDashboard');
       if (dashData.status !== 'success') {
         throw new Error(dashData.message || '讀取後台資料失敗');
       }
@@ -140,7 +144,18 @@ window.AdminCore = {
     this.applyDashboardData(dashData);
   },
 
-  lockAndLogout: function() {
+  lockAndLogout: async function() {
+    const token = this.getSessionToken();
+    // 主動通知後端從快取註銷憑證，防止殘留憑證遭重放
+    if (token && typeof CONFIG !== 'undefined' && CONFIG.GAS_API_URL) {
+      try {
+        await fetch(CONFIG.GAS_API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'adminLogout', token: token })
+        });
+      } catch (_) {}
+    }
+
     sessionStorage.removeItem('MEYA_SESSION_TOKEN');
     AdminState.products = [];
     AdminState.rawFolderNames = [];
@@ -154,18 +169,11 @@ window.AdminCore = {
     document.getElementById('login-token-input').focus();
   },
 
+  /**
+   * 【安全通道】保留 apiGet 介面相容各子模組，但底層統一改由 POST Body 傳送憑證與參數，避免 Token 洩漏於 URL
+   */
   apiGet: async function(action, extraParams = {}) {
-    if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
-      throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
-    }
-    const query = new URLSearchParams({
-      action: action,
-      token: this.getSessionToken(),
-      ...extraParams
-    });
-    const res = await fetch(CONFIG.GAS_API_URL + '?' + query.toString());
-    if (!res.ok) throw new Error('HTTP 狀態異常：' + res.status);
-    return res.json();
+    return this.apiPost(action, extraParams);
   },
 
   apiPost: async function(action, payload = {}) {
@@ -185,8 +193,8 @@ window.AdminCore = {
   },
 
   handleAuthFailure: function(message) {
-    if (String(message).includes('Unauthorized')) {
-      alert('驗證憑證無效或密鑰已更新，請重新登入。');
+    if (String(message).includes('Unauthorized') || String(message).includes('Forbidden')) {
+      alert('驗證憑證無效、權限不足或已逾時，請重新登入。');
       this.lockAndLogout();
       return true;
     }
@@ -198,14 +206,22 @@ window.AdminCore = {
     tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">同步進銷存主檔與形象網站庫中...</td></tr>';
 
     try {
-      const data = await this.apiGet('getAdminDashboard');
+      const data = await this.apiPost('getAdminDashboard');
       if (data.status !== 'success') {
         if (this.handleAuthFailure(data.message)) return;
         throw new Error(data.message);
       }
       this.applyDashboardData(data);
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-cell" style="color:#e74c3c;">載入失敗：' + this.escapeHtml(err.message) + '</td></tr>';
+      tbody.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 7;
+      td.className = 'empty-cell';
+      td.style.color = '#e74c3c';
+      td.textContent = '載入失敗：' + err.message;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
     }
   },
 
@@ -233,6 +249,7 @@ window.AdminCore = {
 
       return {
         ...p,
+        image: this.sanitizeImageUrl(p.image),
         _matchedFolder: matchedFolder,
         _readyToMatch: !isPublishedOnWeb && Boolean(matchedFolder)
       };
@@ -263,8 +280,12 @@ window.AdminCore = {
     const priorityBar = document.getElementById('ready-priority-bar');
     if (readyList.length > 0) {
       const previewIds = readyList.slice(0, 6).map(x => x.id).join('、');
-      document.getElementById('ready-priority-text').innerHTML =
-        `<strong>⚡ 系統自動偵測到 ${readyList.length} 筆商品已有原圖資料夾待上架官網</strong>（已自動置頂排序）：${this.escapeHtml(previewIds)}${readyList.length > 6 ? ' 等...' : ''}`;
+      const textEl = document.getElementById('ready-priority-text');
+      textEl.textContent = '';
+      const strong = document.createElement('strong');
+      strong.textContent = `⚡ 系統自動偵測到 ${readyList.length} 筆商品已有原圖資料夾待上架官網`;
+      textEl.appendChild(strong);
+      textEl.appendChild(document.createTextNode(`（已自動置頂排序）：${previewIds}${readyList.length > 6 ? ' 等...' : ''}`));
       priorityBar.style.display = 'flex';
     } else {
       priorityBar.style.display = 'none';
@@ -276,12 +297,27 @@ window.AdminCore = {
     errBadge.style.display = openErrors > 0 ? 'inline-block' : 'none';
   },
 
+  /**
+   * 完整 5 字元 HTML 跳脫（含單雙引號，防範 XSS）
+   */
   escapeHtml: function(str) {
     return String(str === null || str === undefined ? '' : str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  /**
+   * 圖片網址協定白名單檢查（僅允許 https:// 或本機預覽 data:image/，阻擋 javascript: 注入）
+   */
+  sanitizeImageUrl: function(url) {
+    const clean = String(url || '').trim();
+    if (/^https:\/\//i.test(clean) || /^data:image\/(jpeg|png|webp|gif);base64,/i.test(clean)) {
+      return clean;
+    }
+    return '';
   }
 };
 
