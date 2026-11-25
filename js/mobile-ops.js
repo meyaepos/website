@@ -1,19 +1,18 @@
 /**
- * 手機現場作業專區主控腳本
- * 認證：與電腦後台一致（無時限・關閉即登出），保留官方 LINE 驗證與人員鎖定插槽
- * 模式：picking (出貨掃碼撿貨核對) | lookup (即時掃碼查貨) | pos (快速收銀草稿)
+ * 手機現場作業專區主控腳本（第一階段基礎資安加固版）
+ * 防護：
+ * 1. 全面改用 POST 傳遞 Token，並呼叫最小權限 getMobileOpsProducts（絕不下發成本/批價）
+ * 2. 內建 LINE LIFF getIDToken() 驗證對接流程（絕不傳送未驗證的 userId）
+ * 3. 登出主動呼叫後端撤銷憑證，並強化 XSS 跳脫與網址協定檢查
  */
 window.MobileOps = {
   activeMode: 'picking',
   products: [],
-  operator: { name: '系統管理員', roleGroup: '超級管理員', lineUid: '' },
+  operator: { name: '未登入', roleGroup: '' },
 
-  // 模式 1：出貨撿貨清單狀態
   pickingOrderId: '',
-  pickingItems: [], // [{ id, barcode, name, required, picked }]
-
-  // 模式 3：快速收銀購物車草稿
-  posCart: [], // [{ id, name, price, qty }]
+  pickingItems: [],
+  posCart: [],
 
   init: async function() {
     this.bindEvents();
@@ -22,7 +21,6 @@ window.MobileOps = {
   },
 
   bindEvents: function() {
-    // 登入與登出
     document.getElementById('m-login-form').addEventListener('submit', e => {
       e.preventDefault();
       this.executeLogin();
@@ -30,7 +28,6 @@ window.MobileOps = {
     document.getElementById('m-btn-logout').addEventListener('click', () => this.lockAndLogout());
     document.getElementById('m-btn-sync').addEventListener('click', () => this.syncProducts());
 
-    // 鏡頭切換與手動條碼送出
     document.getElementById('m-btn-toggle-cam').addEventListener('click', () => this.toggleCamera());
     document.getElementById('m-manual-scan-form').addEventListener('submit', e => {
       e.preventDefault();
@@ -39,17 +36,14 @@ window.MobileOps = {
       input.value = '';
     });
 
-    // 底部三模式切換
     document.querySelectorAll('.m-nav-btn').forEach(btn => {
       btn.addEventListener('click', () => this.switchMode(btn.dataset.mode));
     });
 
-    // 撿貨模式操作鈕
     document.getElementById('m-btn-demo-order').addEventListener('click', () => this.loadSamplePickingOrder());
     document.getElementById('m-btn-add-pick-sku').addEventListener('click', () => this.promptAddPickingItem());
     document.getElementById('m-btn-finish-pick').addEventListener('click', () => this.finishPickingOrder());
 
-    // POS 草稿操作鈕
     document.getElementById('m-btn-clear-cart').addEventListener('click', () => {
       this.posCart = [];
       this.renderPosCart();
@@ -59,35 +53,58 @@ window.MobileOps = {
     });
   },
 
-  // ================= 1. 認證邏輯（保留 LINE LIFF 接入插槽） =================
+  // ================= 1. 認證邏輯（含 LINE LIFF ID Token 後端驗簽插槽） =================
 
   getSessionToken: function() {
     return sessionStorage.getItem('MEYA_SESSION_TOKEN') || '';
   },
 
   /**
-   * 預留給下一階段接入官方 LINE LIFF 驗證，並對應 DB_CRM 鎖定操作人員姓名與分組
+   * 當 js/config.js 設定公開 LIFF_ID 且頁面載入 LINE LIFF SDK 時，自動以官方 id_token 向後端驗簽登入
    */
-  initLineAuthSlot: async function() {
-    // 未來接上 LIFF ID 與 CRM 權限表後，於此處呼叫 liff.init() 並將身分寫入 this.operator
+  tryLineLiffLogin: async function() {
+    if (typeof liff === 'undefined' || typeof CONFIG === 'undefined' || !CONFIG.MOBILE_LIFF_ID) {
+      return false;
+    }
+    try {
+      await liff.init({ liffId: CONFIG.MOBILE_LIFF_ID });
+      if (!liff.isLoggedIn()) return false;
+      const idToken = liff.getIDToken();
+      if (!idToken) return false;
+
+      const res = await fetch(CONFIG.GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'lineLiffLogin',
+          idToken: idToken,
+          module: 'inventory'
+        })
+      });
+      const json = await res.json();
+      if (json.status === 'success' && json.data && json.data.sessionToken) {
+        sessionStorage.setItem('MEYA_SESSION_TOKEN', json.data.sessionToken);
+        if (json.data.admin) this.operator = json.data.admin;
+        return await this.syncProducts(true);
+      }
+    } catch (_) {}
+    return false;
   },
 
   initAuth: async function() {
-    await this.initLineAuthSlot();
-
     if (this.getSessionToken()) {
       const ok = await this.syncProducts(true);
       if (ok) return;
     }
+
+    const liffOk = await this.tryLineLiffLogin();
+    if (liffOk) return;
 
     const descEl = document.getElementById('m-login-desc');
     try {
       const res = await fetch(CONFIG.GAS_API_URL + '?action=getAuthPolicy');
       const json = await res.json();
       if (json.status === 'success' && json.policy) {
-        descEl.textContent = json.policy.requirePin
-          ? '標準安全模式：輸入管理密鑰即可開啟掃碼作業'
-          : '開發測試模式（免密鑰）：直接點下方按鈕進入';
+        descEl.textContent = '嚴格安全驗證模式：輸入管理密鑰即可開啟現場掃碼作業';
       }
     } catch (_) {
       descEl.textContent = '無法連線至 GAS，請確認網路與設定';
@@ -98,6 +115,12 @@ window.MobileOps = {
     const errEl = document.getElementById('m-login-error');
     const btn = document.getElementById('m-login-btn');
     const adminToken = document.getElementById('m-token-input').value.trim();
+
+    if (!adminToken) {
+      errEl.textContent = '請輸入管理密鑰';
+      errEl.style.display = 'block';
+      return;
+    }
 
     errEl.style.display = 'none';
     btn.disabled = true;
@@ -129,6 +152,16 @@ window.MobileOps = {
     document.getElementById('m-camera-wrap').style.display = 'none';
     this._updateCamBtn(false);
 
+    const token = this.getSessionToken();
+    if (token && typeof CONFIG !== 'undefined' && CONFIG.GAS_API_URL) {
+      try {
+        await fetch(CONFIG.GAS_API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'adminLogout', token })
+        });
+      } catch (_) {}
+    }
+
     sessionStorage.removeItem('MEYA_SESSION_TOKEN');
     this.products = [];
     document.getElementById('m-app').classList.remove('unlocked');
@@ -136,14 +169,22 @@ window.MobileOps = {
     document.getElementById('m-token-input').value = '';
   },
 
+  /**
+   * 【最小權限讀取】改走 POST 呼叫 getMobileOpsProducts，不於 URL 暴露 Token 且不回傳成本進價
+   */
   syncProducts: async function(unlockOnSuccess = false) {
     try {
-      const query = new URLSearchParams({ action: 'getAdminDashboard', token: this.getSessionToken() });
-      const res = await fetch(CONFIG.GAS_API_URL + '?' + query.toString());
+      const res = await fetch(CONFIG.GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'getMobileOpsProducts',
+          token: this.getSessionToken()
+        })
+      });
       const data = await res.json();
 
       if (data.status !== 'success') {
-        if (String(data.message).includes('Unauthorized')) {
+        if (String(data.message).includes('Unauthorized') || String(data.message).includes('Forbidden')) {
           sessionStorage.removeItem('MEYA_SESSION_TOKEN');
           return false;
         }
@@ -154,7 +195,7 @@ window.MobileOps = {
       if (data.admin) this.operator = data.admin;
 
       document.getElementById('m-operator-label').textContent =
-        `操作人員：${this.operator.name} [${this.operator.roleGroup || '標準模式'}]`;
+        `操作人員：${this.operator.name} [${this.operator.roleGroup || '現場模式'}]`;
       document.getElementById('m-db-count-pill').textContent = `已同步 ${this.products.length} 件商品`;
 
       if (unlockOnSuccess) {
@@ -206,14 +247,10 @@ window.MobileOps = {
     ) || null;
   },
 
-  handleIncomingScan: function(code, source) {
-    if (this.activeMode === 'picking') {
-      this.processPickingScan(code);
-    } else if (this.activeMode === 'lookup') {
-      this.processLookupScan(code);
-    } else if (this.activeMode === 'pos') {
-      this.processPosScan(code);
-    }
+  handleIncomingScan: function(code) {
+    if (this.activeMode === 'picking') this.processPickingScan(code);
+    else if (this.activeMode === 'lookup') this.processLookupScan(code);
+    else if (this.activeMode === 'pos') this.processPosScan(code);
   },
 
   showToast: function(msg, type = 'info') {
@@ -244,7 +281,7 @@ window.MobileOps = {
   },
 
   promptAddPickingItem: function() {
-    const code = prompt('請輸入要加入撿貨單的商品編號（例如 3822039N1GM）：');
+    const code = prompt('請輸入要加入撿貨單的商品編號：');
     if (!code) return;
     const prod = this.findProductByCode(code);
     const id = prod ? String(prod.id) : code.trim();
@@ -305,7 +342,7 @@ window.MobileOps = {
     const finishBtn = document.getElementById('m-btn-finish-pick');
 
     if (this.pickingItems.length === 0) {
-      listEl.innerHTML = '';
+      listEl.textContent = '';
       progEl.textContent = '尚未載入出貨單';
       finishBtn.disabled = true;
       return;
@@ -315,10 +352,10 @@ window.MobileOps = {
     const totalPicked = this.pickingItems.reduce((s, i) => s + i.picked, 0);
     const allDone = totalReq > 0 && totalPicked === totalReq;
 
-    progEl.innerHTML = `撿貨進度：<strong>${totalPicked} / ${totalReq} 件</strong>${allDone ? ' — ✅ 全部核對完畢' : ''}`;
+    progEl.textContent = `撿貨進度：${totalPicked} / ${totalReq} 件${allDone ? ' — ✅ 全部核對完畢' : ''}`;
     finishBtn.disabled = !allDone;
 
-    listEl.innerHTML = '';
+    listEl.textContent = '';
     this.pickingItems.forEach(item => {
       const isDone = item.picked === item.required;
       const div = document.createElement('div');
@@ -340,8 +377,7 @@ window.MobileOps = {
       `✅ 出貨核對完成紀錄（架構預覽）\n` +
       `訂單編號：${orderId}\n` +
       `操作人員：${this.operator.name}\n` +
-      `總計件數：${this.pickingItems.reduce((s, i) => s + i.picked, 0)} 件\n\n` +
-      `（待第二階段接通 DB_POS 後，此處將自動寫入出貨紀錄並扣減庫存）`
+      `總計件數：${this.pickingItems.reduce((s, i) => s + i.picked, 0)} 件`
     );
     this.pickingItems = [];
     this.renderPickingList();
@@ -356,15 +392,20 @@ window.MobileOps = {
     if (!prod) {
       ScannerEngine.feedback('error');
       this.showToast(`查無條碼：${code}`, 'err');
-      box.innerHTML = `<div style="color:#b91c1c;">找不到編號或條碼為「${this.escapeHtml(code)}」的商品</div>`;
+      box.textContent = '';
+      const errDiv = document.createElement('div');
+      errDiv.style.color = '#b91c1c';
+      errDiv.textContent = `找不到編號或條碼為「${code}」的商品`;
+      box.appendChild(errDiv);
       return;
     }
 
     ScannerEngine.feedback('ok');
     this.showToast(`已查得：[${prod.id}] ${prod.name}`, 'ok');
 
-    const imgHtml = prod.image
-      ? `<img class="m-lookup-img" src="${this.escapeHtml(prod.image)}" alt="">`
+    const safeImg = /^https:\/\//i.test(String(prod.image || '').trim()) ? prod.image : '';
+    const imgHtml = safeImg
+      ? `<img class="m-lookup-img" src="${this.escapeHtml(safeImg)}" alt="">`
       : `<div class="m-lookup-img" style="display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;">尚無圖</div>`;
 
     box.innerHTML = `
@@ -374,7 +415,7 @@ window.MobileOps = {
           <div style="font-size:12px; color:#64748b;">編號：${this.escapeHtml(prod.id)}</div>
           <div style="font-size:15px; font-weight:700; color:#1e293b; margin:2px 0 6px;">${this.escapeHtml(prod.name)}</div>
           <div style="font-size:16px; font-weight:700; color:#15803d; margin-bottom:6px;">NT$ ${Number(prod.price || 0).toLocaleString()}</div>
-          <div style="font-size:12px; color:#475569;">狀態：${this.escapeHtml(prod['狀態'] || '未設定')}</div>
+          <div style="font-size:12px; color:#475569;">狀態：${this.escapeHtml(prod['狀態'] || '正常')}｜庫存：${this.escapeHtml(prod['庫存數量'] !== '' ? prod['庫存數量'] : '-')}</div>
         </div>
       </div>
     `;
@@ -419,7 +460,7 @@ window.MobileOps = {
     }
 
     let sum = 0;
-    listEl.innerHTML = '';
+    listEl.textContent = '';
     this.posCart.forEach((item, idx) => {
       const sub = item.price * item.qty;
       sum += sub;
@@ -451,7 +492,8 @@ window.MobileOps = {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 };
 
