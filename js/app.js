@@ -1,3 +1,11 @@
+/**
+ * is Meya 形象網站前台主程式（第一階段基礎資安加固版）
+ * 防護與效能：
+ * 1. 圖片網址強制檢查 https:// 協定白名單，阻擋 javascript: 注入
+ * 2. 商品規格與卡片全部改用純 DOM textContent 安全渲染，杜絕 XSS
+ * 3. 嚴格遮蔽 NT$ 0（無有效售價自動改為官方 LINE 洽詢並隱藏購物車）
+ * 4. localStorage 秒開快取 ＋ Google CDN 三段分級尺寸 (=w480 / =w1200 / =w2048) ＋ 2K 放大燈箱
+ */
 const OFFICIAL_LINE_URL = 'https://lin.ee/7gVn9gX';
 const PUBLIC_CACHE_KEY = 'MEYA_PUBLIC_WEBSITE_CACHE_V1';
 
@@ -22,10 +30,10 @@ function parseValidPrice(rawPrice) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
-// 依據展示情境自動附加 Google CDN 三段分級縮放參數（列表 =w480 秒開、彈窗 =w1200、2K放大 =w2048、縮圖列 =w160）
+// 強制驗證 https:// 協定白名單，並附加 Google CDN 三段分級尺寸參數
 function formatCdnImageUrl(rawUrl, widthPx) {
   const url = String(rawUrl || '').trim();
-  if (!url) return '';
+  if (!url || !/^https:\/\//i.test(url)) return '';
   if (url.indexOf('googleusercontent.com/') !== -1 && !/=w\d+|=s\d+/i.test(url)) {
     return url + '=w' + widthPx;
   }
@@ -251,9 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindWebsiteEvents();
 });
 
-/**
- * 將網站資料套用至畫面（若背景更新資料與快取完全一致，則不重繪避免畫面閃動）
- */
 function applyWebsitePayload(data) {
   renderConfig(data.config || {});
 
@@ -275,7 +280,7 @@ function applyWebsitePayload(data) {
 }
 
 async function initWebsite() {
-  // 1. 先嘗試讀取本機快取秒開呈現（0.05 秒直接顯示上次商品）
+  // 1. 讀取本機快取秒開呈現
   let hasLocalCache = false;
   try {
     const cachedRaw = localStorage.getItem(PUBLIC_CACHE_KEY);
@@ -288,7 +293,7 @@ async function initWebsite() {
     }
   } catch (_) {}
 
-  // 2. 背景同步向 GAS 記憶體快取取得最新資料並無縫校對更新
+  // 2. 背景同步向 GAS 記憶體快取取得最新資料
   try {
     if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
       throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
@@ -313,7 +318,7 @@ async function initWebsite() {
     console.error('[is Meya] 資料庫連線診斷：', error);
     if (!hasLocalCache) {
       renderAnnouncements(['is Meya 韓國精品服飾・純銀飾品']);
-      document.getElementById('catalog-count').textContent = '目前尚未連線至商品資料庫，請確認 GAS 部署權限設為「所有人」與 js/config.js 網址';
+      document.getElementById('catalog-count').textContent = '商品型錄連線準備中，歡迎直接聯繫官方門市洽詢';
       document.getElementById('product-grid').innerHTML =
         '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
     }
@@ -364,7 +369,7 @@ function detectAndRenderCategories(products) {
     grid.parentNode.insertBefore(bar, grid);
   }
 
-  bar.innerHTML = '';
+  bar.textContent = '';
   ['ALL', ...categories].forEach(cat => {
     const btn = document.createElement('button');
     btn.textContent = cat === 'ALL' ? '全部商品' : cat;
@@ -407,10 +412,10 @@ function getProductGalleryUrls(product) {
   const list = String(product.images || '')
     .split(',')
     .map(u => u.trim())
-    .filter(Boolean);
+    .filter(u => /^https:\/\//i.test(u));
 
   const cover = String(product.image || '').trim();
-  if (cover && !list.includes(cover)) {
+  if (/^https:\/\//i.test(cover) && !list.includes(cover)) {
     list.unshift(cover);
   }
   return list;
@@ -419,11 +424,14 @@ function getProductGalleryUrls(product) {
 function renderProducts(list) {
   const grid = document.getElementById('product-grid');
   const countEl = document.getElementById('catalog-count');
-  grid.innerHTML = '';
+  grid.textContent = '';
 
   if (!list || list.length === 0) {
     countEl.textContent = '目前尚無上架商品';
-    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 44px 0; font-size: 14px;">全新商品陸續上架中，敬請期待。</p>';
+    const emptyP = document.createElement('p');
+    emptyP.style.cssText = 'grid-column: 1 / -1; text-align: center; color: #888; padding: 44px 0; font-size: 14px;';
+    emptyP.textContent = '全新商品陸續上架中，敬請期待。';
+    grid.appendChild(emptyP);
     return;
   }
 
@@ -493,22 +501,36 @@ function openProductModal(product) {
     if (addCartBtn) addCartBtn.style.display = '';
   } else {
     priceEl.className = 'price-tag price-inquiry';
-    priceEl.innerHTML = `價格請洽 <a href="${OFFICIAL_LINE_URL}" target="_blank" rel="noopener noreferrer" class="price-inquiry-link">官方 LINE ↗</a> 或門市洽詢`;
+    priceEl.textContent = '';
+    priceEl.appendChild(document.createTextNode('價格請洽 '));
+    const lineLink = document.createElement('a');
+    lineLink.href = OFFICIAL_LINE_URL;
+    lineLink.target = '_blank';
+    lineLink.rel = 'noopener noreferrer';
+    lineLink.className = 'price-inquiry-link';
+    lineLink.textContent = '官方 LINE ↗';
+    priceEl.appendChild(lineLink);
+    priceEl.appendChild(document.createTextNode(' 或門市洽詢'));
     if (addCartBtn) addCartBtn.style.display = 'none';
   }
 
   renderModalGallery();
 
+  // 使用純 DOM textContent 安全渲染規格，徹底阻擋 XSS
   const specBox = document.getElementById('modal-dynamic-specs');
   const hiddenKeys = new Set(['id', 'name', 'price', 'image', 'images', '狀態']);
-  specBox.innerHTML = '';
+  specBox.textContent = '';
 
   Object.keys(product).forEach(k => {
     if (hiddenKeys.has(k)) return;
     const val = String(product[k] || '').trim();
     if (!val) return;
     const line = document.createElement('div');
-    line.innerHTML = `<strong style="color:#333;">${escapeText(k)}：</strong>${escapeText(val)}`;
+    const label = document.createElement('strong');
+    label.style.color = '#333';
+    label.textContent = k + '：';
+    line.appendChild(label);
+    line.appendChild(document.createTextNode(val));
     specBox.appendChild(line);
   });
 
@@ -642,5 +664,10 @@ function bindWebsiteEvents() {
 }
 
 function escapeText(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(str === null || str === undefined ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
