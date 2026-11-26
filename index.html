@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>is Meya | 韓國精品服飾・純銀飾品</title>
-  <!-- 防止手機瀏覽器與 LINE 內建瀏覽器自動記住底部捲動位置或殘留錨點 -->
+  <!-- 防止手機瀏覽器與 LINE 內建瀏覽器自動記住底部捲動位置；若有 ?section= 參數則保留由 app.js 平滑導向 -->
   <script>
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
@@ -12,7 +12,9 @@
     if (window.location.hash) {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-    window.scrollTo(0, 0);
+    if (!new URLSearchParams(window.location.search).get('section')) {
+      window.scrollTo(0, 0);
+    }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +32,7 @@
     </div>
   </div>
 
-  <!-- 2. 主導覽列（韓系精品雙語微標 ＋ 毛玻璃捲動質感） -->
+  <!-- 2. 主導覽列（韓系精品雙語微標；「所有商品」直連獨立商品頁） -->
   <header class="site-header" id="site-header">
     <div class="header-container">
       <a href="#top" class="site-logo" data-scroll-target="top" aria-label="is Meya 首頁">
@@ -43,7 +45,7 @@
           <span class="nav-zh">新品上市</span>
           <span class="nav-en">NEW IN</span>
         </a>
-        <a href="#catalog" class="nav-link" data-nav="all" data-scroll-target="catalog">
+        <a href="./products.html" class="nav-link">
           <span class="nav-zh">所有商品</span>
           <span class="nav-en">SHOP ALL</span>
         </a>
@@ -87,16 +89,16 @@
     <!-- 手機版單行橫向精品滑動分頁列 -->
     <nav class="mobile-nav" aria-label="行動裝置選單">
       <a href="#catalog" class="mobile-nav-link active" data-nav="new" data-scroll-target="catalog">新品上市</a>
-      <a href="#catalog" class="mobile-nav-link" data-nav="all" data-scroll-target="catalog">所有商品</a>
+      <a href="./products.html" class="mobile-nav-link">所有商品</a>
       <a href="#articles" class="mobile-nav-link" data-scroll-target="articles">批發知識文章</a>
       <a href="#faq" class="mobile-nav-link" data-scroll-target="faq">Q&amp;A</a>
       <a href="#contact" class="mobile-nav-link" data-scroll-target="contact">聯絡我們</a>
     </nav>
 
-    <!-- 隱藏式極簡搜尋抽屜 -->
+    <!-- 隱藏式極簡搜尋抽屜（按 Enter 直接前往所有商品頁全館搜尋） -->
     <div id="search-bar-drawer" class="search-drawer">
       <div class="search-drawer-inner">
-        <input type="text" id="search-input" class="search-input" placeholder="輸入商品名稱、編號或分類關鍵字...">
+        <input type="text" id="search-input" class="search-input" placeholder="輸入商品名稱、編號或分類關鍵字（按 Enter 搜尋全館）...">
         <button id="btn-search-close" class="search-close-btn" aria-label="關閉搜尋">✕</button>
       </div>
     </div>
@@ -109,24 +111,34 @@
       <span class="hero-script">is Meya</span>
       <h1>韓國精品服飾・純銀設計飾品</h1>
       <p>以柔和線條與細膩質感，詮釋日常優雅美學</p>
-      <a href="#catalog" class="hero-cta" data-scroll-target="catalog">探索精選飾品</a>
+      <a href="./products.html" class="hero-cta">探索全部商品</a>
     </div>
   </section>
 
-  <!-- 4. 商品櫥窗展示區 -->
+  <!-- 4. 首頁精選飾品區（固定呈現排序前 12 件，支援左右平滑輪播） -->
   <main id="catalog" class="main-content">
     <div class="section-header">
       <h2 id="catalog-heading">精選飾品</h2>
       <div class="section-subtitle">CURATED JEWELRY</div>
       <div class="section-divider" aria-hidden="true"></div>
-      <p id="catalog-count">商品型錄載入中...</p>
+      <p id="catalog-count">精選商品載入中...</p>
     </div>
 
-    <div id="product-grid" class="product-grid">
-      <div class="loading-state"></div>
-      <div class="loading-state"></div>
-      <div class="loading-state"></div>
-      <div class="loading-state"></div>
+    <div class="carousel-shell">
+      <button type="button" id="btn-carousel-prev" class="carousel-nav-btn carousel-prev" aria-label="往左滑動精選飾品">‹</button>
+      <div id="featured-carousel-track" class="carousel-track">
+        <div class="carousel-slide"><div class="loading-state"></div></div>
+        <div class="carousel-slide"><div class="loading-state"></div></div>
+        <div class="carousel-slide"><div class="loading-state"></div></div>
+        <div class="carousel-slide"><div class="loading-state"></div></div>
+      </div>
+      <button type="button" id="btn-carousel-next" class="carousel-nav-btn carousel-next" aria-label="往右滑動精選飾品">›</button>
+    </div>
+
+    <div id="carousel-dots" class="carousel-dots" aria-label="精選商品輪播進度"></div>
+
+    <div class="carousel-cta-wrap">
+      <a href="./products.html" id="btn-view-all-products" class="view-all-btn">瀏覽所有商品 →</a>
     </div>
   </main>
 
@@ -201,7 +213,7 @@
       <div class="footer-nav">
         <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
         <span class="divider">|</span>
-        <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
+        <a href="./products.html">所有商品</a>
         <span class="divider">|</span>
         <a href="#articles" data-scroll-target="articles">批發知識文章</a>
         <span class="divider">|</span>
