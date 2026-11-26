@@ -1,223 +1,236 @@
 /**
- * is Meya 獨立「所有商品」目錄引擎
- * 功能：左側自動多層分類樹（支援 / 分隔主次分類）、三段排序、每頁 48 件（4×12）圓形分頁、0 元遮蔽與 2K 放大燈箱
- * 安全：全程純 DOM textContent 安全渲染防 XSS，圖片強制驗證 https:// 協定白名單，零前端機密
+ * 模組 2：進銷存商品主檔管理、官網前台分類定位、零拷貝圖庫選圖排序與上架引擎
+ * 安全防護：
+ * 1. 所有動態字串皆經 AdminCore.escapeHtml 完整跳脫，圖片網址經 AdminCore.sanitizeImageUrl 驗證
+ * 2. 零硬編碼私有網域或密鑰，所有寫入皆經 AdminCore.apiPost 安全通道傳送
  */
-const OFFICIAL_LINE_URL = 'https://lin.ee/7gVn9gX';
-const PUBLIC_CACHE_KEY = 'MEYA_PUBLIC_WEBSITE_CACHE_V2';
-const PAGE_SIZE = 48;
+window.AdminProducts = {
+  PAGE_SIZE: 50,
 
-let allPublishedProducts = [];
-let detectedCategoryKey = null;
-let activeParentCat = 'ALL';
-let activeChildCat = '';
-let activeSort = 'default';
-let currentPage = 1;
-const expandedParentSet = new Set();
+  // 預設韓系飾品前台分類建議庫（用 / 分隔即自動於前台左側長出主分類與次分類樹）
+  PRESET_WEB_CATEGORIES: [
+    '十一月新品',
+    '飾品/項鍊',
+    '飾品/耳環',
+    '飾品/戒指',
+    '飾品/手環 手鍊',
+    '飾品/輕奢銀耀系列',
+    '髮飾/髮夾 鯊魚夾',
+    '髮飾/髮圈 大腸髮圈',
+    '品牌選物/Wiggle Wiggle'
+  ],
 
-let lastRenderedAnnouncementsKey = '';
-let lastRenderedProductsKey = '';
+  currentPage: 1,
+  rawDriveImages: [],
+  selectedQueue: [],      // 已選原圖清單（index 0 固定為主圖，直接存放 Drive File ID）
+  matchedFolderName: '',
+  activeProductId: '',
+  previewingFileId: '',
+  lastPreviewInfo: null,  // { fileName, previewUrl, ultraHdUrl }
+  lightboxZoomMode: 'fit',
 
-let currentModalProduct = null;
-let currentModalGallery = [];
-let currentModalImgIndex = 0;
+  editMode: 'EDIT',
+  editingProductId: '',
+  quickCatProduct: null,
 
-function parseValidPrice(rawPrice) {
-  if (rawPrice === null || rawPrice === undefined) return 0;
-  const cleaned = String(rawPrice).replace(/[^0-9.-]/g, '').trim();
-  if (!cleaned) return 0;
-  const num = Number(cleaned);
-  return Number.isFinite(num) && num > 0 ? num : 0;
-}
+  init: function() {
+    const searchEl = document.getElementById('prod-search');
+    const filterEl = document.getElementById('prod-filter');
+    const catFilterEl = document.getElementById('prod-cat-filter');
 
-function formatCdnImageUrl(rawUrl, widthPx) {
-  const url = String(rawUrl || '').trim();
-  if (!url || !/^https:\/\//i.test(url)) return '';
-  if (url.indexOf('googleusercontent.com/') !== -1 && !/=w\d+|=s\d+/i.test(url)) {
-    return url + '=w' + widthPx;
-  }
-  return url;
-}
+    if (searchEl) searchEl.addEventListener('input', () => this.renderTable(true));
+    if (filterEl) filterEl.addEventListener('change', () => this.renderTable(true));
+    if (catFilterEl) catFilterEl.addEventListener('change', () => this.renderTable(true));
 
-function parseCategoryParts(rawVal) {
-  const str = String(rawVal || '').trim();
-  if (!str) return { parent: '', child: '' };
-  const parts = str.split(/[\/／>]/).map(s => s.trim()).filter(Boolean);
-  if (parts.length >= 2) {
-    return { parent: parts[0], child: parts.slice(1).join(' / ') };
-  }
-  return { parent: parts[0] || '', child: '' };
-}
-
-// 動態跑馬燈控制器
-const MarqueeRunner = {
-  rafId: null,
-  x: 0,
-  lastTime: 0,
-  paused: false,
-  speedPxPerSec: 72,
-
-  start: function(text) {
-    const mainEl = document.getElementById('marquee-content');
-    const cloneEl = document.getElementById('marquee-content-clone');
-    if (!mainEl) return;
-
-    const container = mainEl.parentElement;
-    if (cloneEl) cloneEl.style.display = 'none';
-
-    container.style.display = 'block';
-    container.style.width = '100%';
-    container.style.overflow = 'hidden';
-
-    mainEl.style.display = 'inline-block';
-    mainEl.style.whiteSpace = 'nowrap';
-    mainEl.style.animation = 'none';
-    mainEl.textContent = text;
-
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-
-    this.x = container.clientWidth || window.innerWidth;
-    this.lastTime = 0;
-    mainEl.style.transform = `translate3d(${this.x}px, 0, 0)`;
-
-    const step = (now) => {
-      if (!this.lastTime) this.lastTime = now;
-      const dt = Math.min((now - this.lastTime) / 1000, 0.05);
-      this.lastTime = now;
-
-      if (!this.paused) {
-        this.x -= this.speedPxPerSec * dt;
-        const textWidth = mainEl.offsetWidth || 200;
-        const containerWidth = container.clientWidth || window.innerWidth;
-        if (this.x < -textWidth) this.x = containerWidth;
-        mainEl.style.transform = `translate3d(${this.x}px, 0, 0)`;
-      }
-
-      this.rafId = requestAnimationFrame(step);
+    const switchReadyFilter = () => {
+      if (filterEl) filterEl.value = 'READY_MATCH';
+      if (catFilterEl) catFilterEl.value = 'ALL';
+      if (searchEl) searchEl.value = '';
+      this.renderTable(true);
     };
+    const kpiReady = document.getElementById('kpi-card-ready');
+    const btnReady = document.getElementById('btn-filter-ready');
+    if (kpiReady) kpiReady.addEventListener('click', switchReadyFilter);
+    if (btnReady) btnReady.addEventListener('click', switchReadyFilter);
 
-    this.rafId = requestAnimationFrame(step);
+    // 主檔編輯與新增彈窗
+    document.getElementById('btn-create-product').addEventListener('click', () => this.openEditModal(null));
+    document.getElementById('btn-close-edit-x').addEventListener('click', () => this.closeEditModal());
+    document.getElementById('btn-cancel-edit').addEventListener('click', () => this.closeEditModal());
+    document.getElementById('btn-save-edit').addEventListener('click', () => this.saveProductEdit());
+
+    // 網站圖庫與上架彈窗
+    document.getElementById('btn-close-modal-x').addEventListener('click', () => this.closeMatchModal());
+    document.getElementById('btn-cancel-modal').addEventListener('click', () => this.closeMatchModal());
+    document.getElementById('raw-img-search').addEventListener('input', () => this.renderRawImageList());
+    document.getElementById('btn-select-all-raw').addEventListener('click', () => this.selectAllRawImages());
+    document.getElementById('btn-clear-all-raw').addEventListener('click', () => this.clearAllRawImages());
+    document.getElementById('btn-upload-bind').addEventListener('click', () => this.confirmBindShowcase());
+
+    // 快速定位前台分類彈窗
+    const btnCloseQcatX = document.getElementById('btn-close-qcat-x');
+    const btnCancelQcat = document.getElementById('btn-cancel-qcat');
+    const btnSaveQcat = document.getElementById('btn-save-qcat');
+    if (btnCloseQcatX) btnCloseQcatX.addEventListener('click', () => this.closeQuickCatModal());
+    if (btnCancelQcat) btnCancelQcat.addEventListener('click', () => this.closeQuickCatModal());
+    if (btnSaveQcat) btnSaveQcat.addEventListener('click', () => this.saveQuickCategory());
+
+    const previewImg = document.getElementById('preview-cdn-img');
+    if (previewImg) {
+      previewImg.addEventListener('click', () => this.openHdLightbox());
+    }
+
+    this.setupHdLightbox();
   },
 
-  bindHover: function() {
-    const bar = document.querySelector('.announcement-bar');
-    if (!bar) return;
-    bar.addEventListener('mouseenter', () => { this.paused = true; });
-    bar.addEventListener('mouseleave', () => { this.paused = false; });
-  }
-};
+  // ================= 0. 分類選項彙整與膠囊快選 =================
 
-// 前台 2K 高清全螢幕放大燈箱
-const FrontLightbox = {
-  zoomMode: 'fit',
+  getMergedCategoryOptions: function() {
+    const set = new Set(this.PRESET_WEB_CATEGORIES);
+    (AdminState.products || []).forEach(p => {
+      const c = p._web && p._web.category ? String(p._web.category).trim() : '';
+      if (c) set.add(c);
+    });
+    return Array.from(set);
+  },
 
-  ensureDom: function() {
-    if (document.getElementById('front-hd-lightbox')) return;
+  syncCategoryFilterDropdown: function() {
+    const sel = document.getElementById('prod-cat-filter');
+    if (!sel) return;
 
-    const el = document.createElement('div');
-    el.id = 'front-hd-lightbox';
-    el.className = 'front-lightbox';
-    el.innerHTML = `
-      <div class="front-lightbox-bar">
-        <div id="front-lb-meta" class="front-lightbox-meta"></div>
-        <div class="front-lightbox-controls">
-          <button type="button" class="front-lb-btn front-lb-zoom active" data-zoom="fit">適應螢幕</button>
-          <button type="button" class="front-lb-btn front-lb-zoom" data-zoom="100">100% 細節</button>
-          <button type="button" class="front-lb-btn front-lb-zoom" data-zoom="150">150% 微距</button>
-          <button type="button" id="front-lb-close" class="front-lb-btn front-lb-close">✕ 關閉</button>
+    const prevVal = sel.value || 'ALL';
+    const usedSet = new Set();
+    (AdminState.products || []).forEach(p => {
+      const c = p._web && p._web.category ? String(p._web.category).trim() : '';
+      if (c) usedSet.add(c);
+    });
+
+    sel.textContent = '';
+    const baseOpts = [
+      { value: 'ALL', label: '全部分類定位' },
+      { value: 'UNSET', label: '尚未設定前台分類' }
+    ];
+    baseOpts.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      sel.appendChild(opt);
+    });
+
+    Array.from(usedSet).sort().forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = '分類：' + cat;
+      sel.appendChild(opt);
+    });
+
+    if (Array.from(sel.options).some(o => o.value === prevVal)) {
+      sel.value = prevVal;
+    } else {
+      sel.value = 'ALL';
+    }
+  },
+
+  renderCategoryPresetChips: function(containerId, targetInputId) {
+    const box = document.getElementById(containerId);
+    const inputEl = document.getElementById(targetInputId);
+    if (!box || !inputEl) return;
+
+    const options = this.getMergedCategoryOptions();
+    box.textContent = '';
+
+    options.forEach(cat => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'btn btn-outline btn-xs';
+      chip.style.cssText = 'border-radius:14px; font-size:11px; padding:3px 10px;';
+      chip.textContent = cat;
+      chip.addEventListener('click', () => {
+        inputEl.value = cat;
+        inputEl.focus();
+      });
+      box.appendChild(chip);
+    });
+  },
+
+  // ================= 0B. 2K CDN 高清點擊放大燈箱 =================
+
+  setupHdLightbox: function() {
+    const stage = document.querySelector('.canvas-stage');
+
+    if (stage && !document.getElementById('canvas-zoom-hint')) {
+      const hint = document.createElement('button');
+      hint.type = 'button';
+      hint.id = 'canvas-zoom-hint';
+      hint.className = 'canvas-zoom-hint';
+      hint.textContent = '🔍 點擊放大 2K 細節';
+      hint.style.display = 'none';
+      hint.addEventListener('click', () => this.openHdLightbox());
+      stage.appendChild(hint);
+    }
+
+    if (!document.getElementById('hd-zoom-lightbox')) {
+      const box = document.createElement('div');
+      box.id = 'hd-zoom-lightbox';
+      box.className = 'hd-lightbox';
+      box.innerHTML = `
+        <div class="hd-lightbox-bar">
+          <div id="hd-lightbox-meta" class="hd-lightbox-meta"></div>
+          <div class="hd-lightbox-controls">
+            <button type="button" class="btn btn-outline btn-xs hd-zoom-btn active" data-zoom="fit">適應螢幕</button>
+            <button type="button" class="btn btn-outline btn-xs hd-zoom-btn" data-zoom="100">2K 原寸細節</button>
+            <button type="button" id="btn-close-hd-lightbox" class="btn btn-danger btn-xs">✕ 關閉</button>
+          </div>
         </div>
-      </div>
-      <div class="front-lightbox-body">
-        <button type="button" id="front-lb-prev" class="front-lb-nav front-lb-prev" aria-label="上一張">‹</button>
-        <div id="front-lb-stage" class="front-lightbox-stage">
-          <img id="front-lb-img" class="front-lightbox-img" src="" alt="商品高清放大圖">
+        <div id="hd-lightbox-stage" class="hd-lightbox-stage">
+          <img id="hd-lightbox-img" class="hd-lightbox-img" src="" alt="2K 高清預覽">
         </div>
-        <button type="button" id="front-lb-next" class="front-lb-nav front-lb-next" aria-label="下一張">›</button>
-      </div>
-    `;
-    document.body.appendChild(el);
+      `;
+      document.body.appendChild(box);
 
-    el.querySelectorAll('.front-lb-zoom').forEach(btn => {
-      btn.addEventListener('click', () => this.applyZoom(btn.dataset.zoom));
-    });
-
-    document.getElementById('front-lb-close').addEventListener('click', () => this.close());
-    document.getElementById('front-lb-prev').addEventListener('click', () => this.step(-1));
-    document.getElementById('front-lb-next').addEventListener('click', () => this.step(1));
-
-    document.getElementById('front-lb-stage').addEventListener('click', e => {
-      if (e.target.id === 'front-lb-stage') this.close();
-    });
-
-    const imgEl = document.getElementById('front-lb-img');
-    imgEl.addEventListener('click', e => {
-      e.stopPropagation();
-      this.applyZoom(this.zoomMode === 'fit' ? '100' : 'fit');
-    });
-
-    document.addEventListener('keydown', e => {
-      const box = document.getElementById('front-hd-lightbox');
-      if (!box || !box.classList.contains('open')) return;
-      if (e.key === 'Escape') this.close();
-      else if (e.key === 'ArrowLeft') this.step(-1);
-      else if (e.key === 'ArrowRight') this.step(1);
-    });
+      box.querySelectorAll('.hd-zoom-btn').forEach(btn => {
+        btn.addEventListener('click', () => this.applyLightboxZoom(btn.dataset.zoom));
+      });
+      document.getElementById('btn-close-hd-lightbox').addEventListener('click', () => this.closeHdLightbox());
+      document.getElementById('hd-lightbox-stage').addEventListener('click', e => {
+        if (e.target.id === 'hd-lightbox-stage') this.closeHdLightbox();
+      });
+      document.getElementById('hd-lightbox-img').addEventListener('click', e => {
+        e.stopPropagation();
+        this.applyLightboxZoom(this.lightboxZoomMode === 'fit' ? '100' : 'fit');
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') this.closeHdLightbox();
+      });
+    }
   },
 
-  open: function() {
-    if (!currentModalGallery || currentModalGallery.length === 0) return;
-    this.ensureDom();
-    this.renderCurrentImage();
-    document.getElementById('front-hd-lightbox').classList.add('open');
+  openHdLightbox: function() {
+    if (!this.lastPreviewInfo || !this.lastPreviewInfo.ultraHdUrl) return;
+    const info = this.lastPreviewInfo;
+    const safeUltra = AdminCore.sanitizeImageUrl(info.ultraHdUrl);
+    if (!safeUltra) return;
+    document.getElementById('hd-lightbox-img').src = safeUltra;
+    document.getElementById('hd-lightbox-meta').textContent =
+      `${info.fileName} ｜ Google CDN 2K 動態高畫質直連 — 點擊圖片可切換原寸細節`;
+    this.applyLightboxZoom('fit');
+    document.getElementById('hd-zoom-lightbox').classList.add('open');
   },
 
-  renderCurrentImage: function() {
-    const rawUrl = currentModalGallery[currentModalImgIndex] || '';
-    const hdUrl = formatCdnImageUrl(rawUrl, 2048);
-    const imgEl = document.getElementById('front-lb-img');
-    const metaEl = document.getElementById('front-lb-meta');
-    const prevBtn = document.getElementById('front-lb-prev');
-    const nextBtn = document.getElementById('front-lb-next');
+  applyLightboxZoom: function(mode) {
+    this.lightboxZoomMode = mode;
+    const imgEl = document.getElementById('hd-lightbox-img');
+    const stageEl = document.getElementById('hd-lightbox-stage');
 
-    const title = currentModalProduct ? (currentModalProduct.name || currentModalProduct.id || '') : '';
-    const counter = currentModalGallery.length > 1
-      ? `（${currentModalImgIndex + 1} / ${currentModalGallery.length}）`
-      : '';
-    metaEl.textContent = `${title} ${counter}`;
-
-    const showNav = currentModalGallery.length > 1;
-    prevBtn.style.display = showNav ? 'flex' : 'none';
-    nextBtn.style.display = showNav ? 'flex' : 'none';
-
-    imgEl.onload = () => {
-      if (this.zoomMode !== 'fit') this.applyZoom(this.zoomMode);
-    };
-    imgEl.src = hdUrl;
-    this.applyZoom('fit');
-  },
-
-  applyZoom: function(mode) {
-    this.zoomMode = mode;
-    const imgEl = document.getElementById('front-lb-img');
-    const stageEl = document.getElementById('front-lb-stage');
-
-    document.querySelectorAll('.front-lb-zoom').forEach(btn => {
+    document.querySelectorAll('.hd-zoom-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.zoom === mode);
     });
 
     if (mode === 'fit') {
       imgEl.classList.remove('zoomed');
-      imgEl.style.width = '';
-      imgEl.style.height = '';
       stageEl.scrollTo(0, 0);
     } else {
-      const natW = imgEl.naturalWidth || 1600;
-      const natH = imgEl.naturalHeight || 2133;
-      const scale = mode === '150' ? 1.5 : 1;
       imgEl.classList.add('zoomed');
-      imgEl.style.width = Math.round(natW * scale) + 'px';
-      imgEl.style.height = Math.round(natH * scale) + 'px';
-
       requestAnimationFrame(() => {
         stageEl.scrollLeft = Math.max(0, (stageEl.scrollWidth - stageEl.clientWidth) / 2);
         stageEl.scrollTop = Math.max(0, (stageEl.scrollHeight - stageEl.clientHeight) / 2);
@@ -225,644 +238,709 @@ const FrontLightbox = {
     }
   },
 
-  step: function(delta) {
-    if (currentModalGallery.length <= 1) return;
-    currentModalImgIndex = (currentModalImgIndex + delta + currentModalGallery.length) % currentModalGallery.length;
-    renderModalGallery();
-    this.renderCurrentImage();
+  closeHdLightbox: function() {
+    const box = document.getElementById('hd-zoom-lightbox');
+    if (box) box.classList.remove('open');
   },
 
-  close: function() {
-    const box = document.getElementById('front-hd-lightbox');
-    if (box) box.classList.remove('open');
-  }
-};
+  // ================= 1. 商品主檔與官網狀態列表 =================
 
-document.addEventListener('DOMContentLoaded', () => {
-  MarqueeRunner.bindHover();
-  setupHeaderScrollEffect();
-  applyInitialUrlParams();
-  bindEvents();
-  initProductsPage();
-});
-
-function setupHeaderScrollEffect() {
-  const header = document.getElementById('site-header');
-  if (!header) return;
-  window.addEventListener('scroll', () => {
-    header.classList.toggle('scrolled', (window.scrollY || 0) > 18);
-  }, { passive: true });
-}
-
-function applyInitialUrlParams() {
-  const params = new URLSearchParams(window.location.search);
-  const q = (params.get('q') || '').trim();
-  if (q) {
-    const searchInput = document.getElementById('search-input');
-    const drawer = document.getElementById('search-bar-drawer');
-    if (searchInput) searchInput.value = q;
-    if (drawer) drawer.classList.add('open');
-  }
-}
-
-function applyWebsitePayload(data) {
-  renderConfig(data.config || {});
-
-  const announcements = data.announcements || [];
-  const annKey = JSON.stringify(announcements);
-  if (annKey !== lastRenderedAnnouncementsKey) {
-    lastRenderedAnnouncementsKey = annKey;
-    const text = announcements.length > 0
-      ? announcements.join('　　✦　　')
-      : '歡迎蒞臨 is Meya 官方形象網站';
-    MarqueeRunner.start(text);
-  }
-
-  const products = data.products || [];
-  const prodKey = JSON.stringify(products);
-  if (prodKey !== lastRenderedProductsKey) {
-    lastRenderedProductsKey = prodKey;
-    allPublishedProducts = products.map((p, idx) => ({ ...p, _origIdx: idx }));
-    detectCategoryKey();
-    renderCategoryTree();
-    renderFilteredProducts(true);
-  }
-}
-
-async function initProductsPage() {
-  let hasLocalCache = false;
-  try {
-    const cachedRaw = localStorage.getItem(PUBLIC_CACHE_KEY);
-    if (cachedRaw) {
-      const cached = JSON.parse(cachedRaw);
-      if (cached && Array.isArray(cached.products)) {
-        applyWebsitePayload(cached);
-        hasLocalCache = true;
-      }
-    }
-  } catch (_) {}
-
-  try {
-    if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
-      throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
-    }
-
-    const response = await fetch(CONFIG.GAS_API_URL + '?action=getWebsiteInitData');
-    if (!response.ok) throw new Error('伺服器回應狀態碼：' + response.status);
-
-    const data = await response.json();
-    if (data.status !== 'success') throw new Error(data.message || '資料庫回傳異常');
+  renderTable: function(resetPage = false) {
+    const tbody = document.getElementById('product-tbody');
+    if (!tbody) return;
 
     try {
-      localStorage.setItem(PUBLIC_CACHE_KEY, JSON.stringify({
-        config: data.config || {},
-        announcements: data.announcements || [],
-        products: data.products || [],
-        articles: data.articles || [],
-        faqs: data.faqs || []
-      }));
-    } catch (_) {}
+      if (resetPage) this.currentPage = 1;
+      this.syncCategoryFilterDropdown();
 
-    applyWebsitePayload(data);
-  } catch (error) {
-    console.error('[is Meya] 所有商品頁連線診斷：', error);
-    if (!hasLocalCache) {
-      MarqueeRunner.start('is Meya 韓國精品服飾・純銀飾品');
-      document.getElementById('shop-result-summary').textContent = '目前尚未連線至商品資料庫，歡迎聯繫官方門市洽詢';
-      document.getElementById('shop-product-grid').innerHTML =
-        '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 52px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
-    }
-  }
-}
+      const kw = (document.getElementById('prod-search').value || '').trim().toLowerCase();
+      const filter = document.getElementById('prod-filter').value || 'ALL';
+      const catFilterEl = document.getElementById('prod-cat-filter');
+      const catFilter = catFilterEl ? catFilterEl.value : 'ALL';
+      const esc = AdminCore.escapeHtml;
 
-function renderConfig(config) {
-  if (config.cart_enabled === true) {
-    document.body.classList.remove('cart-disabled');
-  } else {
-    document.body.classList.add('cart-disabled');
-  }
-  if (config.free_shipping) {
-    const el = document.getElementById('free-shipping-text');
-    if (el) el.textContent = config.free_shipping;
-  }
-}
+      const filtered = (AdminState.products || []).filter(p => {
+        const webCat = p._web && p._web.category ? String(p._web.category).trim() : '';
 
-// ================= 左側多層分類樹 =================
+        if (catFilter === 'UNSET' && webCat !== '') return false;
+        if (catFilter !== 'ALL' && catFilter !== 'UNSET' && webCat !== catFilter) return false;
 
-function detectCategoryKey() {
-  detectedCategoryKey = null;
-  for (let i = 0; i < allPublishedProducts.length; i++) {
-    const keys = Object.keys(allPublishedProducts[i]);
-    const hit = keys.find(k => ['分類', '類別', '系列', 'category', 'type'].includes(k.toLowerCase()));
-    if (hit) {
-      detectedCategoryKey = hit;
-      break;
-    }
-  }
-}
+        if (kw) {
+          const hitText = Object.keys(p)
+            .filter(k => !k.startsWith('_'))
+            .some(k => String(p[k] !== null && p[k] !== undefined ? p[k] : '').toLowerCase().includes(kw)) ||
+            (p._web && (
+              String(p._web.title || '').toLowerCase().includes(kw) ||
+              webCat.toLowerCase().includes(kw)
+            ));
+          if (!hitText) return false;
+        }
 
-function buildCategoryTreeData() {
-  const map = new Map();
-
-  allPublishedProducts.forEach(p => {
-    const raw = detectedCategoryKey ? p[detectedCategoryKey] : '';
-    const { parent, child } = parseCategoryParts(raw);
-    if (!parent) return;
-
-    if (!map.has(parent)) {
-      map.set(parent, { count: 0, children: new Map() });
-    }
-    const group = map.get(parent);
-    group.count++;
-    if (child) {
-      group.children.set(child, (group.children.get(child) || 0) + 1);
-      if (expandedParentSet.size === 0) expandedParentSet.add(parent);
-    }
-  });
-
-  return map;
-}
-
-function makeCatRowButton(labelText, countNum, className, isActive) {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = className + (isActive ? ' active' : '');
-
-  const labelSpan = document.createElement('span');
-  labelSpan.textContent = labelText;
-
-  const badge = document.createElement('span');
-  badge.className = 'cat-count-badge';
-  badge.textContent = String(countNum);
-
-  btn.appendChild(labelSpan);
-  btn.appendChild(badge);
-  return btn;
-}
-
-function renderCategoryTree() {
-  const container = document.getElementById('shop-category-tree');
-  if (!container) return;
-
-  const treeMap = buildCategoryTreeData();
-  container.textContent = '';
-
-  const allBtn = makeCatRowButton('全部商品', allPublishedProducts.length, 'cat-parent-btn', activeParentCat === 'ALL');
-  allBtn.addEventListener('click', () => {
-    activeParentCat = 'ALL';
-    activeChildCat = '';
-    onCategorySelected();
-  });
-  container.appendChild(allBtn);
-
-  treeMap.forEach((group, parentName) => {
-    const hasChildren = group.children.size > 0;
-    const isExpanded = expandedParentSet.has(parentName);
-    const isParentActive = activeParentCat === parentName && !activeChildCat;
-
-    const groupEl = document.createElement('div');
-    groupEl.className = 'cat-group' + (isExpanded ? ' expanded' : '');
-
-    const row = document.createElement('div');
-    row.className = 'cat-parent-row';
-
-    const parentBtn = makeCatRowButton(parentName, group.count, 'cat-parent-btn', isParentActive);
-    parentBtn.addEventListener('click', () => {
-      activeParentCat = parentName;
-      activeChildCat = '';
-      if (hasChildren) expandedParentSet.add(parentName);
-      onCategorySelected();
-    });
-    row.appendChild(parentBtn);
-
-    if (hasChildren) {
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'cat-expand-btn';
-      toggleBtn.setAttribute('aria-label', isExpanded ? '收合子分類' : '展開子分類');
-      toggleBtn.textContent = isExpanded ? '⌃' : '⌄';
-      toggleBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        if (expandedParentSet.has(parentName)) expandedParentSet.delete(parentName);
-        else expandedParentSet.add(parentName);
-        renderCategoryTree();
+        if (filter === 'READY_MATCH') return p._readyToMatch === true;
+        if (filter !== 'ALL') return p['狀態'] === filter;
+        return true;
       });
-      row.appendChild(toggleBtn);
-    }
 
-    groupEl.appendChild(row);
-
-    if (hasChildren) {
-      const childWrap = document.createElement('div');
-      childWrap.className = 'cat-children';
-      group.children.forEach((childCount, childName) => {
-        const isChildActive = activeParentCat === parentName && activeChildCat === childName;
-        const cBtn = makeCatRowButton(childName, childCount, 'cat-child-btn', isChildActive);
-        cBtn.addEventListener('click', () => {
-          activeParentCat = parentName;
-          activeChildCat = childName;
-          expandedParentSet.add(parentName);
-          onCategorySelected();
-        });
-        childWrap.appendChild(cBtn);
+      filtered.sort((a, b) => {
+        const rank = item => {
+          if (item._readyToMatch) return 0;
+          if (item['狀態'] === '上架') return 1;
+          if (item['狀態'] === '下架') return 2;
+          return 3;
+        };
+        const diff = rank(a) - rank(b);
+        if (diff !== 0) return diff;
+        return String(a.id || '').localeCompare(String(b.id || ''));
       });
-      groupEl.appendChild(childWrap);
+
+      const totalItems = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(totalItems / this.PAGE_SIZE));
+      if (this.currentPage > totalPages) this.currentPage = totalPages;
+
+      const startIdx = (this.currentPage - 1) * this.PAGE_SIZE;
+      const pageItems = filtered.slice(startIdx, startIdx + this.PAGE_SIZE);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">沒有符合條件的商品資料</td></tr>';
+        this.renderPagination(0, 1, 1);
+        return;
+      }
+
+      tbody.innerHTML = '';
+      pageItems.forEach(p => {
+        const web = p._web || {};
+        const photoCount = Array.isArray(web.galleryIds) ? web.galleryIds.length : 0;
+        const webStatus = p['狀態'] || '未上架';
+
+        const statusClass = webStatus === '上架' ? 'pill-ok' : (webStatus === '下架' ? 'pill-wait' : 'pill-off');
+        const nextStatus = webStatus === '上架' ? '下架' : '上架';
+
+        const safeThumb = AdminCore.sanitizeImageUrl(p.image);
+        const thumbCell = safeThumb
+          ? `<img class="thumb-mini" src="${esc(safeThumb)}" loading="lazy" alt="">`
+          : (p._readyToMatch
+              ? `<div><span class="pill pill-ready">📁 有原圖</span></div>`
+              : `<span class="pill pill-off">未設圖</span>`);
+
+        const titleHtml = web.title
+          ? `<div>${esc(p.name)}</div><div style="font-size:11px; color:#2563eb;">官網：${esc(web.title)}</div>`
+          : `<div>${esc(p.name)}</div>`;
+
+        const masterPriceNum = Number(p.price || 0);
+        const priceHtml = web.price !== '' && web.price !== undefined
+          ? `<div>NT$ ${masterPriceNum.toLocaleString()}</div><div style="font-size:11px; color:#15803d;">官網：NT$ ${Number(web.price).toLocaleString()}</div>`
+          : `<div>NT$ ${masterPriceNum.toLocaleString()}</div>`;
+
+        const webTags = [];
+        if (web.category) {
+          webTags.push(`<span class="pill pill-ok" style="margin:2px;">🏷️ ${esc(web.category)}</span>`);
+        } else {
+          webTags.push(`<span class="pill pill-wait" style="margin:2px;">未設分類</span>`);
+        }
+        if (photoCount > 0) webTags.push(`<span class="pill pill-new" style="margin:2px;">🖼️ ${photoCount} 張</span>`);
+        if (web.exists) webTags.push(`<span class="pill pill-off" style="margin:2px;">排序 #${web.sortOrder}</span>`);
+
+        const tr = document.createElement('tr');
+        if (p._readyToMatch) tr.className = 'row-ready-match';
+
+        tr.innerHTML = `
+          <td>${thumbCell}</td>
+          <td>
+            <strong>${esc(p.id)}</strong>
+            ${p._readyToMatch ? `<div style="font-size:11px; color:#15803d;">資料夾：${esc(p._matchedFolder)}</div>` : ''}
+          </td>
+          <td>${titleHtml}</td>
+          <td>${priceHtml}</td>
+          <td>${webTags.join('')}</td>
+          <td><span class="pill ${statusClass}">${esc(webStatus)}</span></td>
+          <td style="white-space:nowrap;">
+            <button class="btn ${p._readyToMatch ? 'btn-success' : 'btn-primary'} btn-open-match">圖庫與上架</button>
+            <button class="btn btn-outline btn-quick-cat" title="快速設定官網前台分類與排序">🏷️ 定位分類</button>
+            <button class="btn btn-info btn-edit-prod">編修主檔</button>
+            ${web.exists ? `<button class="btn btn-outline btn-toggle-status">官網${nextStatus}</button>` : ''}
+          </td>
+        `;
+
+        tr.querySelector('.btn-open-match').addEventListener('click', () => this.openMatchModal(p));
+        tr.querySelector('.btn-quick-cat').addEventListener('click', () => this.openQuickCatModal(p));
+        tr.querySelector('.btn-edit-prod').addEventListener('click', () => this.openEditModal(p));
+        const toggleBtn = tr.querySelector('.btn-toggle-status');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', () => this.toggleWebsiteStatus(p.id, nextStatus));
+        }
+        tbody.appendChild(tr);
+      });
+
+      this.renderPagination(totalItems, this.currentPage, totalPages);
+    } catch (err) {
+      console.error('[AdminProducts] 渲染列表異常：', err);
+      tbody.innerHTML = '';
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 7;
+      td.className = 'empty-cell';
+      td.style.color = '#e74c3c';
+      td.textContent = '列表渲染異常：' + err.message;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
     }
+  },
 
-    container.appendChild(groupEl);
-  });
-}
-
-function onCategorySelected() {
-  renderCategoryTree();
-  renderFilteredProducts(true);
-
-  const displayLabel = activeParentCat === 'ALL'
-    ? '所有商品'
-    : (activeChildCat ? `${activeParentCat} / ${activeChildCat}` : activeParentCat);
-
-  const pageTitle = document.getElementById('shop-page-title');
-  const bcCurrent = document.getElementById('shop-breadcrumb-current');
-  const mobileLabel = document.getElementById('mobile-cat-current');
-  if (pageTitle) pageTitle.textContent = activeParentCat === 'ALL' ? '所有商品' : (activeChildCat || activeParentCat);
-  if (bcCurrent) bcCurrent.textContent = displayLabel;
-  if (mobileLabel) mobileLabel.textContent = activeParentCat === 'ALL' ? '全部商品' : (activeChildCat || activeParentCat);
-
-  const sidebar = document.getElementById('shop-sidebar');
-  const toggleBtn = document.getElementById('btn-mobile-cat-toggle');
-  if (sidebar && sidebar.classList.contains('mobile-open')) {
-    sidebar.classList.remove('mobile-open');
-    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
-  }
-}
-
-// ================= 篩選、排序與 48 件分頁渲染 =================
-
-function getFilteredAndSortedProducts() {
-  const keyword = (document.getElementById('search-input').value || '').trim().toLowerCase();
-
-  const filtered = allPublishedProducts.filter(p => {
-    if (activeParentCat !== 'ALL') {
-      const rawCat = detectedCategoryKey ? p[detectedCategoryKey] : '';
-      const { parent, child } = parseCategoryParts(rawCat);
-      if (parent !== activeParentCat) return false;
-      if (activeChildCat && child !== activeChildCat) return false;
-    }
-
-    if (!keyword) return true;
-    return Object.keys(p)
-      .filter(k => k !== 'image' && k !== 'images' && k !== '_origIdx')
-      .some(k => String(p[k] || '').toLowerCase().includes(keyword));
-  });
-
-  const sorted = filtered.slice();
-  if (activeSort === 'price-asc' || activeSort === 'price-desc') {
-    sorted.sort((a, b) => {
-      const pa = parseValidPrice(a.price);
-      const pb = parseValidPrice(b.price);
-      if (pa <= 0 && pb <= 0) return a._origIdx - b._origIdx;
-      if (pa <= 0) return 1;
-      if (pb <= 0) return -1;
-      return activeSort === 'price-asc' ? (pa - pb) : (pb - pa);
-    });
-  } else {
-    sorted.sort((a, b) => a._origIdx - b._origIdx);
-  }
-
-  return sorted;
-}
-
-function renderFilteredProducts(resetPage = false) {
-  if (resetPage) currentPage = 1;
-
-  const fullList = getFilteredAndSortedProducts();
-  const totalItems = fullList.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  if (currentPage > totalPages) currentPage = totalPages;
-
-  const startIdx = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = fullList.slice(startIdx, startIdx + PAGE_SIZE);
-
-  const summaryEl = document.getElementById('shop-result-summary');
-  if (summaryEl) {
+  renderPagination: function(totalItems, currentPage, totalPages) {
+    const bar = document.getElementById('pagination-bar');
+    if (!bar) return;
     if (totalItems === 0) {
-      summaryEl.textContent = '共 0 件商品';
-    } else {
-      const endNo = Math.min(totalItems, startIdx + PAGE_SIZE);
-      summaryEl.textContent = `顯示第 ${startIdx + 1}–${endNo} 件，共 ${totalItems} 件商品`;
-    }
-  }
-
-  const grid = document.getElementById('shop-product-grid');
-  grid.textContent = '';
-
-  const curatedNote = document.getElementById('shop-curated-note');
-  if (curatedNote) {
-    curatedNote.style.display = (totalItems > 0 && totalItems < 12) ? 'flex' : 'none';
-  }
-
-  if (pageItems.length === 0) {
-    const emptyP = document.createElement('p');
-    emptyP.style.cssText = 'grid-column: 1 / -1; text-align: center; color: #888; padding: 56px 0; font-size: 14px;';
-    emptyP.textContent = '目前此分類或關鍵字尚無符合商品，歡迎切換分類或聯繫官方 LINE 洽詢。';
-    grid.appendChild(emptyP);
-    renderPagination(0, 1);
-    return;
-  }
-
-  pageItems.forEach((product, idx) => {
-    const card = document.createElement('div');
-    card.className = 'product-item';
-    card.addEventListener('click', () => openProductModal(product));
-
-    const imgWrap = document.createElement('div');
-    imgWrap.className = 'product-img-wrap';
-
-    const img = document.createElement('img');
-    img.src = formatCdnImageUrl(product.image, 480);
-    img.alt = product.name || '';
-    img.decoding = 'async';
-    if (idx < 8) img.fetchPriority = 'high';
-    else img.loading = 'lazy';
-    img.onerror = function() { this.style.opacity = '0.2'; };
-    imgWrap.appendChild(img);
-
-    const skuEl = document.createElement('div');
-    skuEl.className = 'product-sku';
-    skuEl.textContent = product.id || '';
-
-    const nameEl = document.createElement('div');
-    nameEl.className = 'product-name';
-    nameEl.textContent = product.name || '';
-
-    const priceEl = document.createElement('div');
-    const validPrice = parseValidPrice(product.price);
-    if (validPrice > 0) {
-      priceEl.className = 'product-price';
-      priceEl.textContent = 'NT$ ' + validPrice.toLocaleString();
-    } else {
-      priceEl.className = 'product-price price-inquiry';
-      priceEl.textContent = '價格請洽官方 LINE / 門市';
+      bar.innerHTML = '<span>共 0 筆商品</span>';
+      return;
     }
 
-    card.appendChild(imgWrap);
-    card.appendChild(skuEl);
-    card.appendChild(nameEl);
-    card.appendChild(priceEl);
-    grid.appendChild(card);
-  });
+    const start = (currentPage - 1) * this.PAGE_SIZE + 1;
+    const end = Math.min(totalItems, currentPage * this.PAGE_SIZE);
 
-  renderPagination(totalItems, totalPages);
-}
+    bar.innerHTML = `
+      <span>顯示第 ${start}～${end} 筆，共 <strong>${totalItems}</strong> 筆（第 ${currentPage} / ${totalPages} 頁）</span>
+      <div class="toolbar-group">
+        <button class="btn btn-outline" id="btn-page-prev" ${currentPage <= 1 ? 'disabled' : ''}>← 上一頁</button>
+        <button class="btn btn-outline" id="btn-page-next" ${currentPage >= totalPages ? 'disabled' : ''}>下一頁 →</button>
+      </div>
+    `;
 
-function renderPagination(totalItems, totalPages) {
-  const nav = document.getElementById('shop-pagination');
-  if (!nav) return;
-  nav.textContent = '';
+    const prevBtn = document.getElementById('btn-page-prev');
+    const nextBtn = document.getElementById('btn-page-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => { this.currentPage--; this.renderTable(false); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { this.currentPage++; this.renderTable(false); });
+  },
 
-  if (totalItems === 0 || totalPages <= 1) return;
-
-  const goToPage = page => {
-    if (page < 1 || page > totalPages || page === currentPage) return;
-    currentPage = page;
-    renderFilteredProducts(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const makeBtn = (label, targetPage, isActive, isDisabled, ariaLabel) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'page-btn' + (isActive ? ' active' : '');
-    btn.textContent = label;
-    if (ariaLabel) btn.setAttribute('aria-label', ariaLabel);
-    btn.disabled = isDisabled;
-    if (!isDisabled) btn.addEventListener('click', () => goToPage(targetPage));
-    return btn;
-  };
-
-  nav.appendChild(makeBtn('«', currentPage - 1, false, currentPage <= 1, '上一頁'));
-
-  const pages = [];
-  if (totalPages <= 9) {
-    for (let p = 1; p <= totalPages; p++) pages.push(p);
-  } else {
-    pages.push(1);
-    const start = Math.max(2, currentPage - 2);
-    const end = Math.min(totalPages - 1, currentPage + 2);
-    if (start > 2) pages.push('...');
-    for (let p = start; p <= end; p++) pages.push(p);
-    if (end < totalPages - 1) pages.push('...');
-    pages.push(totalPages);
-  }
-
-  pages.forEach(p => {
-    if (p === '...') {
-      const span = document.createElement('span');
-      span.className = 'page-ellipsis';
-      span.textContent = '…';
-      nav.appendChild(span);
-    } else {
-      nav.appendChild(makeBtn(String(p), p, p === currentPage, false, `第 ${p} 頁`));
+  toggleWebsiteStatus: async function(productId, newStatus) {
+    try {
+      const json = await AdminCore.apiPost('updateProductStatus', { productId, newStatus });
+      if (json.status === 'success') AdminCore.loadDashboard();
+      else if (!AdminCore.handleAuthFailure(json.message)) alert('狀態更新失敗：' + json.message);
+    } catch (err) {
+      alert('狀態更新異常：' + err.message);
     }
-  });
+  },
 
-  nav.appendChild(makeBtn('»', currentPage + 1, false, currentPage >= totalPages, '下一頁'));
-}
+  // ================= 1B. 官網前台分類與排序快速定位彈窗 =================
 
-// ================= 商品詳情彈窗與圖庫 =================
+  openQuickCatModal: function(product) {
+    this.quickCatProduct = product;
+    const web = product._web || {};
 
-function getProductGalleryUrls(product) {
-  const list = String(product.images || '')
-    .split(',')
-    .map(u => u.trim())
-    .filter(u => /^https:\/\//i.test(u));
+    document.getElementById('quick-cat-title').textContent =
+      `🏷️ 設定官網前台分類與排序：[${product.id}] ${product.name}`;
+    document.getElementById('quick-cat-input').value = web.category || '';
+    document.getElementById('quick-cat-sort').value = web.sortOrder !== undefined ? web.sortOrder : 100;
 
-  const cover = String(product.image || '').trim();
-  if (/^https:\/\//i.test(cover) && !list.includes(cover)) {
-    list.unshift(cover);
-  }
-  return list;
-}
+    this.renderCategoryPresetChips('quick-cat-presets', 'quick-cat-input');
+    document.getElementById('quick-cat-modal').classList.add('open');
+    document.getElementById('quick-cat-input').focus();
+  },
 
-function openProductModal(product) {
-  currentModalProduct = product;
-  currentModalGallery = getProductGalleryUrls(product);
-  currentModalImgIndex = 0;
+  saveQuickCategory: async function() {
+    const p = this.quickCatProduct;
+    if (!p) return;
 
-  document.getElementById('modal-sku').textContent = '商品編號 ' + (product.id || '');
-  document.getElementById('modal-name').textContent = product.name || '';
+    const web = p._web || {};
+    const categoryVal = document.getElementById('quick-cat-input').value.trim();
+    const sortVal = document.getElementById('quick-cat-sort').value;
+    const hasPhotos = Array.isArray(web.galleryIds) && web.galleryIds.length > 0;
 
-  const priceEl = document.getElementById('modal-price');
-  const addCartBtn = document.querySelector('.product-modal .btn-add-to-cart');
-  const validPrice = parseValidPrice(product.price);
+    const btn = document.getElementById('btn-save-qcat');
+    btn.disabled = true;
+    btn.textContent = '⏳ 寫入分類定位中...';
 
-  if (validPrice > 0) {
-    priceEl.className = 'price-tag';
-    priceEl.textContent = 'NT$ ' + validPrice.toLocaleString();
-    if (addCartBtn) addCartBtn.style.display = '';
-  } else {
-    priceEl.className = 'price-tag price-inquiry';
-    priceEl.textContent = '';
-    priceEl.appendChild(document.createTextNode('價格請洽 '));
-    const lineLink = document.createElement('a');
-    lineLink.href = OFFICIAL_LINE_URL;
-    lineLink.target = '_blank';
-    lineLink.rel = 'noopener noreferrer';
-    lineLink.className = 'price-inquiry-link';
-    lineLink.textContent = '官方 LINE ↗';
-    priceEl.appendChild(lineLink);
-    priceEl.appendChild(document.createTextNode(' 或門市洽詢'));
-    if (addCartBtn) addCartBtn.style.display = 'none';
-  }
+    try {
+      const res = await AdminCore.apiPost('bindWebsiteShowcase', {
+        productId: String(p.id),
+        status: web.exists ? (web.status === '上架' ? '上架' : '下架') : (hasPhotos ? '上架' : '下架'),
+        sortOrder: sortVal,
+        category: categoryVal,
+        price: web.price || '',
+        title: web.title || '',
+        description: web.description || '',
+        coverId: web.coverId || '',
+        galleryIds: hasPhotos ? web.galleryIds : []
+      });
 
-  renderModalGallery();
+      if (res.status !== 'success') {
+        if (AdminCore.handleAuthFailure(res.message)) return;
+        throw new Error(res.message);
+      }
 
-  const specBox = document.getElementById('modal-dynamic-specs');
-  const hiddenKeys = new Set(['id', 'name', 'price', 'image', 'images', '狀態', '_origIdx']);
-  specBox.textContent = '';
+      this.closeQuickCatModal();
+      AdminCore.loadDashboard();
+    } catch (err) {
+      alert('❌ 儲存分類定位失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 儲存前台分類定位';
+    }
+  },
 
-  Object.keys(product).forEach(k => {
-    if (hiddenKeys.has(k)) return;
-    const val = String(product[k] || '').trim();
-    if (!val) return;
-    const line = document.createElement('div');
-    const label = document.createElement('strong');
-    label.style.color = '#333';
-    label.textContent = k + '：';
-    line.appendChild(label);
-    line.appendChild(document.createTextNode(val));
-    specBox.appendChild(line);
-  });
+  closeQuickCatModal: function() {
+    this.quickCatProduct = null;
+    document.getElementById('quick-cat-modal').classList.remove('open');
+  },
 
-  document.getElementById('product-modal-backdrop').classList.add('open');
-}
+  // ================= 2. 進銷存「商品主檔」編輯 / 新增視窗 =================
 
-function renderModalGallery() {
-  const imgBox = document.querySelector('.modal-img-box');
-  imgBox.style.position = 'relative';
+  openEditModal: function(product) {
+    this.editMode = product ? 'EDIT' : 'CREATE';
+    this.editingProductId = product ? String(product.id) : '';
 
-  const mainImg = document.getElementById('modal-img');
-  const currentUrl = currentModalGallery[currentModalImgIndex] || '';
-  mainImg.src = formatCdnImageUrl(currentUrl, 1200);
-  mainImg.decoding = 'async';
-  mainImg.title = '點擊放大檢視 2K 高清細節';
+    document.getElementById('edit-modal-title').textContent = product
+      ? `編修進銷存主檔：[${product.id}] ${product.name}`
+      : '＋ 新增商品至進銷存主檔（支援同步上傳原圖並上架官網）';
 
-  imgBox.querySelectorAll('.gallery-nav-btn, .gallery-thumbs-bar, .modal-zoom-badge').forEach(el => el.remove());
+    const grid = document.getElementById('edit-fields-grid');
+    grid.innerHTML = '';
 
-  if (currentUrl) {
-    const zoomBadge = document.createElement('button');
-    zoomBadge.type = 'button';
-    zoomBadge.className = 'modal-zoom-badge';
-    zoomBadge.textContent = '🔍 點擊放大細節';
-    zoomBadge.addEventListener('click', e => {
-      e.stopPropagation();
-      FrontLightbox.open();
+    const allHeaders = Array.from(new Set([...window.CORE_PRODUCT_KEYS, ...AdminState.productHeaders]));
+
+    allHeaders.forEach(colName => {
+      const val = product && product[colName] !== undefined ? String(product[colName]) : '';
+      const wrap = document.createElement('div');
+      wrap.className = 'edit-field-item' + (colName === 'name' ? ' full-span' : '');
+
+      const label = document.createElement('label');
+      label.textContent = colName === 'id' ? '商品編號 (id) *' : (colName === 'name' ? '商品名稱 (name) *' : colName);
+      wrap.appendChild(label);
+
+      if (colName === '商品狀態') {
+        const sel = document.createElement('select');
+        sel.className = 'input-ctrl';
+        sel.dataset.field = colName;
+        ['正常', '停售', '缺貨'].forEach(optVal => {
+          const opt = document.createElement('option');
+          opt.value = optVal;
+          opt.textContent = optVal;
+          if ((val || '正常') === optVal) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        wrap.appendChild(sel);
+      } else {
+        const input = document.createElement('input');
+        input.type = colName === 'price' ? 'number' : 'text';
+        input.className = 'input-ctrl';
+        input.dataset.field = colName;
+        input.value = val;
+        if (colName === 'id' && this.editMode === 'EDIT') {
+          input.readOnly = true;
+          input.title = '商品編號為主檔與圖庫唯一鍵值，不可直接變更';
+        }
+        if (colName === '更新時間') {
+          input.readOnly = true;
+          input.placeholder = '儲存時自動更新';
+        }
+        wrap.appendChild(input);
+      }
+
+      grid.appendChild(wrap);
     });
-    imgBox.appendChild(zoomBadge);
-  }
 
-  if (currentModalGallery.length <= 1) return;
+    if (window.AdminMediaUpload) {
+      window.AdminMediaUpload.resetForModal(this.editMode, product);
+    }
 
-  const makeNavBtn = (text, side, delta) => {
-    const btn = document.createElement('button');
-    btn.className = 'gallery-nav-btn';
-    btn.textContent = text;
-    btn.style.cssText = `position:absolute; top:45%; ${side}:10px; transform:translateY(-50%); width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.88); color:#333; font-size:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.16); z-index:4;`;
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      currentModalImgIndex = (currentModalImgIndex + delta + currentModalGallery.length) % currentModalGallery.length;
-      renderModalGallery();
-    });
-    return btn;
-  };
+    document.getElementById('edit-product-modal').classList.add('open');
+  },
 
-  imgBox.appendChild(makeNavBtn('‹', 'left', -1));
-  imgBox.appendChild(makeNavBtn('›', 'right', 1));
-
-  const strip = document.createElement('div');
-  strip.className = 'gallery-thumbs-bar';
-  strip.style.cssText = 'position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:6px; padding:0 10px; overflow-x:auto; z-index:4;';
-
-  currentModalGallery.forEach((url, idx) => {
-    const t = document.createElement('img');
-    t.src = formatCdnImageUrl(url, 160);
-    t.decoding = 'async';
-    t.style.cssText = `width:42px; height:52px; object-fit:cover; border-radius:3px; cursor:pointer; background:#fff; border:2px solid ${idx === currentModalImgIndex ? '#333333' : 'rgba(255,255,255,0.85)'}; box-shadow:0 1px 4px rgba(0,0,0,0.22);`;
-    t.addEventListener('click', e => {
-      e.stopPropagation();
-      currentModalImgIndex = idx;
-      renderModalGallery();
-    });
-    strip.appendChild(t);
-  });
-
-  imgBox.appendChild(strip);
-}
-
-// ================= 事件綁定 =================
-
-function bindEvents() {
-  const drawer = document.getElementById('search-bar-drawer');
-  const searchInput = document.getElementById('search-input');
-
-  document.getElementById('btn-search-toggle').addEventListener('click', () => {
-    drawer.classList.toggle('open');
-    if (drawer.classList.contains('open')) searchInput.focus();
-  });
-
-  document.getElementById('btn-search-close').addEventListener('click', () => {
-    searchInput.value = '';
-    drawer.classList.remove('open');
-    renderFilteredProducts(true);
-  });
-
-  searchInput.addEventListener('input', () => renderFilteredProducts(true));
-
-  document.querySelectorAll('#shop-sort-bar .shop-sort-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activeSort = btn.dataset.sort || 'default';
-      document.querySelectorAll('#shop-sort-bar .shop-sort-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderFilteredProducts(true);
-    });
-  });
-
-  const mobileCatBtn = document.getElementById('btn-mobile-cat-toggle');
-  const sidebar = document.getElementById('shop-sidebar');
-  if (mobileCatBtn && sidebar) {
-    mobileCatBtn.addEventListener('click', () => {
-      const open = sidebar.classList.toggle('mobile-open');
-      mobileCatBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-  }
-
-  document.querySelectorAll('[data-scroll-target]').forEach(link => {
-    link.addEventListener('click', e => {
-      const targetId = link.getAttribute('data-scroll-target');
-      const targetEl = document.getElementById(targetId);
-      if (targetEl) {
-        e.preventDefault();
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  saveProductEdit: async function() {
+    const inputs = document.querySelectorAll('#edit-fields-grid [data-field]');
+    const fields = {};
+    inputs.forEach(el => {
+      if (el.dataset.field !== '更新時間') {
+        fields[el.dataset.field] = el.value.trim();
       }
     });
-  });
 
-  document.getElementById('btn-scroll-top').addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-
-  const modalImg = document.getElementById('modal-img');
-  if (modalImg) modalImg.addEventListener('click', () => FrontLightbox.open());
-
-  const prodBackdrop = document.getElementById('product-modal-backdrop');
-  document.getElementById('modal-close-btn').addEventListener('click', () => {
-    FrontLightbox.close();
-    prodBackdrop.classList.remove('open');
-  });
-  prodBackdrop.addEventListener('click', e => {
-    if (e.target === prodBackdrop) {
-      FrontLightbox.close();
-      prodBackdrop.classList.remove('open');
+    if (this.editMode === 'CREATE' && (!fields.id || !fields.name)) {
+      alert('「商品編號 (id)」與「商品名稱 (name)」為必填欄位！');
+      return;
     }
-  });
-}
+
+    const btn = document.getElementById('btn-save-edit');
+    btn.disabled = true;
+    btn.textContent = '⏳ 寫入進銷存主檔中...';
+
+    try {
+      const json = this.editMode === 'EDIT'
+        ? await AdminCore.apiPost('updateProductRecord', { productId: this.editingProductId, fields })
+        : await AdminCore.apiPost('createProductRecord', { fields });
+
+      if (json.status !== 'success') {
+        if (AdminCore.handleAuthFailure(json.message)) return;
+        throw new Error(json.message);
+      }
+
+      if (this.editMode === 'CREATE' && window.AdminMediaUpload && AdminMediaUpload.hasPendingCreatePhotos()) {
+        try {
+          const mediaRes = await AdminMediaUpload.uploadCreateQueueForProduct(fields.id, msg => {
+            btn.textContent = msg;
+          });
+          if (!mediaRes) return;
+          alert(`✅ 新商品 [${fields.id}] 已寫入進銷存主檔，並已完成 ${mediaRes.uploadedCount} 張原圖零拷貝綁定至形象網站！`);
+        } catch (uploadErr) {
+          alert(`⚠️ 商品 [${fields.id}] 已建入進銷存主檔，但圖片上傳發生中斷：\n${uploadErr.message}`);
+        }
+      } else {
+        alert('✅ ' + (json.message || '儲存成功！'));
+      }
+
+      this.closeEditModal();
+      AdminCore.loadDashboard();
+    } catch (err) {
+      alert('❌ 儲存失敗：' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 儲存主檔變更';
+    }
+  },
+
+  closeEditModal: function() {
+    document.getElementById('edit-product-modal').classList.remove('open');
+  },
+
+  // ================= 3. 零拷貝圖庫選圖、排序與網站呈現庫寫入 =================
+
+  openMatchModal: async function(product) {
+    this.activeProductId = String(product.id);
+    this.selectedQueue = [];
+    this.previewingFileId = '';
+    this.lastPreviewInfo = null;
+    this.matchedFolderName = '';
+
+    const web = product._web || {};
+    const masterPrice = Number(product.price || 0);
+
+    document.getElementById('web-inp-status').value = (web.status === '下架') ? '下架' : '上架';
+    document.getElementById('web-inp-sort').value = web.sortOrder !== undefined ? web.sortOrder : 100;
+    document.getElementById('web-inp-category').value = web.category || '';
+    this.renderCategoryPresetChips('web-cat-presets', 'web-inp-category');
+
+    const priceInp = document.getElementById('web-inp-price');
+    priceInp.value = web.price || '';
+    priceInp.placeholder = masterPrice > 0
+      ? `留空即抓主檔售價（目前主檔：NT$ ${masterPrice.toLocaleString()}）`
+      : '留空即抓主檔售價（主檔目前無售價，前台將顯示洽詢）';
+
+    document.getElementById('web-inp-title').value = web.title || '';
+    document.getElementById('web-inp-desc').value = web.description || '';
+
+    this._resetPreviewStage('正在讀取雲端原檔資料夾 [' + this.activeProductId + ']...');
+
+    document.getElementById('match-modal-title').textContent = `形象網站圖庫與上架設定：[${product.id}] ${product.name}`;
+    document.getElementById('match-status-text').textContent = '正在讀取對應編號的雲端原檔資料夾...';
+    document.getElementById('raw-img-search').value = '';
+    this.renderSelectedQueue();
+    document.getElementById('match-modal').classList.add('open');
+
+    const listEl = document.getElementById('drive-raw-list');
+    listEl.innerHTML = '讀取雲端資料夾 [' + AdminCore.escapeHtml(this.activeProductId) + '] 中...';
+
+    try {
+      const data = await AdminCore.apiGet('getRawImages', { productId: this.activeProductId });
+      if (data.status !== 'success') {
+        if (AdminCore.handleAuthFailure(data.message)) return;
+        throw new Error(data.message);
+      }
+
+      this.matchedFolderName = data.matchedFolderName || '';
+      this.rawDriveImages = data.images || [];
+
+      if (Array.isArray(web.galleryIds) && web.galleryIds.length > 0) {
+        web.galleryIds.forEach(fid => {
+          const hit = this.rawDriveImages.find(img => img.id === fid);
+          if (hit) {
+            this.selectedQueue.push(hit);
+          } else {
+            this.selectedQueue.push({
+              id: fid,
+              name: '已綁定原圖 (' + fid.slice(0, 6) + '...)',
+              folderName: this.activeProductId,
+              isMatchedFolder: true,
+              sizeKb: 0,
+              thumbnail: '',
+              previewUrl: '',
+              ultraHdUrl: ''
+            });
+          }
+        });
+      }
+
+      this.renderRawImageList();
+      this.renderSelectedQueue();
+
+      const firstToPreview = this.selectedQueue[0] || this.rawDriveImages[0];
+      if (firstToPreview) {
+        this.previewImageItem(firstToPreview);
+      } else {
+        this._resetPreviewStage('尚無原圖，請點上方「📤 上傳新原圖」');
+      }
+
+      document.getElementById('match-status-text').textContent = this.matchedFolderName
+        ? `✅ 已定位原檔資料夾《${this.matchedFolderName}》（共 ${this.rawDriveImages.length} 張）。勾選並排好主圖與順序後，按右下角即可秒存上架。`
+        : `原檔區尚無「${this.activeProductId}」資料夾 — 可直接點「📤 上傳新原圖」自動建立。`;
+    } catch (err) {
+      listEl.innerHTML = '<p style="color:#e74c3c; padding:12px;">讀取失敗：' + AdminCore.escapeHtml(err.message) + '</p>';
+    }
+  },
+
+  _resetPreviewStage: function(hintText) {
+    const imgEl = document.getElementById('preview-cdn-img');
+    const emptyEl = document.getElementById('preview-empty-hint');
+    const zoomHint = document.getElementById('canvas-zoom-hint');
+    if (imgEl) {
+      imgEl.style.display = 'none';
+      imgEl.src = '';
+    }
+    if (emptyEl) {
+      emptyEl.style.display = 'inline';
+      emptyEl.textContent = hintText || '點選左側照片可即時預覽';
+    }
+    if (zoomHint) zoomHint.style.display = 'none';
+  },
+
+  previewImageItem: function(imgObj) {
+    if (!imgObj) return;
+    this.previewingFileId = imgObj.id;
+    this.renderRawImageList();
+
+    const imgEl = document.getElementById('preview-cdn-img');
+    const emptyEl = document.getElementById('preview-empty-hint');
+    const zoomHint = document.getElementById('canvas-zoom-hint');
+
+    const previewSrc = AdminCore.sanitizeImageUrl(imgObj.previewUrl || imgObj.thumbnail || '');
+    const ultraSrc = AdminCore.sanitizeImageUrl(imgObj.ultraHdUrl || previewSrc);
+
+    if (!previewSrc) {
+      this._resetPreviewStage('此張圖片預覽網址尚未同步，請重新開啟彈窗');
+      return;
+    }
+
+    this.lastPreviewInfo = {
+      fileName: imgObj.name,
+      previewUrl: previewSrc,
+      ultraHdUrl: ultraSrc
+    };
+
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (imgEl) {
+      imgEl.src = previewSrc;
+      imgEl.style.display = 'block';
+    }
+    if (zoomHint) zoomHint.style.display = 'inline-flex';
+  },
+
+  selectAllRawImages: function() {
+    const matched = this.rawDriveImages.filter(img => img.isMatchedFolder);
+    const pool = matched.length > 0 ? matched : this.rawDriveImages;
+    pool.forEach(img => {
+      if (!this.selectedQueue.some(q => q.id === img.id)) {
+        this.selectedQueue.push(img);
+      }
+    });
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+    if (this.selectedQueue.length > 0 && !this.previewingFileId) {
+      this.previewImageItem(this.selectedQueue[0]);
+    }
+  },
+
+  clearAllRawImages: function() {
+    this.selectedQueue = [];
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+  },
+
+  toggleImageSelection: function(img) {
+    const idx = this.selectedQueue.findIndex(q => q.id === img.id);
+    if (idx === -1) {
+      this.selectedQueue.push(img);
+      this.previewImageItem(img);
+    } else {
+      this.selectedQueue.splice(idx, 1);
+      this.renderRawImageList();
+      this.renderSelectedQueue();
+    }
+  },
+
+  renderRawImageList: function() {
+    const listEl = document.getElementById('drive-raw-list');
+    const kw = document.getElementById('raw-img-search').value.trim().toLowerCase();
+    const esc = AdminCore.escapeHtml;
+
+    const filtered = this.rawDriveImages.filter(img =>
+      !kw || String(img.name).toLowerCase().includes(kw) || String(img.folderName || '').toLowerCase().includes(kw)
+    );
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<p style="padding:16px; color:#64748b; text-align:center;">尚無對應原圖 — 請點上方 <strong>「📤 上傳新原圖」</strong> 直接新增並建立 <strong>${esc(this.activeProductId)}</strong> 資料夾。</p>`;
+      return;
+    }
+
+    listEl.innerHTML = '';
+    filtered.forEach(img => {
+      const queueIdx = this.selectedQueue.findIndex(q => q.id === img.id);
+      const isChecked = queueIdx !== -1;
+      const isPreviewing = this.previewingFileId === img.id;
+      const sizeText = img.sizeKb >= 1024 ? (img.sizeKb / 1024).toFixed(1) + ' MB' : (img.sizeKb > 0 ? img.sizeKb + ' KB' : '已綁定');
+
+      const safeThumb = AdminCore.sanitizeImageUrl(img.thumbnail);
+      const thumbHtml = safeThumb
+        ? `<img src="${esc(safeThumb)}" loading="lazy" alt="">`
+        : '<div style="width:44px;height:44px;border-radius:4px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🖼️</div>';
+
+      const orderTag = isChecked
+        ? (queueIdx === 0 ? '<span class="pill pill-cover" style="margin-left:6px;">★ 主圖</span>' : `<span class="pill pill-new" style="margin-left:6px;">#${queueIdx + 1}</span>`)
+        : '';
+
+      const item = document.createElement('div');
+      item.className = 'drive-item' +
+        (img.isMatchedFolder ? ' recommended' : '') +
+        (isChecked ? ' checked-item' : '') +
+        (isPreviewing ? ' previewing' : '');
+
+      item.innerHTML = `
+        <input type="checkbox" class="drive-item-check" ${isChecked ? 'checked' : ''} title="勾選採用此張原圖">
+        ${thumbHtml}
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; flex-wrap:wrap;">
+            <strong>${esc(img.name)}</strong>${orderTag}
+          </div>
+          <span style="font-size:11px; color:${img.isMatchedFolder ? '#a16207' : '#64748b'};">
+            ${img.isMatchedFolder ? '📁 ' + esc(img.folderName) + ' ｜ ' : ''}${sizeText}
+          </span>
+        </div>
+      `;
+
+      const checkbox = item.querySelector('.drive-item-check');
+      checkbox.addEventListener('click', e => {
+        e.stopPropagation();
+        this.toggleImageSelection(img);
+      });
+      item.addEventListener('click', () => this.previewImageItem(img));
+      listEl.appendChild(item);
+    });
+  },
+
+  renderSelectedQueue: function() {
+    const listEl = document.getElementById('selected-queue-list');
+    const countEl = document.getElementById('selected-queue-count');
+    const saveBtn = document.getElementById('btn-upload-bind');
+    const esc = AdminCore.escapeHtml;
+
+    const total = this.selectedQueue.length;
+    countEl.textContent = `已選 ${total} 張`;
+    saveBtn.disabled = total === 0;
+    saveBtn.textContent = total > 0
+      ? `✅ 確認寫入形象網站庫（共 ${total} 張・第 1 張為主圖）`
+      : '✅ 確認寫入形象網站呈現庫';
+
+    if (total === 0) {
+      listEl.innerHTML = '<div class="queue-empty" style="padding:36px 10px;">尚未勾選任何照片（請於左側打勾，第 1 張自動成為網站主圖）</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+    this.selectedQueue.forEach((img, idx) => {
+      const isCover = idx === 0;
+      const safeThumb = AdminCore.sanitizeImageUrl(img.thumbnail);
+      const thumbHtml = safeThumb
+        ? `<img src="${esc(safeThumb)}" alt="">`
+        : '<div style="width:36px;height:36px;border-radius:4px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;">🖼️</div>';
+
+      const row = document.createElement('div');
+      row.className = 'queue-item' + (isCover ? ' is-cover' : '');
+      row.innerHTML = `
+        <span class="pill ${isCover ? 'pill-cover' : 'pill-off'}">${isCover ? '★ 主圖' : '#' + (idx + 1)}</span>
+        ${thumbHtml}
+        <div class="queue-item-info">
+          <div class="queue-item-name">${esc(img.name)}</div>
+          <div style="font-size:11px; color:#64748b;">原檔 ID 直連（零複製）</div>
+        </div>
+        <div class="queue-item-actions">
+          ${!isCover ? '<button type="button" class="btn btn-warning btn-xs btn-set-cover">設為主圖</button>' : ''}
+          <button type="button" class="btn btn-outline btn-xs btn-move-up" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="btn btn-outline btn-xs btn-move-down" ${idx === total - 1 ? 'disabled' : ''}>↓</button>
+          <button type="button" class="btn btn-danger btn-xs btn-remove-q">✕</button>
+        </div>
+      `;
+
+      row.addEventListener('click', () => this.previewImageItem(img));
+      const coverBtn = row.querySelector('.btn-set-cover');
+      if (coverBtn) coverBtn.addEventListener('click', e => { e.stopPropagation(); this.setAsCover(idx); });
+      row.querySelector('.btn-move-up').addEventListener('click', e => { e.stopPropagation(); this.moveQueueItem(idx, -1); });
+      row.querySelector('.btn-move-down').addEventListener('click', e => { e.stopPropagation(); this.moveQueueItem(idx, 1); });
+      row.querySelector('.btn-remove-q').addEventListener('click', e => {
+        e.stopPropagation();
+        this.selectedQueue.splice(idx, 1);
+        this.renderRawImageList();
+        this.renderSelectedQueue();
+      });
+
+      listEl.appendChild(row);
+    });
+  },
+
+  setAsCover: function(idx) {
+    if (idx <= 0 || idx >= this.selectedQueue.length) return;
+    const [picked] = this.selectedQueue.splice(idx, 1);
+    this.selectedQueue.unshift(picked);
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+    this.previewImageItem(picked);
+  },
+
+  moveQueueItem: function(idx, delta) {
+    const target = idx + delta;
+    if (target < 0 || target >= this.selectedQueue.length) return;
+    const temp = this.selectedQueue[idx];
+    this.selectedQueue[idx] = this.selectedQueue[target];
+    this.selectedQueue[target] = temp;
+    this.renderRawImageList();
+    this.renderSelectedQueue();
+  },
+
+  confirmBindShowcase: async function() {
+    if (this.selectedQueue.length === 0 || !this.activeProductId) return;
+
+    const btn = document.getElementById('btn-upload-bind');
+    const statusEl = document.getElementById('match-status-text');
+    btn.disabled = true;
+    statusEl.textContent = '⚡ 正在將原圖 File ID 與網站呈現設定寫入形象網站庫...';
+
+    try {
+      const galleryIds = this.selectedQueue.map(img => img.id);
+      const res = await AdminCore.apiPost('bindWebsiteShowcase', {
+        productId: this.activeProductId,
+        status: document.getElementById('web-inp-status').value,
+        sortOrder: document.getElementById('web-inp-sort').value,
+        category: document.getElementById('web-inp-category').value.trim(),
+        price: document.getElementById('web-inp-price').value.trim(),
+        title: document.getElementById('web-inp-title').value.trim(),
+        description: document.getElementById('web-inp-desc').value.trim(),
+        coverId: galleryIds[0],
+        galleryIds: galleryIds
+      });
+
+      if (res.status !== 'success') {
+        if (AdminCore.handleAuthFailure(res.message)) return;
+        throw new Error(res.message);
+      }
+
+      alert('✅ ' + res.message);
+      this.closeMatchModal();
+      AdminCore.loadDashboard();
+    } catch (err) {
+      statusEl.textContent = '❌ 寫入失敗：' + err.message;
+      btn.disabled = false;
+    }
+  },
+
+  closeMatchModal: function() {
+    this.closeHdLightbox();
+    document.getElementById('match-modal').classList.remove('open');
+  }
+};
