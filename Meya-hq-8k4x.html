@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>MEYA 內部管理專區</title>
-  <link href="[https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap](https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap)" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/admin.css">
   <link rel="stylesheet" href="./css/labels.css">
-  <script src="[https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js](https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js)"></script>
-  <script src="[https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js](https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js)"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
 
-  <!-- 標準模式登入驗證畫面（無時限、關閉即登出） -->
+  <!-- 登入驗證畫面 -->
   <div id="login-screen" class="login-screen">
     <div class="login-card">
       <div class="login-brand">is Meya</div>
@@ -45,6 +45,12 @@
       <div class="nav-item" data-tab="tab-excel-builder">
         <span>Excel 智慧建庫與匯出</span>
       </div>
+      <div class="nav-item" data-tab="tab-articles">
+        <span>批發知識文章管理</span>
+      </div>
+      <div class="nav-item" data-tab="tab-faq">
+        <span>常見問題 Q&amp;A 管理</span>
+      </div>
       <div class="nav-item" data-tab="tab-site-settings">
         <span>跑馬燈與網站設定</span>
       </div>
@@ -75,7 +81,7 @@
       </header>
 
       <main class="content-scroll">
-        <!-- 分頁 1：進銷存商品主檔與形象網站零拷貝上架 -->
+        <!-- 分頁 1：商品主檔與官網上架 -->
         <section id="tab-products" class="tab-panel active">
           <div class="kpi-grid">
             <div class="kpi-card kpi-highlight" id="kpi-card-ready" title="點擊立即只看有原圖待上架商品">
@@ -153,7 +159,7 @@
 
             <div id="file-dropzone" class="dropzone">
               <p class="dropzone-title">📂 點擊選擇或直接將 Excel / CSV 拖曳至此</p>
-              <p class="dropzone-sub">支援一鍵擴充進銷存「商品主檔」新欄位，或依原表結構自動長出全新資料表分頁</p>
+              <p class="dropzone-sub">支援增量匯入（自動阻擋既有編碼、只導入新商品），或依原表結構自動長出全新資料表分頁</p>
               <input type="file" id="local-sheet-input" accept=".xlsx,.xls,.csv" style="display:none;">
             </div>
 
@@ -171,8 +177,8 @@
 
               <div class="mode-grid">
                 <div id="mode-card-merge" class="mode-card selected" data-mode="MERGE_PRODUCTS">
-                  <strong>模式 A：整合至進銷存「商品主檔」並擴充新欄位</strong>
-                  <span>自動對標 id / name / price，Excel 多出的欄位自動長在右側（絕不影響形象網站已設定好的圖文）。</span>
+                  <strong>模式 A：增量匯入進銷存「商品主檔」（自動略過既有編碼・只導新商品）</strong>
+                  <span>依商品編號 (id) 極速比對：已存在的商品自動阻擋不覆蓋，尚未建檔的新商品直接一鍵匯入。</span>
                 </div>
                 <div id="mode-card-new" class="mode-card" data-mode="CREATE_NEW_TABLE">
                   <strong>模式 B：依此檔案長出全新資料表分頁（進銷存庫）</strong>
@@ -230,7 +236,74 @@
           </div>
         </section>
 
-        <!-- 分頁 3：跑馬燈與網站設定 -->
+        <!-- 分頁 3（新增）：批發知識文章管理 -->
+        <section id="tab-articles" class="tab-panel">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>批發知識文章管理</h3>
+                <p class="card-desc">支援「圖文並茂」或「純文字」兩種格式；封面圖留空即自動以純文字專欄卡片呈現，前台點擊即可展開完整閱讀視窗。</p>
+              </div>
+              <div class="toolbar-group">
+                <input type="text" id="article-search" class="input-ctrl" placeholder="搜尋文章標題或分類...">
+                <button type="button" id="btn-create-article" class="btn btn-success">＋ 新增知識文章</button>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:76px;">版型/封面</th>
+                    <th style="width:120px;">分類與排序</th>
+                    <th>文章標題與摘要</th>
+                    <th style="width:86px;">狀態</th>
+                    <th style="width:140px;">最後更新</th>
+                    <th style="width:170px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="articles-admin-tbody">
+                  <tr><td colspan="6" class="empty-cell">載入資料中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 分頁 4（新增）：常見問題 Q&A 管理 -->
+        <section id="tab-faq" class="tab-panel">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>常見問題 Q&amp;A 管理</h3>
+                <p class="card-desc">管理官網手風琴折疊問答清單；可設定分類標籤與排序權重（數字越小排越前面）。</p>
+              </div>
+              <div class="toolbar-group">
+                <input type="text" id="faq-search" class="input-ctrl" placeholder="搜尋問題、回答或分類...">
+                <button type="button" id="btn-create-faq" class="btn btn-success">＋ 新增 Q&amp;A</button>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:120px;">分類與排序</th>
+                    <th>問題與回答摘要</th>
+                    <th style="width:86px;">狀態</th>
+                    <th style="width:140px;">最後更新</th>
+                    <th style="width:170px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="faq-admin-tbody">
+                  <tr><td colspan="5" class="empty-cell">載入資料中...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 分頁 5：跑馬燈與網站設定 -->
         <section id="tab-site-settings" class="tab-panel">
           <div class="card">
             <div class="card-head">
@@ -270,7 +343,7 @@
           </div>
         </section>
 
-        <!-- 分頁 4：系統異常報錯中心 -->
+        <!-- 分頁 6：系統異常報錯中心 -->
         <section id="tab-errors" class="tab-panel">
           <div class="card">
             <div class="card-head">
@@ -299,7 +372,7 @@
           </div>
         </section>
 
-        <!-- 分頁 5：條碼標籤機對標列印 -->
+        <!-- 分頁 7：條碼標籤機對標列印 -->
         <section id="tab-labels" class="tab-panel">
           <div class="card">
             <div class="card-head">
@@ -461,7 +534,7 @@
           </div>
         </section>
 
-        <!-- 分頁 6：手機作業與 POS 模組入口中樞 -->
+        <!-- 分頁 8：手機作業與 POS 專區 -->
         <section id="tab-pos-hub" class="tab-panel">
           <div class="card">
             <div class="card-head">
@@ -510,7 +583,6 @@
         <button id="btn-close-modal-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="modal-body gallery-modal-body">
-        <!-- 左欄：原檔區選圖或上傳新原檔 -->
         <div class="modal-col">
           <div class="modal-col-head">
             <strong>1. 選擇或補傳原檔（直接連結原檔 ID）</strong>
@@ -525,7 +597,6 @@
           <div id="drive-raw-list" class="drive-list drive-list-tall">載入中...</div>
         </div>
 
-        <!-- 右欄：上方 CDN 預覽 ＋ 中段已選排序 ＋ 下段網站呈現欄位 -->
         <div class="modal-col">
           <div class="modal-col-head">
             <strong>2. 原圖高清預覽（點擊可放大 2K 檢視細節）</strong>
@@ -537,14 +608,12 @@
           </div>
           <div id="match-status-text" class="match-status">勾選左側照片後排定主圖與順序，無需壓縮複製即可秒存上架。</div>
 
-          <!-- 已選照片排序佇列 -->
           <div class="queue-section" style="margin-top:8px;">
             <div id="selected-queue-list" class="queue-list" style="height:135px;">
               <div class="queue-empty" style="padding:36px 10px;">尚未勾選任何照片（第 1 張自動成為網站主圖）</div>
             </div>
           </div>
 
-          <!-- 形象網站專屬呈現欄位（獨立存於 DB_WEBSITE，不影響進銷存主檔） -->
           <div style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0; display:grid; grid-template-columns:repeat(2, 1fr); gap:8px 10px;">
             <div>
               <label class="field-label" style="font-size:11px; margin-bottom:3px;">網站上架狀態</label>
@@ -586,7 +655,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 2：進銷存「商品主檔」編輯 / 新增視窗 -->
+  <!-- 彈窗 2：進銷存商品主檔編輯 / 新增 -->
   <div id="edit-product-modal" class="modal-overlay">
     <div class="modal-box edit-modal-box">
       <div class="modal-head">
@@ -594,7 +663,6 @@
         <button id="btn-close-edit-x" class="btn btn-icon-close">✕</button>
       </div>
       <div class="edit-modal-body">
-        <!-- 新增商品專用：直接上傳原圖並同步上架形象網站 -->
         <div id="create-photo-panel" class="edit-photo-section" style="display:none;">
           <div class="modal-col-head" style="margin-bottom:10px;">
             <strong>📷 上傳商品原圖並同步設定形象網站（只存原檔區，零重複佔用空間）</strong>
@@ -618,7 +686,6 @@
           </div>
         </div>
 
-        <!-- 編輯既有商品專用：快捷跳轉官網呈現設定 -->
         <div id="edit-photo-shortcut" class="edit-photo-shortcut" style="display:none;">
           <div id="edit-photo-summary" style="font-size:13px; color:#334155;"></div>
           <button type="button" id="btn-jump-to-match" class="btn btn-info">🖼️ 管理網站圖庫 / 排序與上下架</button>
@@ -638,11 +705,120 @@
     </div>
   </div>
 
+  <!-- 彈窗 3（新增）：批發知識文章編輯視窗 -->
+  <div id="article-edit-modal" class="modal-overlay">
+    <div class="modal-box edit-modal-box">
+      <div class="modal-head">
+        <span id="article-modal-head-title">新增 / 編輯批發知識文章</span>
+        <button id="btn-close-article-x" class="btn btn-icon-close">✕</button>
+      </div>
+      <div class="edit-modal-body">
+        <input type="hidden" id="art-inp-id">
+        <div class="edit-fields-grid">
+          <div class="edit-field-item full-span">
+            <label>文章標題 *</label>
+            <input type="text" id="art-inp-title" class="input-ctrl" placeholder="例如：925 純銀飾品批發挑選指南">
+          </div>
+          <div class="edit-field-item">
+            <label>文章分類</label>
+            <input type="text" id="art-inp-category" class="input-ctrl" placeholder="例如：批發選品、飾品保養、創業經營">
+          </div>
+          <div class="edit-field-item">
+            <label>排序權重（數字越小排越前面）</label>
+            <input type="number" id="art-inp-sort" class="input-ctrl" value="100">
+          </div>
+          <div class="edit-field-item">
+            <label>上架狀態</label>
+            <select id="art-inp-status" class="input-ctrl">
+              <option value="上架">上架（公開顯示）</option>
+              <option value="下架">下架（草稿隱藏）</option>
+            </select>
+          </div>
+          <div class="edit-field-item full-span">
+            <label>封面圖片（選填：留空即為「純文字文章」，可直接上傳或貼入 https:// 圖片網址）</label>
+            <div class="toolbar-group" style="gap:8px;">
+              <input type="text" id="art-inp-image" class="input-ctrl flex-1" placeholder="留空為純文字文章；或點右側上傳圖片自動填入">
+              <button type="button" id="btn-upload-article-cover" class="btn btn-info">📤 上傳封面圖</button>
+              <button type="button" id="btn-clear-article-cover" class="btn btn-outline">清空改純文字</button>
+              <input type="file" id="inp-upload-article-cover" accept="image/*" style="display:none;">
+            </div>
+            <span id="art-upload-status" style="font-size:12px; color:#2563eb; margin-top:4px;"></span>
+            <div id="art-cover-preview-box" style="display:none; margin-top:8px; align-items:center; gap:10px;">
+              <img id="art-cover-preview-img" src="" alt="封面預覽" style="height:84px; border-radius:6px; border:1px solid #cbd5e1; object-fit:cover;">
+              <span style="font-size:12px; color:#64748b;">已設定封面圖（前台將呈現為圖文卡片）</span>
+            </div>
+          </div>
+          <div class="edit-field-item full-span">
+            <label>列表摘要（選填：留空時系統自動擷取內文前 70 字）</label>
+            <input type="text" id="art-inp-summary" class="input-ctrl" placeholder="簡短一句話介紹本篇重點...">
+          </div>
+          <div class="edit-field-item full-span">
+            <label>文章完整內文 *（直接換行即可自動分段）</label>
+            <textarea id="art-inp-content" class="input-ctrl" rows="9" style="resize:vertical; line-height:1.7;" placeholder="請輸入文章完整內容，使用 Enter 換行即可自然分段..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span style="font-size:12px; color:#64748b;">儲存後會自動寫入形象網站資料庫並即時刷新前台</span>
+        <div class="toolbar-group">
+          <button id="btn-cancel-article" class="btn btn-outline">取消</button>
+          <button id="btn-save-article" class="btn btn-success">💾 儲存文章</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 4（新增）：常見問題 Q&A 編輯視窗 -->
+  <div id="faq-edit-modal" class="modal-overlay">
+    <div class="modal-box edit-modal-box">
+      <div class="modal-head">
+        <span id="faq-modal-head-title">新增 / 編輯常見問題 Q&amp;A</span>
+        <button id="btn-close-faq-x" class="btn btn-icon-close">✕</button>
+      </div>
+      <div class="edit-modal-body">
+        <input type="hidden" id="faq-inp-id">
+        <div class="edit-fields-grid">
+          <div class="edit-field-item">
+            <label>問題分類</label>
+            <input type="text" id="faq-inp-category" class="input-ctrl" placeholder="例如：批發合作、商品與材質、出貨與門市">
+          </div>
+          <div class="edit-field-item">
+            <label>排序權重（數字越小排越前面）</label>
+            <input type="number" id="faq-inp-sort" class="input-ctrl" value="100">
+          </div>
+          <div class="edit-field-item">
+            <label>上架狀態</label>
+            <select id="faq-inp-status" class="input-ctrl">
+              <option value="上架">上架（公開顯示）</option>
+              <option value="下架">下架（暫時隱藏）</option>
+            </select>
+          </div>
+          <div class="edit-field-item full-span">
+            <label>常見問題 (Q) *</label>
+            <input type="text" id="faq-inp-question" class="input-ctrl" placeholder="例如：請問飾品批發有最低起批門檻嗎？">
+          </div>
+          <div class="edit-field-item full-span">
+            <label>詳細回答 (A) *（支援 Enter 換行分段）</label>
+            <textarea id="faq-inp-answer" class="input-ctrl" rows="6" style="resize:vertical; line-height:1.7;" placeholder="請輸入清晰完整的解答內容..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span style="font-size:12px; color:#64748b;">儲存後會自動寫入形象網站資料庫並即時刷新前台</span>
+        <div class="toolbar-group">
+          <button id="btn-cancel-faq" class="btn btn-outline">取消</button>
+          <button id="btn-save-faq" class="btn btn-success">💾 儲存 Q&amp;A</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="./js/config.js"></script>
   <script src="./js/admin-core.js"></script>
   <script src="./js/admin-products.js"></script>
   <script src="./js/admin-media-upload.js"></script>
   <script src="./js/admin-excel.js"></script>
+  <script src="./js/admin-content.js"></script>
   <script src="./js/admin-labels.js"></script>
   <script src="./js/admin-site.js"></script>
 </body>
