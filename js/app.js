@@ -1,5 +1,5 @@
 /**
- * is Meya 形象網站前台主程式（完整版：商品櫥窗 ＋ 批發知識文章 ＋ 常見問題 Q&A）
+ * is Meya 形象網站前台主程式（完整版：精品導覽追蹤 ＋ 商品櫥窗 ＋ 批發知識文章 ＋ Q&A）
  * 安全與效能：
  * 1. 全站採用純 DOM textContent 安全渲染，防範 XSS；圖片網址強制驗證 https:// 協定
  * 2. 嚴格遮蔽 NT$ 0（無有效售價改顯示官方 LINE 洽詢）
@@ -15,6 +15,7 @@ let allPublishedFaqs = [];
 let activeCategory = 'ALL';
 let activeArticleCategory = 'ALL';
 let activeFaqCategory = 'ALL';
+let activeCatalogNavMode = 'new'; // 'new' | 'all'
 let detectedCategoryKey = null;
 let userHasInteracted = false;
 
@@ -44,7 +45,6 @@ function formatCdnImageUrl(rawUrl, widthPx) {
   return url;
 }
 
-// 將多行純文字安全渲染為分段 <p>（使用 textContent 防 XSS）
 function renderMultilineParagraphs(containerEl, rawText) {
   containerEl.textContent = '';
   const blocks = String(rawText || '').split(/\r?\n/);
@@ -55,6 +55,69 @@ function renderMultilineParagraphs(containerEl, rawText) {
     p.textContent = trimmed;
     containerEl.appendChild(p);
   });
+}
+
+// ================= 精品導覽列作用中狀態與捲動追蹤 =================
+
+function setActiveNavTab(targetId, navMode) {
+  if (navMode) activeCatalogNavMode = navMode;
+  const effectiveTarget = (targetId === 'top' || !targetId) ? 'catalog' : targetId;
+
+  const navLinks = document.querySelectorAll('.site-nav .nav-link, .mobile-nav .mobile-nav-link');
+  let activeMobileLink = null;
+
+  navLinks.forEach(link => {
+    const linkTarget = link.getAttribute('data-scroll-target');
+    const linkNav = link.getAttribute('data-nav');
+    const isMatch = effectiveTarget === 'catalog'
+      ? (linkTarget === 'catalog' && linkNav === activeCatalogNavMode)
+      : (linkTarget === effectiveTarget);
+
+    link.classList.toggle('active', isMatch);
+    if (isMatch && link.classList.contains('mobile-nav-link')) {
+      activeMobileLink = link;
+    }
+  });
+
+  if (activeMobileLink && typeof activeMobileLink.scrollIntoView === 'function') {
+    activeMobileLink.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+}
+
+function setupHeaderScrollEffects() {
+  const header = document.getElementById('site-header');
+  const sectionIds = ['catalog', 'articles', 'faq', 'contact'];
+  let ticking = false;
+
+  const onScroll = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      if (header) header.classList.toggle('scrolled', scrollY > 18);
+
+      // ScrollSpy：依目前視窗位置自動點亮對應分頁
+      const probeY = scrollY + 180;
+      let currentId = 'catalog';
+
+      const docHeight = document.documentElement.scrollHeight;
+      if (scrollY + window.innerHeight >= docHeight - 40) {
+        currentId = 'contact';
+      } else {
+        for (let i = 0; i < sectionIds.length; i++) {
+          const el = document.getElementById(sectionIds[i]);
+          if (el && el.offsetTop <= probeY) {
+            currentId = sectionIds[i];
+          }
+        }
+      }
+
+      setActiveNavTab(currentId, null);
+      ticking = false;
+    });
+  };
+
+  window.addEventListener('scroll', onScroll, { passive: true });
 }
 
 // 動態跑馬燈控制器
@@ -262,6 +325,7 @@ window.addEventListener('load', () => { if (!userHasInteracted) forceScrollTop()
 document.addEventListener('DOMContentLoaded', () => {
   forceScrollTop();
   MarqueeRunner.bindHover();
+  setupHeaderScrollEffects();
   initWebsite();
   bindWebsiteEvents();
 });
@@ -615,7 +679,7 @@ function renderModalGallery() {
   imgBox.appendChild(strip);
 }
 
-// ================= 批發知識文章專區（點擊展開閱讀，支援圖文與純文字） =================
+// ================= 批發知識文章專區 =================
 
 function renderArticleCategoryBar() {
   const bar = document.getElementById('articles-category-bar');
@@ -754,7 +818,7 @@ function openArticleModal(art) {
   if (modalBox) modalBox.scrollTop = 0;
 }
 
-// ================= 常見問題 Q&A 手風琴專區 =================
+// ================= 常見問題 Q&A 專區 =================
 
 function renderFaqCategoryBar() {
   const bar = document.getElementById('faq-category-bar');
@@ -887,6 +951,8 @@ function bindWebsiteEvents() {
       }
 
       const targetId = link.getAttribute('data-scroll-target');
+      setActiveNavTab(targetId, mode);
+
       if (targetId === 'top') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -927,8 +993,6 @@ function bindWebsiteEvents() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      artBackdrop.classList.remove('open');
-    }
+    if (e.key === 'Escape') artBackdrop.classList.remove('open');
   });
 }
