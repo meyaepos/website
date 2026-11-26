@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex, nofollow">
   <title>MEYA 內部管理專區</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/admin.css">
-  <link rel="stylesheet" href="./css/labels.css">
+  <link rel="stylesheet" href="./css/admin.css?v=20261126">
+  <link rel="stylesheet" href="./css/labels.css?v=20261126">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
@@ -118,6 +118,10 @@
                   <option value="下架">官網已下架</option>
                   <option value="未上架">尚未上架官網</option>
                 </select>
+                <select id="prod-cat-filter" class="input-ctrl" title="依形象網站前台分類篩選">
+                  <option value="ALL">全部分類定位</option>
+                  <option value="UNSET">尚未設定前台分類</option>
+                </select>
               </div>
               <div class="toolbar-group">
                 <button id="btn-create-product" class="btn btn-success">＋ 新增商品至主檔</button>
@@ -132,7 +136,7 @@
                     <th>商品編號 (id)</th>
                     <th>商品名稱（主檔 / 前台）</th>
                     <th>售價（主檔 / 前台）</th>
-                    <th>官網分類與圖數</th>
+                    <th>官網分類定位與圖數</th>
                     <th>官網狀態</th>
                     <th>操作</th>
                   </tr>
@@ -236,7 +240,7 @@
           </div>
         </section>
 
-        <!-- 分頁 3（新增）：批發知識文章管理 -->
+        <!-- 分頁 3：批發知識文章管理 -->
         <section id="tab-articles" class="tab-panel">
           <div class="card">
             <div class="card-head">
@@ -270,7 +274,7 @@
           </div>
         </section>
 
-        <!-- 分頁 4（新增）：常見問題 Q&A 管理 -->
+        <!-- 分頁 4：常見問題 Q&A 管理 -->
         <section id="tab-faq" class="tab-panel">
           <div class="card">
             <div class="card-head">
@@ -602,15 +606,15 @@
             <strong>2. 原圖高清預覽（點擊可放大 2K 檢視細節）</strong>
             <span id="selected-queue-count" class="pill pill-new">已選 0 張</span>
           </div>
-          <div class="canvas-stage" style="height:175px;">
+          <div class="canvas-stage" style="height:165px;">
             <img id="preview-cdn-img" src="" alt="" style="display:none; max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 2px 10px rgba(0,0,0,0.18); background:#fff; cursor:zoom-in;">
             <span id="preview-empty-hint" style="font-size:12px; color:#64748b;">點選左側照片可即時預覽</span>
           </div>
           <div id="match-status-text" class="match-status">勾選左側照片後排定主圖與順序，無需壓縮複製即可秒存上架。</div>
 
           <div class="queue-section" style="margin-top:8px;">
-            <div id="selected-queue-list" class="queue-list" style="height:135px;">
-              <div class="queue-empty" style="padding:36px 10px;">尚未勾選任何照片（第 1 張自動成為網站主圖）</div>
+            <div id="selected-queue-list" class="queue-list" style="height:120px;">
+              <div class="queue-empty" style="padding:32px 10px;">尚未勾選任何照片（第 1 張自動成為網站主圖）</div>
             </div>
           </div>
 
@@ -626,17 +630,18 @@
               <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台排序權重（數字越小越前面）</label>
               <input type="number" id="web-inp-sort" class="input-ctrl full-width" value="100" style="padding:5px 8px; font-size:12px;">
             </div>
-            <div>
-              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台分類（選填，留空沿用主檔）</label>
-              <input type="text" id="web-inp-category" class="input-ctrl full-width" placeholder="如：純銀項鍊、耳環" style="padding:5px 8px; font-size:12px;">
+            <div style="grid-column: 1 / -1;">
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台分類定位（用 / 分隔可自動建立左側主次分類，例如：飾品/項鍊）</label>
+              <input type="text" id="web-inp-category" class="input-ctrl full-width" placeholder="點擊下方膠囊快選或自行輸入，如：飾品/項鍊" style="padding:5px 8px; font-size:12px;">
+              <div id="web-cat-presets" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:5px;"></div>
             </div>
             <div>
-              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台售價（選填，留空沿用主檔）</label>
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台售價（留空沿用主檔）</label>
               <input type="number" id="web-inp-price" class="input-ctrl full-width" placeholder="留空即抓主檔售價" style="padding:5px 8px; font-size:12px;">
             </div>
-            <div style="grid-column: 1 / -1;">
-              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台行銷品名（選填，留空沿用主檔品名）</label>
-              <input type="text" id="web-inp-title" class="input-ctrl full-width" placeholder="留空即顯示進銷存主檔品名" style="padding:5px 8px; font-size:12px;">
+            <div>
+              <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台行銷品名（留空沿用主檔）</label>
+              <input type="text" id="web-inp-title" class="input-ctrl full-width" placeholder="留空即顯示主檔品名" style="padding:5px 8px; font-size:12px;">
             </div>
             <div style="grid-column: 1 / -1;">
               <label class="field-label" style="font-size:11px; margin-bottom:3px;">前台商品文案說明（選填）</label>
@@ -705,7 +710,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 3（新增）：批發知識文章編輯視窗 -->
+  <!-- 彈窗 3：批發知識文章編輯視窗 -->
   <div id="article-edit-modal" class="modal-overlay">
     <div class="modal-box edit-modal-box">
       <div class="modal-head">
@@ -768,7 +773,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 4（新增）：常見問題 Q&A 編輯視窗 -->
+  <!-- 彈窗 4：常見問題 Q&A 編輯視窗 -->
   <div id="faq-edit-modal" class="modal-overlay">
     <div class="modal-box edit-modal-box">
       <div class="modal-head">
@@ -813,13 +818,46 @@
     </div>
   </div>
 
-  <script src="./js/config.js"></script>
-  <script src="./js/admin-core.js"></script>
-  <script src="./js/admin-products.js"></script>
-  <script src="./js/admin-media-upload.js"></script>
-  <script src="./js/admin-excel.js"></script>
-  <script src="./js/admin-content.js"></script>
-  <script src="./js/admin-labels.js"></script>
-  <script src="./js/admin-site.js"></script>
+  <!-- 彈窗 5（新增）：官網前台分類與排序快速定位視窗 -->
+  <div id="quick-cat-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width:540px;">
+      <div class="modal-head">
+        <span id="quick-cat-title">🏷️ 設定官網前台分類與排序定位</span>
+        <button id="btn-close-qcat-x" class="btn btn-icon-close">✕</button>
+      </div>
+      <div class="edit-modal-body" style="padding:20px;">
+        <div class="edit-fields-grid">
+          <div class="edit-field-item full-span">
+            <label>官網前台分類定位（用 / 分隔即自動建立左側主分類與次分類）</label>
+            <input type="text" id="quick-cat-input" class="input-ctrl" placeholder="例如：飾品/項鍊 或 十一月新品（留空可清除分類）">
+          </div>
+          <div class="edit-field-item full-span">
+            <label>點擊快速套用分類（預設韓系館別 ＋ 既有分類）：</label>
+            <div id="quick-cat-presets" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;"></div>
+          </div>
+          <div class="edit-field-item full-span">
+            <label>前台排序權重（數字越小排越前面，1～12 會進入首頁精選輪播）</label>
+            <input type="number" id="quick-cat-sort" class="input-ctrl" value="100">
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span style="font-size:12px; color:#64748b;">僅更新形象網站呈現定位，不影響進銷存主檔</span>
+        <div class="toolbar-group">
+          <button id="btn-cancel-qcat" class="btn btn-outline">取消</button>
+          <button id="btn-save-qcat" class="btn btn-success">💾 儲存前台分類定位</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/config.js?v=20261126"></script>
+  <script src="./js/admin-core.js?v=20261126"></script>
+  <script src="./js/admin-products.js?v=20261126"></script>
+  <script src="./js/admin-media-upload.js?v=20261126"></script>
+  <script src="./js/admin-excel.js?v=20261126"></script>
+  <script src="./js/admin-content.js?v=20261126"></script>
+  <script src="./js/admin-labels.js?v=20261126"></script>
+  <script src="./js/admin-site.js?v=20261126"></script>
 </body>
 </html>
