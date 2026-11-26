@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/variables.css">
-  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/variables.css?v=20261126">
+  <link rel="stylesheet" href="./css/style.css?v=20261126">
 </head>
 <body class="cart-disabled">
 
@@ -92,21 +92,24 @@
     </div>
   </header>
 
-  <!-- 3. 淺灰頂部頁首標題與麵包屑 -->
+  <!-- 3. 韓系燕麥調頁首標頭與麵包屑 -->
   <section class="page-banner" aria-label="頁面位置">
     <div class="page-banner-inner">
-      <h1 id="shop-page-title">商品</h1>
+      <div class="page-banner-title-group">
+        <span class="page-banner-en">ALL COLLECTIONS</span>
+        <h1 id="shop-page-title">所有商品</h1>
+      </div>
       <nav class="breadcrumb" aria-label="麵包屑導覽">
         <a href="./index.html">首頁</a>
         <span class="bc-sep">/</span>
-        <span id="shop-breadcrumb-current">商品</span>
+        <span id="shop-breadcrumb-current">所有商品</span>
       </nav>
     </div>
   </section>
 
-  <!-- 4. 獨立商品目錄主體（左側多層分類 ＋ 右側排序、4 欄 × 12 列格線與圓形分頁） -->
+  <!-- 4. 獨立商品目錄主體（固定雙欄區劃：左側分類樹 ＋ 右側排序、固定格線與圓形分頁） -->
   <main class="shop-shell">
-    <!-- 手機／平板小螢幕分類篩選展開鈕 -->
+    <!-- 手機版分類篩選展開鈕（平板橫向與桌機自動隱藏） -->
     <div class="mobile-cat-bar">
       <button type="button" id="btn-mobile-cat-toggle" class="mobile-cat-toggle" aria-expanded="false">
         <span>☰ 商品分類篩選</span>
@@ -117,7 +120,10 @@
     <div class="shop-layout">
       <!-- 左側多層分類側邊欄 -->
       <aside id="shop-sidebar" class="shop-sidebar" aria-label="商品分類選單">
-        <div class="sidebar-heading">CATEGORIES</div>
+        <div class="sidebar-heading">
+          <span>CATEGORIES</span>
+          <small>商品分類</small>
+        </div>
         <div id="shop-category-tree" class="cat-tree">
           <div class="cat-loading">分類讀取中...</div>
         </div>
@@ -127,9 +133,9 @@
       <section class="shop-main" aria-label="商品列表">
         <div class="shop-toolbar">
           <div id="shop-sort-bar" class="shop-sort-group" role="group" aria-label="商品排序">
-            <button type="button" class="shop-sort-btn active" data-sort="default">最新</button>
-            <button type="button" class="shop-sort-btn" data-sort="price-asc">價格 ↑</button>
-            <button type="button" class="shop-sort-btn" data-sort="price-desc">價格 ↓</button>
+            <button type="button" class="shop-sort-btn active" data-sort="default">最新上架</button>
+            <button type="button" class="shop-sort-btn" data-sort="price-asc">價格低到高</button>
+            <button type="button" class="shop-sort-btn" data-sort="price-desc">價格高到低</button>
           </div>
           <div id="shop-result-summary" class="shop-result-summary">商品載入中...</div>
         </div>
@@ -139,6 +145,14 @@
           <div class="loading-state"></div>
           <div class="loading-state"></div>
           <div class="loading-state"></div>
+        </div>
+
+        <!-- 商品數尚未滿頁時的質感收尾提示（有需要時由 JS 自動顯示） -->
+        <div id="shop-curated-note" class="shop-curated-note" style="display:none;">
+          <span class="shop-curated-dot" aria-hidden="true">✦</span>
+          <span>更多韓系純銀與莫桑石新品正陸續上架中，歡迎聯繫</span>
+          <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" class="shop-curated-link">官方 LINE ↗</a>
+          <span>洽詢最新批發與門市現貨。</span>
         </div>
 
         <nav id="shop-pagination" class="shop-pagination" aria-label="商品分頁導覽"></nav>
@@ -266,7 +280,7 @@
     </div>
   </div>
 
-  <script src="./js/config.js"></script>
-  <script src="./js/products.js"></script>
+  <script src="./js/config.js?v=20261126"></script>
+  <script src="./js/products.js?v=20261126"></script>
 </body>
 </html>
