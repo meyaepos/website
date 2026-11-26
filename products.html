@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/variables.css?v=20261126">
-  <link rel="stylesheet" href="./css/style.css?v=20261126">
+  <link rel="stylesheet" href="./css/variables.css?v=20261126b">
+  <link rel="stylesheet" href="./css/style.css?v=20261126b">
 </head>
 <body class="cart-disabled">
 
@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <!-- 2. 主導覽列（與首頁統一韓系精品雙語微標） -->
+  <!-- 2. 主導覽列 -->
   <header class="site-header" id="site-header">
     <div class="header-container">
       <a href="./index.html" class="site-logo" aria-label="返回 is Meya 首頁">
@@ -29,52 +29,26 @@
       </a>
 
       <nav class="site-nav" aria-label="主選單">
-        <a href="./index.html?section=catalog" class="nav-link">
-          <span class="nav-zh">新品上市</span>
-          <span class="nav-en">NEW IN</span>
-        </a>
-        <a href="./products.html" class="nav-link active">
-          <span class="nav-zh">所有商品</span>
-          <span class="nav-en">SHOP ALL</span>
-        </a>
-        <a href="./index.html?section=articles" class="nav-link">
-          <span class="nav-zh">批發知識文章</span>
-          <span class="nav-en">JOURNAL</span>
-        </a>
-        <a href="./index.html?section=faq" class="nav-link">
-          <span class="nav-zh">Q&amp;A</span>
-          <span class="nav-en">F.A.Q</span>
-        </a>
-        <a href="#contact" class="nav-link" data-scroll-target="contact">
-          <span class="nav-zh">聯絡我們</span>
-          <span class="nav-en">CONTACT</span>
-        </a>
+        <a href="./index.html?section=catalog" class="nav-link"><span class="nav-zh">新品上市</span><span class="nav-en">NEW IN</span></a>
+        <a href="./products.html" class="nav-link active"><span class="nav-zh">所有商品</span><span class="nav-en">SHOP ALL</span></a>
+        <a href="./index.html?section=articles" class="nav-link"><span class="nav-zh">批發知識文章</span><span class="nav-en">JOURNAL</span></a>
+        <a href="./index.html?section=faq" class="nav-link"><span class="nav-zh">Q&amp;A</span><span class="nav-en">F.A.Q</span></a>
+        <a href="#contact" class="nav-link" data-scroll-target="contact"><span class="nav-zh">聯絡我們</span><span class="nav-en">CONTACT</span></a>
       </nav>
 
       <div class="header-actions">
         <button id="btn-search-toggle" class="icon-btn" title="搜尋商品" aria-label="搜尋商品">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="7"></circle>
-            <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.65" y2="16.65"></line></svg>
         </button>
         <a href="#contact" class="icon-btn" data-scroll-target="contact" title="門市與聯絡資訊" aria-label="門市與聯絡資訊">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
         </a>
         <button class="icon-btn cart-icon" title="購物車" aria-label="購物車">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
         </button>
       </div>
     </div>
 
-    <!-- 手機版單行橫向精品滑動分頁列 -->
     <nav class="mobile-nav" aria-label="行動裝置選單">
       <a href="./index.html?section=catalog" class="mobile-nav-link">新品上市</a>
       <a href="./products.html" class="mobile-nav-link active">所有商品</a>
@@ -83,7 +57,6 @@
       <a href="#contact" class="mobile-nav-link" data-scroll-target="contact">聯絡我們</a>
     </nav>
 
-    <!-- 隱藏式極簡搜尋抽屜 -->
     <div id="search-bar-drawer" class="search-drawer">
       <div class="search-drawer-inner">
         <input type="text" id="search-input" class="search-input" placeholder="輸入商品名稱、編號或分類關鍵字即時篩選...">
@@ -92,7 +65,7 @@
     </div>
   </header>
 
-  <!-- 3. 韓系燕麥調頁首標頭與麵包屑 -->
+  <!-- 3. 頁首標頭與麵包屑 -->
   <section class="page-banner" aria-label="頁面位置">
     <div class="page-banner-inner">
       <div class="page-banner-title-group">
@@ -100,16 +73,13 @@
         <h1 id="shop-page-title">所有商品</h1>
       </div>
       <nav class="breadcrumb" aria-label="麵包屑導覽">
-        <a href="./index.html">首頁</a>
-        <span class="bc-sep">/</span>
-        <span id="shop-breadcrumb-current">所有商品</span>
+        <a href="./index.html">首頁</a><span class="bc-sep">/</span><span id="shop-breadcrumb-current">所有商品</span>
       </nav>
     </div>
   </section>
 
-  <!-- 4. 獨立商品目錄主體（固定雙欄區劃：左側分類樹 ＋ 右側排序、固定格線與圓形分頁） -->
+  <!-- 4. 獨立商品目錄主體 -->
   <main class="shop-shell">
-    <!-- 手機版分類篩選展開鈕（平板橫向與桌機自動隱藏） -->
     <div class="mobile-cat-bar">
       <button type="button" id="btn-mobile-cat-toggle" class="mobile-cat-toggle" aria-expanded="false">
         <span>☰ 商品分類篩選</span>
@@ -118,18 +88,11 @@
     </div>
 
     <div class="shop-layout">
-      <!-- 左側多層分類側邊欄 -->
       <aside id="shop-sidebar" class="shop-sidebar" aria-label="商品分類選單">
-        <div class="sidebar-heading">
-          <span>CATEGORIES</span>
-          <small>商品分類</small>
-        </div>
-        <div id="shop-category-tree" class="cat-tree">
-          <div class="cat-loading">分類讀取中...</div>
-        </div>
+        <div class="sidebar-heading"><span>CATEGORIES</span><small>商品分類</small></div>
+        <div id="shop-category-tree" class="cat-tree"><div class="cat-loading">分類讀取中...</div></div>
       </aside>
 
-      <!-- 右側商品展示區 -->
       <section class="shop-main" aria-label="商品列表">
         <div class="shop-toolbar">
           <div id="shop-sort-bar" class="shop-sort-group" role="group" aria-label="商品排序">
@@ -141,13 +104,9 @@
         </div>
 
         <div id="shop-product-grid" class="shop-grid">
-          <div class="loading-state"></div>
-          <div class="loading-state"></div>
-          <div class="loading-state"></div>
-          <div class="loading-state"></div>
+          <div class="loading-state"></div><div class="loading-state"></div><div class="loading-state"></div><div class="loading-state"></div>
         </div>
 
-        <!-- 商品數尚未滿頁時的質感收尾提示（有需要時由 JS 自動顯示） -->
         <div id="shop-curated-note" class="shop-curated-note" style="display:none;">
           <span class="shop-curated-dot" aria-hidden="true">✦</span>
           <span>更多韓系純銀與莫桑石新品正陸續上架中，歡迎聯繫</span>
@@ -169,14 +128,10 @@
       </a>
 
       <div class="footer-nav">
-        <a href="./index.html?section=catalog">新品上市</a>
-        <span class="divider">|</span>
-        <a href="./products.html">所有商品</a>
-        <span class="divider">|</span>
-        <a href="./index.html?section=articles">批發知識文章</a>
-        <span class="divider">|</span>
-        <a href="./index.html?section=faq">Q&amp;A</a>
-        <span class="divider">|</span>
+        <a href="./index.html?section=catalog">新品上市</a><span class="divider">|</span>
+        <a href="./products.html">所有商品</a><span class="divider">|</span>
+        <a href="./index.html?section=articles">批發知識文章</a><span class="divider">|</span>
+        <a href="./index.html?section=faq">Q&amp;A</a><span class="divider">|</span>
         <a href="#contact" data-scroll-target="contact">聯絡我們</a>
       </div>
 
@@ -188,9 +143,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
         </a>
         <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" aria-label="LINE 官方帳號" title="LINE 官方帳號">
-          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
-            <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
         </a>
       </div>
     </div>
@@ -199,13 +152,11 @@
       <div class="footer-contact">
         <div class="cs-label">CUSTOMER SERVICE</div>
         <a href="tel:0422589779" class="cs-phone">04-2258-9779</a>
-
         <div class="cs-list">
           <p><span>E-mail</span><span class="pipe">|</span><a href="mailto:meyalady1@gmail.com">meyalady1@gmail.com</a></p>
           <p><span>Address</span><span class="pipe">|</span>台中市南屯區大墩12街642號</p>
           <p>MON.-SUN. 09:00 - 18:00</p>
         </div>
-
         <div class="cs-company">
           <p><span>統編</span><span class="pipe">|</span>93428866</p>
           <p>韓王朝精品服飾</p>
@@ -215,17 +166,8 @@
 
       <div class="footer-map">
         <div class="map-frame-wrap">
-          <a href="https://maps.app.goo.gl/72mxX2nRsWgNAhMPA" target="_blank" rel="noopener noreferrer" class="map-open-badge">
-            在 Google 地圖中開啟 ↗
-          </a>
-          <iframe
-            title="is Meya 門市位置地圖"
-            tabindex="-1"
-            src="https://maps.google.com/maps?q=%E9%87%91%E7%8E%89%E5%90%8D%E5%AA%9B%20%E5%8F%B0%E4%B8%AD%E5%B8%82%E5%8D%97%E5%B1%AF%E5%8D%80%E5%A4%A7%E5%A2%A9%E5%8D%81%E4%BA%8C%E8%A1%97642%E8%99%9F&t=&z=16&ie=UTF8&iwloc=&output=embed"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            allowfullscreen>
-          </iframe>
+          <a href="https://maps.app.goo.gl/72mxX2nRsWgNAhMPA" target="_blank" rel="noopener noreferrer" class="map-open-badge">在 Google 地圖中開啟 ↗</a>
+          <iframe title="is Meya 門市位置地圖" tabindex="-1" src="https://maps.google.com/maps?q=%E9%87%91%E7%8E%89%E5%90%8D%E5%AA%9B%20%E5%8F%B0%E4%B8%AD%E5%B8%82%E5%8D%97%E5%B1%AF%E5%8D%80%E5%A4%A7%E5%A2%A9%E5%8D%81%E4%BA%8C%E8%A1%97642%E8%99%9F&t=&z=16&ie=UTF8&iwloc=&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
       </div>
     </div>
@@ -234,11 +176,10 @@
       <div class="footer-bottom-inner">
         <p>Copyright &copy; 2026 is Meya. All rights reserved.</p>
         <div class="footer-policies">
-          <a href="./index.html?section=faq">常見問題</a>
-          <span>/</span>
-          <a href="#contact" data-scroll-target="contact">服務條款</a>
-          <span>/</span>
-          <a href="#contact" data-scroll-target="contact">隱私權政策</a>
+          <a href="./policy.html?tab=notice">購物須知</a><span>/</span>
+          <a href="./policy.html?tab=terms">服務條款</a><span>/</span>
+          <a href="./policy.html?tab=privacy">隱私權政策</a><span>/</span>
+          <a href="./policy.html?tab=user-data">用戶資料刪除</a>
         </div>
       </div>
     </div>
@@ -247,9 +188,7 @@
   <!-- 6. 右下角懸浮社群列 -->
   <div class="floating-dock" aria-label="快速聯絡按鈕">
     <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" class="dock-btn dock-line" title="LINE 官方帳號">
-      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
-        <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
-      </svg>
+      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
     </a>
     <a href="https://www.facebook.com/profile.php?id=61586086650529" target="_blank" rel="noopener noreferrer" class="dock-btn dock-fb" title="Facebook 粉絲專頁">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"/></svg>
@@ -266,9 +205,7 @@
   <div id="product-modal-backdrop" class="modal-backdrop">
     <div class="product-modal">
       <button class="modal-close" id="modal-close-btn" aria-label="關閉視窗">&times;</button>
-      <div class="modal-img-box">
-        <img id="modal-img" src="" alt="">
-      </div>
+      <div class="modal-img-box"><img id="modal-img" src="" alt=""></div>
       <div class="modal-info-box">
         <div class="sku-tag" id="modal-sku"></div>
         <h3 id="modal-name"></h3>
@@ -280,7 +217,7 @@
     </div>
   </div>
 
-  <script src="./js/config.js?v=20261126"></script>
-  <script src="./js/products.js?v=20261126"></script>
+  <script src="./js/config.js?v=20261126b"></script>
+  <script src="./js/products.js?v=20261126b"></script>
 </body>
 </html>
