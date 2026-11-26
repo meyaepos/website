@@ -58,22 +58,35 @@ body.cart-disabled .btn-add-to-cart {
   display: none !important;
 }
 
-/* 2. 主導覽列 */
+/* 2. 主導覽列（韓系輕珠寶毛玻璃精品風格） */
 .site-header {
-  background-color: rgba(255, 255, 255, 0.98);
-  border-bottom: 1px solid var(--color-border);
+  background-color: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(217, 210, 197, 0.55);
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.site-header.scrolled {
+  background-color: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 6px 24px rgba(45, 38, 30, 0.05);
 }
 
 .header-container {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 14px 32px;
+  padding: 14px 36px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  transition: padding 0.3s ease;
+}
+
+.site-header.scrolled .header-container {
+  padding: 10px 36px;
 }
 
 .site-logo {
@@ -99,65 +112,189 @@ body.cart-disabled .btn-add-to-cart {
   letter-spacing: 1px;
 }
 
+/* 桌機／平板橫向五大分頁（雙語微標 ＋ 微鑽指示 ＋ 中心展開細金線） */
 .site-nav {
   display: none;
   justify-self: center;
-  gap: 28px;
+  align-items: center;
+  gap: 30px;
 }
 
-.site-nav a {
+.site-nav .nav-link {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px 9px;
+  color: #5C554E;
+  white-space: nowrap;
+  transition: color 0.28s ease;
+}
+
+/* 上方極細微鑽光點（僅於滑過或作用中時浮現） */
+.site-nav .nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  background-color: #B6A38C;
+  transform: translateX(-50%) rotate(45deg) scale(0);
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
+}
+
+/* 底部中心展開香檳金細線 */
+.site-nav .nav-link::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(182, 163, 140, 0.35), #9E8A73, rgba(182, 163, 140, 0.35));
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-nav .nav-zh {
   font-size: 14px;
   font-weight: 400;
-  letter-spacing: 1.2px;
-  color: var(--color-text-main);
-  white-space: nowrap;
-  transition: color var(--transition-speed);
+  letter-spacing: 1.8px;
+  line-height: 1.25;
+  transition: color 0.28s ease;
 }
 
-.site-nav a:hover {
-  color: var(--color-text-muted);
+.site-nav .nav-en {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: #ACA296;
+  margin-top: 2px;
+  line-height: 1;
+  transition: color 0.28s ease;
+}
+
+.site-nav .nav-link:hover,
+.site-nav .nav-link.active {
+  color: #1F1C19;
+}
+
+.site-nav .nav-link:hover .nav-en,
+.site-nav .nav-link.active .nav-en {
+  color: #8E7A63;
+}
+
+.site-nav .nav-link.active .nav-zh {
+  font-weight: 500;
+}
+
+.site-nav .nav-link:hover::after,
+.site-nav .nav-link.active::after {
+  transform: scaleX(1);
+}
+
+.site-nav .nav-link:hover::before,
+.site-nav .nav-link.active::before {
+  transform: translateX(-50%) rotate(45deg) scale(1);
+  opacity: 1;
 }
 
 .header-actions {
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .icon-btn {
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   color: #333333;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: opacity var(--transition-speed);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-.icon-btn:hover { opacity: 0.6; }
-.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn:hover {
+  background-color: #F6F3EE;
+  color: #111111;
+}
 
-/* 手機版中文導覽列（5 項自動柔順換行） */
+.icon-btn svg { width: 19px; height: 19px; }
+
+/* 手機版單行橫向精品滑動分頁列（隱藏醜捲軸、柔和觸控滑動） */
 .mobile-nav {
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 10px 14px;
-  border-top: 1px solid #F5F5F5;
-  font-size: 13px;
-  letter-spacing: 0.8px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0 14px;
+  border-top: 1px solid rgba(235, 230, 222, 0.75);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-@media (min-width: 860px) {
+.mobile-nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 480px) and (max-width: 899px) {
+  .mobile-nav {
+    justify-content: center;
+    gap: 14px;
+  }
+}
+
+.mobile-nav .mobile-nav-link {
+  position: relative;
+  flex-shrink: 0;
+  padding: 11px 10px 10px;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  color: #6B645C;
+  white-space: nowrap;
+  transition: color 0.25s ease;
+}
+
+.mobile-nav .mobile-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background-color: #9E8A73;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mobile-nav .mobile-nav-link.active {
+  color: #1F1C19;
+  font-weight: 500;
+}
+
+.mobile-nav .mobile-nav-link.active::after {
+  transform: scaleX(1);
+}
+
+@media (min-width: 900px) {
   .site-nav { display: flex; }
   .mobile-nav { display: none; }
 }
 
-@media (max-width: 859px) {
-  .header-container {
-    padding: 12px 18px;
+@media (max-width: 899px) {
+  .header-container,
+  .site-header.scrolled .header-container {
+    padding: 10px 18px;
     grid-template-columns: 1fr auto;
   }
   .logo-script { font-size: 38px; }
@@ -167,7 +304,7 @@ body.cart-disabled .btn-add-to-cart {
 .search-drawer {
   display: none;
   border-top: 1px solid var(--color-border);
-  background: #FFFFFF;
+  background: rgba(255, 255, 255, 0.98);
 }
 
 .search-drawer.open { display: block; }
@@ -308,9 +445,10 @@ body.cart-disabled .btn-add-to-cart {
 }
 
 .section-subtitle {
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 3px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 3.5px;
   color: #888888;
   margin-bottom: 14px;
 }
@@ -318,7 +456,7 @@ body.cart-disabled .btn-add-to-cart {
 .section-divider {
   width: 34px;
   height: 1.5px;
-  background-color: #8E8E8E;
+  background-color: #B6A38C;
   margin: 0 auto 14px;
 }
 
@@ -501,7 +639,7 @@ body.cart-disabled .btn-add-to-cart {
 
 .brand-story-tagline strong { font-weight: 700; color: #1F1F1F; }
 
-/* 6. 批發知識文章專區（支援圖文卡與純文字優雅卡） */
+/* 6. 批發知識文章專區 */
 .knowledge-section {
   max-width: 1200px;
   margin: 0 auto;
@@ -516,15 +654,11 @@ body.cart-disabled .btn-add-to-cart {
 }
 
 @media (min-width: 680px) {
-  .articles-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .articles-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 1024px) {
-  .articles-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .articles-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .article-card {
@@ -564,9 +698,7 @@ body.cart-disabled .btn-add-to-cart {
   transition: transform 0.5s ease;
 }
 
-.article-card:hover .article-card-cover img {
-  transform: scale(1.04);
-}
+.article-card:hover .article-card-cover img { transform: scale(1.04); }
 
 .article-card-body {
   padding: 22px 22px 20px;
@@ -593,10 +725,7 @@ body.cart-disabled .btn-add-to-cart {
   letter-spacing: 0.8px;
 }
 
-.article-date {
-  font-size: 11px;
-  color: #999999;
-}
+.article-date { font-size: 11px; color: #999999; }
 
 .article-card-title {
   font-size: 17px;
@@ -638,10 +767,7 @@ body.cart-disabled .btn-add-to-cart {
   scroll-margin-top: 110px;
 }
 
-.faq-inner {
-  max-width: 860px;
-  margin: 0 auto;
-}
+.faq-inner { max-width: 860px; margin: 0 auto; }
 
 .faq-accordion {
   display: flex;
@@ -735,9 +861,7 @@ body.cart-disabled .btn-add-to-cart {
   padding-top: 14px;
 }
 
-.faq-answer-panel p + p {
-  margin-top: 8px;
-}
+.faq-answer-panel p + p { margin-top: 8px; }
 
 /* 8. 頁尾 */
 .site-footer {
@@ -1099,14 +1223,10 @@ body.cart-disabled .btn-add-to-cart {
   display: block;
 }
 
-.article-modal-body {
-  padding: 32px 28px 28px;
-}
+.article-modal-body { padding: 32px 28px 28px; }
 
 @media (min-width: 640px) {
-  .article-modal-body {
-    padding: 36px 40px 32px;
-  }
+  .article-modal-body { padding: 36px 40px 32px; }
 }
 
 .article-modal-meta {
@@ -1132,9 +1252,7 @@ body.cart-disabled .btn-add-to-cart {
   line-height: 1.95;
 }
 
-.article-modal-content p {
-  margin-bottom: 14px;
-}
+.article-modal-content p { margin-bottom: 14px; }
 
 .article-modal-footer {
   margin-top: 28px;
