@@ -1,27 +1,32 @@
 /**
- * is Meya 形象網站前台主程式（第一階段基礎資安加固版）
- * 防護與效能：
- * 1. 圖片網址強制檢查 https:// 協定白名單，阻擋 javascript: 注入
- * 2. 商品規格與卡片全部改用純 DOM textContent 安全渲染，杜絕 XSS
- * 3. 嚴格遮蔽 NT$ 0（無有效售價自動改為官方 LINE 洽詢並隱藏購物車）
- * 4. localStorage 秒開快取 ＋ Google CDN 三段分級尺寸 (=w480 / =w1200 / =w2048) ＋ 2K 放大燈箱
+ * is Meya 形象網站前台主程式（完整版：商品櫥窗 ＋ 批發知識文章 ＋ 常見問題 Q&A）
+ * 安全與效能：
+ * 1. 全站採用純 DOM textContent 安全渲染，防範 XSS；圖片網址強制驗證 https:// 協定
+ * 2. 嚴格遮蔽 NT$ 0（無有效售價改顯示官方 LINE 洽詢）
+ * 3. localStorage 秒開快取 ＋ Google CDN 三段分級尺寸 (=w480 / =w1200 / =w2048) ＋ 2K 放大燈箱
  */
 const OFFICIAL_LINE_URL = 'https://lin.ee/7gVn9gX';
-const PUBLIC_CACHE_KEY = 'MEYA_PUBLIC_WEBSITE_CACHE_V1';
+const PUBLIC_CACHE_KEY = 'MEYA_PUBLIC_WEBSITE_CACHE_V2';
 
 let allPublishedProducts = [];
+let allPublishedArticles = [];
+let allPublishedFaqs = [];
+
 let activeCategory = 'ALL';
+let activeArticleCategory = 'ALL';
+let activeFaqCategory = 'ALL';
 let detectedCategoryKey = null;
 let userHasInteracted = false;
 
 let lastRenderedAnnouncementsKey = '';
 let lastRenderedProductsKey = '';
+let lastRenderedArticlesKey = '';
+let lastRenderedFaqsKey = '';
 
 let currentModalProduct = null;
 let currentModalGallery = [];
 let currentModalImgIndex = 0;
 
-// 嚴格檢查有效售價：空值、非數字、0 或負數一律視為無售價（絕對禁止顯示 NT$ 0）
 function parseValidPrice(rawPrice) {
   if (rawPrice === null || rawPrice === undefined) return 0;
   const cleaned = String(rawPrice).replace(/[^0-9.-]/g, '').trim();
@@ -30,7 +35,6 @@ function parseValidPrice(rawPrice) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
-// 強制驗證 https:// 協定白名單，並附加 Google CDN 三段分級尺寸參數
 function formatCdnImageUrl(rawUrl, widthPx) {
   const url = String(rawUrl || '').trim();
   if (!url || !/^https:\/\//i.test(url)) return '';
@@ -40,7 +44,20 @@ function formatCdnImageUrl(rawUrl, widthPx) {
   return url;
 }
 
-// JS 動態跑馬燈控制器（全裝置統一從最右側進場、等速向左捲動）
+// 將多行純文字安全渲染為分段 <p>（使用 textContent 防 XSS）
+function renderMultilineParagraphs(containerEl, rawText) {
+  containerEl.textContent = '';
+  const blocks = String(rawText || '').split(/\r?\n/);
+  blocks.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const p = document.createElement('p');
+    p.textContent = trimmed;
+    containerEl.appendChild(p);
+  });
+}
+
+// 動態跑馬燈控制器
 const MarqueeRunner = {
   rafId: null,
   x: 0,
@@ -80,10 +97,7 @@ const MarqueeRunner = {
         this.x -= this.speedPxPerSec * dt;
         const textWidth = mainEl.offsetWidth || 200;
         const containerWidth = container.clientWidth || window.innerWidth;
-
-        if (this.x < -textWidth) {
-          this.x = containerWidth;
-        }
+        if (this.x < -textWidth) this.x = containerWidth;
         mainEl.style.transform = `translate3d(${this.x}px, 0, 0)`;
       }
 
@@ -101,7 +115,7 @@ const MarqueeRunner = {
   }
 };
 
-// 前台 2K 高清全螢幕放大燈箱（支援三段縮放與多圖連續瀏覽）
+// 前台 2K 高清全螢幕放大燈箱
 const FrontLightbox = {
   zoomMode: 'fit',
 
@@ -239,18 +253,11 @@ function forceScrollTop() {
 }
 
 ['touchstart', 'wheel', 'mousedown'].forEach(evt => {
-  window.addEventListener(evt, () => {
-    userHasInteracted = true;
-  }, { passive: true, once: true });
+  window.addEventListener(evt, () => { userHasInteracted = true; }, { passive: true, once: true });
 });
 
-window.addEventListener('pageshow', () => {
-  if (!userHasInteracted) forceScrollTop();
-});
-
-window.addEventListener('load', () => {
-  if (!userHasInteracted) forceScrollTop();
-});
+window.addEventListener('pageshow', () => { if (!userHasInteracted) forceScrollTop(); });
+window.addEventListener('load', () => { if (!userHasInteracted) forceScrollTop(); });
 
 document.addEventListener('DOMContentLoaded', () => {
   forceScrollTop();
@@ -277,10 +284,27 @@ function applyWebsitePayload(data) {
     detectAndRenderCategories(allPublishedProducts);
     applyFiltersAndRender();
   }
+
+  const articles = data.articles || [];
+  const artKey = JSON.stringify(articles);
+  if (artKey !== lastRenderedArticlesKey) {
+    lastRenderedArticlesKey = artKey;
+    allPublishedArticles = articles;
+    renderArticleCategoryBar();
+    renderArticlesGrid();
+  }
+
+  const faqs = data.faqs || [];
+  const faqKey = JSON.stringify(faqs);
+  if (faqKey !== lastRenderedFaqsKey) {
+    lastRenderedFaqsKey = faqKey;
+    allPublishedFaqs = faqs;
+    renderFaqCategoryBar();
+    renderFaqAccordion();
+  }
 }
 
 async function initWebsite() {
-  // 1. 讀取本機快取秒開呈現
   let hasLocalCache = false;
   try {
     const cachedRaw = localStorage.getItem(PUBLIC_CACHE_KEY);
@@ -293,7 +317,6 @@ async function initWebsite() {
     }
   } catch (_) {}
 
-  // 2. 背景同步向 GAS 記憶體快取取得最新資料
   try {
     if (typeof CONFIG === 'undefined' || !CONFIG.GAS_API_URL) {
       throw new Error('找不到 js/config.js 或 GAS_API_URL 尚未設定');
@@ -309,7 +332,9 @@ async function initWebsite() {
       localStorage.setItem(PUBLIC_CACHE_KEY, JSON.stringify({
         config: data.config || {},
         announcements: data.announcements || [],
-        products: data.products || []
+        products: data.products || [],
+        articles: data.articles || [],
+        faqs: data.faqs || []
       }));
     } catch (_) {}
 
@@ -321,6 +346,8 @@ async function initWebsite() {
       document.getElementById('catalog-count').textContent = '商品型錄連線準備中，歡迎直接聯繫官方門市洽詢';
       document.getElementById('product-grid').innerHTML =
         '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
+      renderArticlesGrid();
+      renderFaqAccordion();
     }
   } finally {
     if (!userHasInteracted) forceScrollTop();
@@ -344,9 +371,10 @@ function renderAnnouncements(newsList) {
   const text = newsList.length > 0
     ? newsList.join('　　✦　　')
     : '歡迎蒞臨 is Meya 官方形象網站';
-
   MarqueeRunner.start(text);
 }
+
+// ================= 商品櫥窗區 =================
 
 function detectAndRenderCategories(products) {
   if (!products || products.length === 0) return;
@@ -364,7 +392,7 @@ function detectAndRenderCategories(products) {
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'dynamic-category-bar';
-    bar.style.cssText = 'display:flex; justify-content:center; flex-wrap:wrap; gap:10px; margin-bottom:36px;';
+    bar.className = 'pill-filter-bar';
     const grid = document.getElementById('product-grid');
     grid.parentNode.insertBefore(bar, grid);
   }
@@ -373,23 +401,15 @@ function detectAndRenderCategories(products) {
   ['ALL', ...categories].forEach(cat => {
     const btn = document.createElement('button');
     btn.textContent = cat === 'ALL' ? '全部商品' : cat;
-    btn.dataset.cat = cat;
-    btn.style.cssText = 'padding:6px 18px; border-radius:20px; font-size:13px; letter-spacing:1px; border:1px solid #D9D2C5; transition:0.25s;';
-    updateCategoryBtnStyle(btn, cat === activeCategory);
-
+    btn.className = 'filter-pill-btn' + (cat === activeCategory ? ' active' : '');
     btn.addEventListener('click', () => {
       activeCategory = cat;
-      bar.querySelectorAll('button').forEach(b => updateCategoryBtnStyle(b, b.dataset.cat === activeCategory));
+      bar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
       applyFiltersAndRender();
     });
     bar.appendChild(btn);
   });
-}
-
-function updateCategoryBtnStyle(btn, isActive) {
-  btn.style.backgroundColor = isActive ? '#333333' : '#FFFFFF';
-  btn.style.color = isActive ? '#FFFFFF' : '#333333';
-  btn.style.borderColor = isActive ? '#333333' : '#D9D2C5';
 }
 
 function applyFiltersAndRender() {
@@ -449,11 +469,8 @@ function renderProducts(list) {
     img.src = formatCdnImageUrl(product.image, 480);
     img.alt = product.name || '';
     img.decoding = 'async';
-    if (idx < 4) {
-      img.fetchPriority = 'high';
-    } else {
-      img.loading = 'lazy';
-    }
+    if (idx < 4) img.fetchPriority = 'high';
+    else img.loading = 'lazy';
     img.onerror = function() { this.style.opacity = '0.2'; };
     imgWrap.appendChild(img);
 
@@ -516,7 +533,6 @@ function openProductModal(product) {
 
   renderModalGallery();
 
-  // 使用純 DOM textContent 安全渲染規格，徹底阻擋 XSS
   const specBox = document.getElementById('modal-dynamic-specs');
   const hiddenKeys = new Set(['id', 'name', 'price', 'image', 'images', '狀態']);
   specBox.textContent = '';
@@ -599,6 +615,248 @@ function renderModalGallery() {
   imgBox.appendChild(strip);
 }
 
+// ================= 批發知識文章專區（點擊展開閱讀，支援圖文與純文字） =================
+
+function renderArticleCategoryBar() {
+  const bar = document.getElementById('articles-category-bar');
+  if (!bar) return;
+
+  const categories = Array.from(new Set(
+    allPublishedArticles.map(a => String(a.category || '').trim()).filter(Boolean)
+  ));
+
+  if (categories.length <= 1) {
+    bar.style.display = 'none';
+    bar.textContent = '';
+    return;
+  }
+
+  bar.style.display = 'flex';
+  bar.textContent = '';
+  ['ALL', ...categories].forEach(cat => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'filter-pill-btn' + (cat === activeArticleCategory ? ' active' : '');
+    btn.textContent = cat === 'ALL' ? '全部文章' : cat;
+    btn.addEventListener('click', () => {
+      activeArticleCategory = cat;
+      bar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderArticlesGrid();
+    });
+    bar.appendChild(btn);
+  });
+}
+
+function renderArticlesGrid() {
+  const grid = document.getElementById('articles-grid');
+  const countEl = document.getElementById('articles-count');
+  if (!grid) return;
+
+  const list = allPublishedArticles.filter(a =>
+    activeArticleCategory === 'ALL' || String(a.category || '').trim() === activeArticleCategory
+  );
+
+  grid.textContent = '';
+  if (list.length === 0) {
+    if (countEl) countEl.textContent = '專欄文章陸續籌備中';
+    const emptyP = document.createElement('p');
+    emptyP.style.cssText = 'grid-column: 1 / -1; text-align: center; color: #888; padding: 32px 0; font-size: 14px;';
+    emptyP.textContent = '批發選品與飾品知識文章陸續上架中，歡迎先聯繫官方 LINE 索取最新批發須知。';
+    grid.appendChild(emptyP);
+    return;
+  }
+
+  if (countEl) countEl.textContent = `共 ${list.length} 篇專欄・點擊卡片閱讀完整內容`;
+
+  list.forEach(art => {
+    const safeCover = formatCdnImageUrl(art.image, 720);
+    const hasCover = Boolean(safeCover);
+
+    const card = document.createElement('article');
+    card.className = 'article-card' + (hasCover ? '' : ' text-only');
+    card.addEventListener('click', () => openArticleModal(art));
+
+    if (hasCover) {
+      const coverWrap = document.createElement('div');
+      coverWrap.className = 'article-card-cover';
+      const img = document.createElement('img');
+      img.src = safeCover;
+      img.alt = art.title || '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.onerror = function() { coverWrap.style.display = 'none'; card.classList.add('text-only'); };
+      coverWrap.appendChild(img);
+      card.appendChild(coverWrap);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'article-card-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'article-card-meta';
+
+    const catSpan = document.createElement('span');
+    catSpan.className = 'article-cat-pill';
+    catSpan.textContent = art.category || '批發知識';
+    meta.appendChild(catSpan);
+
+    if (art.updatedAt) {
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'article-date';
+      dateSpan.textContent = String(art.updatedAt).slice(0, 10);
+      meta.appendChild(dateSpan);
+    }
+
+    const titleEl = document.createElement('h3');
+    titleEl.className = 'article-card-title';
+    titleEl.textContent = art.title || '';
+
+    const summaryEl = document.createElement('p');
+    summaryEl.className = 'article-card-summary';
+    summaryEl.textContent = art.summary || '';
+
+    const moreEl = document.createElement('span');
+    moreEl.className = 'article-read-more';
+    moreEl.textContent = '閱讀全文 →';
+
+    body.appendChild(meta);
+    body.appendChild(titleEl);
+    body.appendChild(summaryEl);
+    body.appendChild(moreEl);
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+}
+
+function openArticleModal(art) {
+  const coverWrap = document.getElementById('article-modal-cover-wrap');
+  const coverImg = document.getElementById('article-modal-cover');
+  const safeCover = formatCdnImageUrl(art.image, 1200);
+
+  if (safeCover) {
+    coverImg.src = safeCover;
+    coverImg.alt = art.title || '';
+    coverWrap.style.display = 'block';
+  } else {
+    coverImg.src = '';
+    coverWrap.style.display = 'none';
+  }
+
+  document.getElementById('article-modal-cat').textContent = art.category || '批發知識';
+  document.getElementById('article-modal-date').textContent = art.updatedAt ? String(art.updatedAt).slice(0, 10) : '';
+  document.getElementById('article-modal-title').textContent = art.title || '';
+  renderMultilineParagraphs(document.getElementById('article-modal-content'), art.content || '');
+
+  const backdrop = document.getElementById('article-modal-backdrop');
+  backdrop.classList.add('open');
+  const modalBox = backdrop.querySelector('.article-modal');
+  if (modalBox) modalBox.scrollTop = 0;
+}
+
+// ================= 常見問題 Q&A 手風琴專區 =================
+
+function renderFaqCategoryBar() {
+  const bar = document.getElementById('faq-category-bar');
+  if (!bar) return;
+
+  const categories = Array.from(new Set(
+    allPublishedFaqs.map(f => String(f.category || '').trim()).filter(Boolean)
+  ));
+
+  if (categories.length <= 1) {
+    bar.style.display = 'none';
+    bar.textContent = '';
+    return;
+  }
+
+  bar.style.display = 'flex';
+  bar.textContent = '';
+  ['ALL', ...categories].forEach(cat => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'filter-pill-btn' + (cat === activeFaqCategory ? ' active' : '');
+    btn.textContent = cat === 'ALL' ? '全部問題' : cat;
+    btn.addEventListener('click', () => {
+      activeFaqCategory = cat;
+      bar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderFaqAccordion();
+    });
+    bar.appendChild(btn);
+  });
+}
+
+function renderFaqAccordion() {
+  const container = document.getElementById('faq-accordion');
+  if (!container) return;
+
+  const list = allPublishedFaqs.filter(f =>
+    activeFaqCategory === 'ALL' || String(f.category || '').trim() === activeFaqCategory
+  );
+
+  container.textContent = '';
+  if (list.length === 0) {
+    const emptyP = document.createElement('p');
+    emptyP.style.cssText = 'text-align: center; color: #888; padding: 28px 0; font-size: 14px;';
+    emptyP.textContent = '目前尚無常見問題，如有任何疑問歡迎直接聯繫官方 LINE。';
+    container.appendChild(emptyP);
+    return;
+  }
+
+  list.forEach((item, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'faq-item' + (idx === 0 ? ' open' : '');
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'faq-question-btn';
+    btn.setAttribute('aria-expanded', idx === 0 ? 'true' : 'false');
+
+    const left = document.createElement('div');
+    left.className = 'faq-q-left';
+
+    const qMark = document.createElement('span');
+    qMark.className = 'faq-q-mark';
+    qMark.textContent = 'Q.';
+    left.appendChild(qMark);
+
+    if (item.category) {
+      const catTag = document.createElement('span');
+      catTag.className = 'faq-cat-tag';
+      catTag.textContent = item.category;
+      left.appendChild(catTag);
+    }
+
+    const qText = document.createElement('span');
+    qText.textContent = item.question || '';
+    left.appendChild(qText);
+
+    const icon = document.createElement('span');
+    icon.className = 'faq-toggle-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '+';
+
+    btn.appendChild(left);
+    btn.appendChild(icon);
+
+    const panel = document.createElement('div');
+    panel.className = 'faq-answer-panel';
+    renderMultilineParagraphs(panel, item.answer || '');
+
+    btn.addEventListener('click', () => {
+      const isOpen = wrap.classList.toggle('open');
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(panel);
+    container.appendChild(wrap);
+  });
+}
+
+// ================= 全站事件綁定 =================
+
 function bindWebsiteEvents() {
   const drawer = document.getElementById('search-bar-drawer');
   const searchInput = document.getElementById('search-input');
@@ -646,28 +904,31 @@ function bindWebsiteEvents() {
   });
 
   const modalImg = document.getElementById('modal-img');
-  if (modalImg) {
-    modalImg.addEventListener('click', () => FrontLightbox.open());
-  }
+  if (modalImg) modalImg.addEventListener('click', () => FrontLightbox.open());
 
-  const backdrop = document.getElementById('product-modal-backdrop');
+  const prodBackdrop = document.getElementById('product-modal-backdrop');
   document.getElementById('modal-close-btn').addEventListener('click', () => {
     FrontLightbox.close();
-    backdrop.classList.remove('open');
+    prodBackdrop.classList.remove('open');
   });
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) {
+  prodBackdrop.addEventListener('click', (e) => {
+    if (e.target === prodBackdrop) {
       FrontLightbox.close();
-      backdrop.classList.remove('open');
+      prodBackdrop.classList.remove('open');
     }
   });
-}
 
-function escapeText(str) {
-  return String(str === null || str === undefined ? '' : str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  const artBackdrop = document.getElementById('article-modal-backdrop');
+  document.getElementById('article-modal-close').addEventListener('click', () => {
+    artBackdrop.classList.remove('open');
+  });
+  artBackdrop.addEventListener('click', (e) => {
+    if (e.target === artBackdrop) artBackdrop.classList.remove('open');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      artBackdrop.classList.remove('open');
+    }
+  });
 }
