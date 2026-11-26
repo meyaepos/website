@@ -22,7 +22,7 @@
 </head>
 <body class="cart-disabled">
 
-  <!-- 1. 頂部輕量多則無縫跑馬燈 -->
+  <!-- 1. 頂部輕量多則跑馬燈 -->
   <div class="announcement-bar">
     <div class="marquee-container">
       <div class="marquee-content" id="marquee-content">最新消息載入中...</div>
@@ -83,21 +83,23 @@
     </div>
   </header>
 
-  <!-- 3. 滿版主視覺橫幅 -->
+  <!-- 3. 圖片 1：頂部滿版主視覺大圖（assets/images/hero.jpg） -->
   <section id="top" class="hero-section">
-    <img src="./assets/images/hero.jpg" alt="is Meya 形象視覺" class="hero-img" onerror="this.style.display='none'; document.getElementById('hero-fallback').style.display='flex';">
+    <img src="./assets/images/hero.jpg" alt="is Meya 形象視覺" class="hero-img" fetchpriority="high" decoding="async" onerror="this.style.display='none'; document.getElementById('hero-fallback').style.display='flex';">
     <div id="hero-fallback" class="hero-fallback" style="display:none;">
       <span class="hero-script">is Meya</span>
       <h1>韓國精品服飾・純銀設計飾品</h1>
       <p>以柔和線條與細膩質感，詮釋日常優雅美學</p>
-      <a href="#catalog" class="hero-cta" data-scroll-target="catalog">探索新品上市</a>
+      <a href="#catalog" class="hero-cta" data-scroll-target="catalog">探索精選飾品</a>
     </div>
   </section>
 
-  <!-- 4. 商品櫥窗展示區 -->
+  <!-- 4. 商品櫥窗展示區（由資料庫動態呈現上架款式） -->
   <main id="catalog" class="main-content">
     <div class="section-header">
-      <h2 id="catalog-heading">新品上市</h2>
+      <h2 id="catalog-heading">精選飾品</h2>
+      <div class="section-subtitle">CURATED JEWELRY</div>
+      <div class="section-divider" aria-hidden="true"></div>
       <p id="catalog-count">商品型錄載入中...</p>
     </div>
 
@@ -109,7 +111,43 @@
     </div>
   </main>
 
-  <!-- 5. 聯絡我們與頁尾 -->
+  <!-- 5. 品牌形象雙圖專區（圖片 2：完整視覺橫幅 ＋ 圖片 3：左圖右文故事卡） -->
+  <section class="editorial-section" aria-label="品牌美學形象展示">
+    <!-- 圖片 2：完整視覺形象圖（assets/images/banner-mid.jpg） -->
+    <div class="editorial-banner-wrap">
+      <img
+        src="./assets/images/banner-mid.jpg"
+        alt="is Meya Love Yourself 品牌視覺"
+        class="editorial-banner-img"
+        loading="lazy"
+        decoding="async"
+        onerror="this.parentElement.style.display='none';"
+      >
+    </div>
+
+    <!-- 圖片 3：左圖右文品牌故事區塊（左側圖片：assets/images/brand-story.jpg） -->
+    <div class="brand-story-card">
+      <div class="brand-story-media">
+        <img
+          src="./assets/images/brand-story.jpg"
+          alt="MEYA 點亮生活裡的每個細節"
+          class="brand-story-img"
+          loading="lazy"
+          decoding="async"
+          onerror="this.style.opacity='0.15';"
+        >
+      </div>
+      <div class="brand-story-content">
+        <h3 class="brand-story-title">MEYA 點亮生活裡的每個細節</h3>
+        <p class="brand-story-lead">在細微處，遇見最美的自己。</p>
+        <p class="brand-story-text"><strong>MEYA</strong> 相信，飾品是穿搭的延伸，更是心情的註解。從溫潤的珍珠到璀璨的莫桑石，每一道工序都承載著溫度。</p>
+        <p class="brand-story-text">讓 <strong>MEYA</strong> 成為您生活中的微光，在忙碌奔波之餘，依然能優雅從容地展現獨一無二的自我光芒。</p>
+        <p class="brand-story-tagline">Minimal and chic <strong>Korean</strong> style</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 聯絡我們與頁尾 -->
   <footer id="contact" class="site-footer">
     <div class="footer-top">
       <a href="#top" class="footer-logo" data-scroll-target="top" aria-label="回到頁首">
@@ -192,7 +230,7 @@
     </div>
   </footer>
 
-  <!-- 6. 右下角懸浮社群與回到頂端列 -->
+  <!-- 7. 右下角懸浮社群與回到頂端列 -->
   <div class="floating-dock" aria-label="快速聯絡按鈕">
     <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" class="dock-btn dock-line" title="LINE 官方帳號">
       <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
@@ -210,7 +248,7 @@
     </button>
   </div>
 
-  <!-- 7. 商品細節預覽彈窗 -->
+  <!-- 8. 商品細節預覽彈窗 -->
   <div id="product-modal-backdrop" class="modal-backdrop">
     <div class="product-modal">
       <button class="modal-close" id="modal-close-btn" aria-label="關閉視窗">&times;</button>
