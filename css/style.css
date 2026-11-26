@@ -27,7 +27,7 @@ body.cart-disabled .btn-add-to-cart {
   display: none !important;
 }
 
-/* 1. 頂部跑馬燈（由 JS 動態運算最右邊界進場） */
+/* 1. 頂部跑馬燈 */
 .announcement-bar {
   background-color: var(--color-primary-soft);
   color: #555555;
@@ -102,14 +102,15 @@ body.cart-disabled .btn-add-to-cart {
 .site-nav {
   display: none;
   justify-self: center;
-  gap: 34px;
+  gap: 28px;
 }
 
 .site-nav a {
   font-size: 14px;
   font-weight: 400;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   color: var(--color-text-main);
+  white-space: nowrap;
   transition: color var(--transition-speed);
 }
 
@@ -134,32 +135,27 @@ body.cart-disabled .btn-add-to-cart {
   transition: opacity var(--transition-speed);
 }
 
-.icon-btn:hover {
-  opacity: 0.6;
-}
+.icon-btn:hover { opacity: 0.6; }
+.icon-btn svg { width: 20px; height: 20px; }
 
-.icon-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* 手機版中文導覽列 */
+/* 手機版中文導覽列（5 項自動柔順換行） */
 .mobile-nav {
   display: flex;
   justify-content: center;
-  gap: 24px;
-  padding: 10px 16px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 14px;
   border-top: 1px solid #F5F5F5;
   font-size: 13px;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 860px) {
   .site-nav { display: flex; }
   .mobile-nav { display: none; }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 859px) {
   .header-container {
     padding: 12px 18px;
     grid-template-columns: 1fr auto;
@@ -174,9 +170,7 @@ body.cart-disabled .btn-add-to-cart {
   background: #FFFFFF;
 }
 
-.search-drawer.open {
-  display: block;
-}
+.search-drawer.open { display: block; }
 
 .search-drawer-inner {
   max-width: 680px;
@@ -208,7 +202,7 @@ body.cart-disabled .btn-add-to-cart {
   padding: 4px 8px;
 }
 
-/* 3. 主視覺橫幅（圖片 1） */
+/* 3. 主視覺橫幅 */
 .hero-section {
   width: 100%;
   overflow: hidden;
@@ -219,7 +213,7 @@ body.cart-disabled .btn-add-to-cart {
   width: 100%;
   max-height: 78vh;
   object-fit: cover;
-  object-position: center;
+  object-position: center 40%;
   display: block;
 }
 
@@ -264,8 +258,32 @@ body.cart-disabled .btn-add-to-cart {
   transition: background-color var(--transition-speed);
 }
 
-.hero-cta:hover {
-  background-color: #555555;
+.hero-cta:hover { background-color: #555555; }
+
+/* 共用分類篩選膠囊列 */
+.pill-filter-bar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.filter-pill-btn {
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  border: 1px solid #D9D2C5;
+  background-color: #FFFFFF;
+  color: #333333;
+  transition: 0.25s;
+}
+
+.filter-pill-btn.active {
+  background-color: #333333;
+  color: #FFFFFF;
+  border-color: #333333;
 }
 
 /* 4. 商品展示區 */
@@ -278,7 +296,7 @@ body.cart-disabled .btn-add-to-cart {
 
 .section-header {
   text-align: center;
-  margin-bottom: 42px;
+  margin-bottom: 40px;
 }
 
 .section-header h2 {
@@ -351,9 +369,7 @@ body.cart-disabled .btn-add-to-cart {
   transition: transform 0.55s ease;
 }
 
-.product-item:hover .product-img-wrap img {
-  transform: scale(1.04);
-}
+.product-item:hover .product-img-wrap img { transform: scale(1.04); }
 
 .product-sku {
   font-size: 11px;
@@ -369,19 +385,14 @@ body.cart-disabled .btn-add-to-cart {
   margin-bottom: 4px;
 }
 
-.product-price {
-  font-size: 14px;
-  color: #666666;
-}
+.product-price { font-size: 14px; color: #666666; }
 
-/* 無售價時的質感洽詢文案樣式（嚴格取代 NT$ 0） */
 .product-price.price-inquiry {
   font-size: 12px;
   color: #8C7B6B;
   letter-spacing: 0.8px;
 }
 
-/* 骨架屏 */
 @keyframes loading {
   0% { background-position: 100% 50%; }
   100% { background-position: 0 50%; }
@@ -394,11 +405,11 @@ body.cart-disabled .btn-add-to-cart {
   animation: loading 1.5s infinite;
 }
 
-/* 5. 品牌形象雙圖專區（圖片 2 完整形象圖 ＋ 圖片 3 左圖右文） */
+/* 5. 品牌形象雙圖專區 */
 .editorial-section {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 8px 24px 88px;
+  padding: 8px 24px 72px;
   display: flex;
   flex-direction: column;
   gap: 56px;
@@ -453,9 +464,7 @@ body.cart-disabled .btn-add-to-cart {
 }
 
 @media (min-width: 768px) {
-  .brand-story-content {
-    padding: 56px 52px;
-  }
+  .brand-story-content { padding: 56px 52px; }
 }
 
 .brand-story-title {
@@ -481,10 +490,7 @@ body.cart-disabled .btn-add-to-cart {
   margin-bottom: 14px;
 }
 
-.brand-story-text strong {
-  color: #222222;
-  font-weight: 700;
-}
+.brand-story-text strong { color: #222222; font-weight: 700; }
 
 .brand-story-tagline {
   margin-top: 8px;
@@ -493,12 +499,247 @@ body.cart-disabled .btn-add-to-cart {
   color: #333333;
 }
 
-.brand-story-tagline strong {
-  font-weight: 700;
-  color: #1F1F1F;
+.brand-story-tagline strong { font-weight: 700; color: #1F1F1F; }
+
+/* 6. 批發知識文章專區（支援圖文卡與純文字優雅卡） */
+.knowledge-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+  scroll-margin-top: 110px;
 }
 
-/* 6. 頁尾 */
+.articles-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 680px) {
+  .articles-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .articles-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.article-card {
+  background: #FFFFFF;
+  border: 1px solid #EAE5DC;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.article-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.07);
+  border-color: #D2C7B5;
+}
+
+.article-card.text-only {
+  background: linear-gradient(180deg, #FBF9F5 0%, #FFFFFF 100%);
+  border-top: 3px solid var(--color-primary-dark, #C8BBA6);
+}
+
+.article-card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #F4F2EE;
+  overflow: hidden;
+}
+
+.article-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.article-card:hover .article-card-cover img {
+  transform: scale(1.04);
+}
+
+.article-card-body {
+  padding: 22px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.article-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.article-cat-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 14px;
+  background: #F3EFE8;
+  color: #6B5B4B;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+
+.article-date {
+  font-size: 11px;
+  color: #999999;
+}
+
+.article-card-title {
+  font-size: 17px;
+  font-weight: 500;
+  color: #222222;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.article-card.text-only .article-card-title {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.article-card-summary {
+  font-size: 13px;
+  color: #666666;
+  line-height: 1.75;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.article-read-more {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333333;
+  letter-spacing: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 7. 常見問題 Q&A 手風琴專區 */
+.faq-section {
+  background-color: #FAF8F5;
+  border-top: 1px solid #EFEAE2;
+  border-bottom: 1px solid #EFEAE2;
+  padding: 72px 24px 84px;
+  scroll-margin-top: 110px;
+}
+
+.faq-inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.faq-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-item {
+  background: #FFFFFF;
+  border: 1px solid #E8E2D8;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.faq-item.open {
+  border-color: #C9BDA9;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.faq-question-btn {
+  width: 100%;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  color: #222222;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.faq-q-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+}
+
+.faq-q-mark {
+  font-weight: 700;
+  color: #8C7B6B;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.faq-cat-tag {
+  font-size: 11px;
+  color: #7A6B5C;
+  background: #F4EFE7;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.faq-toggle-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #F4F1EC;
+  color: #555555;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, background-color 0.25s ease;
+}
+
+.faq-item.open .faq-toggle-icon {
+  transform: rotate(45deg);
+  background: #333333;
+  color: #FFFFFF;
+}
+
+.faq-answer-panel {
+  display: none;
+  padding: 0 20px 20px 44px;
+  font-size: 14px;
+  color: #555555;
+  line-height: 1.85;
+  border-top: 1px solid #F4F0EA;
+}
+
+.faq-item.open .faq-answer-panel {
+  display: block;
+  padding-top: 14px;
+}
+
+.faq-answer-panel p + p {
+  margin-top: 8px;
+}
+
+/* 8. 頁尾 */
 .site-footer {
   background-color: var(--color-bg-footer);
   color: var(--color-text-main);
@@ -523,28 +764,22 @@ body.cart-disabled .btn-add-to-cart {
   display: block;
 }
 
-.footer-script {
-  font-size: 62px;
-}
+.footer-script { font-size: 62px; }
 
 .footer-nav {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   font-size: 13px;
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   color: #444444;
   margin-bottom: 24px;
 }
 
-.footer-nav .divider {
-  color: #CCCCCC;
-}
-
-.footer-nav a:hover {
-  color: #888888;
-}
+.footer-nav .divider { color: #CCCCCC; }
+.footer-nav a:hover { color: #888888; }
 
 .footer-social {
   display: flex;
@@ -569,13 +804,8 @@ body.cart-disabled .btn-add-to-cart {
   transform: translateY(-2px);
 }
 
-.footer-social svg {
-  width: 19px;
-  height: 19px;
-  display: block;
-}
+.footer-social svg { width: 19px; height: 19px; display: block; }
 
-/* 雙欄聯絡與 Google 地圖區 */
 .footer-info-grid {
   max-width: 960px;
   margin: 0 auto;
@@ -616,21 +846,9 @@ body.cart-disabled .btn-add-to-cart {
   line-height: 1.9;
 }
 
-.cs-company {
-  margin-top: 16px;
-}
-
-.cs-list .pipe,
-.cs-company .pipe {
-  margin: 0 8px;
-  color: #BBBBBB;
-}
-
-.cs-shipping {
-  margin-top: 8px;
-  color: #777777;
-  font-size: 12px;
-}
+.cs-company { margin-top: 16px; }
+.cs-list .pipe, .cs-company .pipe { margin: 0 8px; color: #BBBBBB; }
+.cs-shipping { margin-top: 8px; color: #777777; font-size: 12px; }
 
 .map-frame-wrap {
   position: relative;
@@ -641,12 +859,7 @@ body.cart-disabled .btn-add-to-cart {
   overflow: hidden;
 }
 
-.map-frame-wrap iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-}
+.map-frame-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
 
 .map-open-badge {
   position: absolute;
@@ -667,11 +880,8 @@ body.cart-disabled .btn-add-to-cart {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.24);
 }
 
-.map-open-badge:hover {
-  background: #F8F9FA;
-}
+.map-open-badge:hover { background: #F8F9FA; }
 
-/* 底部版權列 */
 .footer-bottom {
   background-color: #FFFFFF;
   border-top: 1px solid var(--color-border);
@@ -690,17 +900,10 @@ body.cart-disabled .btn-add-to-cart {
   gap: 10px 24px;
 }
 
-.footer-policies {
-  display: flex;
-  gap: 8px;
-  color: #666666;
-}
+.footer-policies { display: flex; gap: 8px; color: #666666; }
+.footer-policies a:hover { color: #111111; }
 
-.footer-policies a:hover {
-  color: #111111;
-}
-
-/* 7. 右下角懸浮社群列 */
+/* 9. 右下角懸浮社群列 */
 .floating-dock {
   position: fixed;
   right: 14px;
@@ -723,31 +926,15 @@ body.cart-disabled .btn-add-to-cart {
   transition: transform var(--transition-speed), opacity var(--transition-speed);
 }
 
-.dock-btn:hover {
-  transform: translateX(-2px);
-  opacity: 0.92;
-}
-
-.dock-btn svg {
-  width: 21px;
-  height: 21px;
-  display: block;
-}
-
-.dock-line {
-  background-color: #06C755;
-}
-
-.dock-line svg {
-  width: 26px;
-  height: 26px;
-}
-
+.dock-btn:hover { transform: translateX(-2px); opacity: 0.92; }
+.dock-btn svg { width: 21px; height: 21px; display: block; }
+.dock-line { background-color: #06C755; }
+.dock-line svg { width: 26px; height: 26px; }
 .dock-fb { background-color: #3B5998; }
 .dock-ig { background: linear-gradient(45deg, #F09433 0%, #E6683C 25%, #DC2743 50%, #CC2366 75%, #BC1888 100%); }
 .dock-top { background-color: #BDBDBD; }
 
-/* 8. 商品細節預覽彈窗 */
+/* 10. 彈窗共用與商品細節預覽彈窗 */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -759,9 +946,7 @@ body.cart-disabled .btn-add-to-cart {
   padding: 20px;
 }
 
-.modal-backdrop.open {
-  display: flex;
-}
+.modal-backdrop.open { display: flex; }
 
 .product-modal {
   background: #FFFFFF;
@@ -789,6 +974,13 @@ body.cart-disabled .btn-add-to-cart {
   font-size: 24px;
   color: var(--color-text-main);
   z-index: 10;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-img-box {
@@ -822,12 +1014,9 @@ body.cart-disabled .btn-add-to-cart {
   gap: 4px;
   cursor: zoom-in;
   backdrop-filter: blur(4px);
-  transition: background 0.2s;
 }
 
-.modal-zoom-badge:hover {
-  background: rgba(20, 20, 20, 0.9);
-}
+.modal-zoom-badge:hover { background: rgba(20, 20, 20, 0.9); }
 
 .modal-info-box {
   padding: 32px 28px;
@@ -836,23 +1025,9 @@ body.cart-disabled .btn-add-to-cart {
   justify-content: center;
 }
 
-.sku-tag {
-  font-size: 12px;
-  color: #999999;
-  letter-spacing: 1.5px;
-  margin-bottom: 8px;
-}
-
-.modal-info-box h3 {
-  font-size: 20px;
-  font-weight: 500;
-  margin-bottom: 10px;
-}
-
-.price-tag {
-  font-size: 18px;
-  margin-bottom: 18px;
-}
+.sku-tag { font-size: 12px; color: #999999; letter-spacing: 1.5px; margin-bottom: 8px; }
+.modal-info-box h3 { font-size: 20px; font-weight: 500; margin-bottom: 10px; }
+.price-tag { font-size: 18px; margin-bottom: 18px; }
 
 .price-tag.price-inquiry {
   font-size: 14px;
@@ -871,7 +1046,7 @@ body.cart-disabled .btn-add-to-cart {
 .price-inquiry-link {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: 3px 11px;
   border-radius: 14px;
   background-color: #06C755;
   color: #FFFFFF !important;
@@ -881,9 +1056,7 @@ body.cart-disabled .btn-add-to-cart {
   transition: opacity 0.2s;
 }
 
-.price-inquiry-link:hover {
-  opacity: 0.88;
-}
+.price-inquiry-link:hover { opacity: 0.88; }
 
 .modal-specs {
   margin-bottom: 18px;
@@ -900,7 +1073,83 @@ body.cart-disabled .btn-add-to-cart {
   padding-top: 16px;
 }
 
-/* 9. 前台 2K 高清全螢幕放大燈箱 */
+/* 11. 批發知識文章閱讀彈窗 */
+.article-modal {
+  background: #FFFFFF;
+  max-width: 760px;
+  width: 100%;
+  max-height: 90vh;
+  border-radius: 8px;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.article-modal-cover-wrap {
+  width: 100%;
+  max-height: 360px;
+  background: #F4F2EE;
+  overflow: hidden;
+}
+
+.article-modal-cover-wrap img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  display: block;
+}
+
+.article-modal-body {
+  padding: 32px 28px 28px;
+}
+
+@media (min-width: 640px) {
+  .article-modal-body {
+    padding: 36px 40px 32px;
+  }
+}
+
+.article-modal-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.article-modal-title {
+  font-size: clamp(20px, 2.6vw, 24px);
+  font-weight: 600;
+  color: #222222;
+  line-height: 1.45;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #EFEAE2;
+}
+
+.article-modal-content {
+  font-size: 15px;
+  color: #3D3D3D;
+  line-height: 1.95;
+}
+
+.article-modal-content p {
+  margin-bottom: 14px;
+}
+
+.article-modal-footer {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #EFEAE2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+  color: #666666;
+}
+
+/* 12. 前台 2K 高清全螢幕放大燈箱 */
 .front-lightbox {
   display: none;
   position: fixed;
@@ -910,9 +1159,7 @@ body.cart-disabled .btn-add-to-cart {
   flex-direction: column;
 }
 
-.front-lightbox.open {
-  display: flex;
-}
+.front-lightbox.open { display: flex; }
 
 .front-lightbox-bar {
   display: flex;
@@ -927,11 +1174,7 @@ body.cart-disabled .btn-add-to-cart {
   z-index: 10;
 }
 
-.front-lightbox-meta {
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  color: #E5E5E5;
-}
+.front-lightbox-meta { font-size: 13px; letter-spacing: 0.5px; color: #E5E5E5; }
 
 .front-lightbox-controls {
   display: flex;
@@ -949,21 +1192,9 @@ body.cart-disabled .btn-add-to-cart {
   transition: background 0.2s, color 0.2s;
 }
 
-.front-lb-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.front-lb-btn.active {
-  background: #FFFFFF;
-  color: #222222;
-  border-color: #FFFFFF;
-  font-weight: 500;
-}
-
-.front-lb-close {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.35);
-}
+.front-lb-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.front-lb-btn.active { background: #FFFFFF; color: #222222; border-color: #FFFFFF; font-weight: 500; }
+.front-lb-close { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.35); }
 
 .front-lightbox-body {
   position: relative;
@@ -991,11 +1222,7 @@ body.cart-disabled .btn-add-to-cart {
   display: block;
 }
 
-.front-lightbox-img.zoomed {
-  max-width: none;
-  max-height: none;
-  cursor: zoom-out;
-}
+.front-lightbox-img.zoomed { max-width: none; max-height: none; cursor: zoom-out; }
 
 .front-lb-nav {
   position: absolute;
@@ -1012,12 +1239,8 @@ body.cart-disabled .btn-add-to-cart {
   justify-content: center;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
   z-index: 12;
-  transition: opacity 0.2s;
 }
 
-.front-lb-nav:hover {
-  background: #FFFFFF;
-}
-
+.front-lb-nav:hover { background: #FFFFFF; }
 .front-lb-prev { left: 16px; }
 .front-lb-next { right: 16px; }
