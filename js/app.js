@@ -1,23 +1,22 @@
 /**
- * is Meya 形象網站前台主程式（完整版：精品導覽追蹤 ＋ 商品櫥窗 ＋ 批發知識文章 ＋ Q&A）
+ * is Meya 形象網站首頁主程式（12 件精選左右輪播 ＋ 批發知識文章 ＋ Q&A）
  * 安全與效能：
- * 1. 全站採用純 DOM textContent 安全渲染，防範 XSS；圖片網址強制驗證 https:// 協定
+ * 1. 全站採純 DOM textContent 安全渲染防 XSS，圖片強制驗證 https:// 協定白名單
  * 2. 嚴格遮蔽 NT$ 0（無有效售價改顯示官方 LINE 洽詢）
  * 3. localStorage 秒開快取 ＋ Google CDN 三段分級尺寸 (=w480 / =w1200 / =w2048) ＋ 2K 放大燈箱
  */
 const OFFICIAL_LINE_URL = 'https://lin.ee/7gVn9gX';
 const PUBLIC_CACHE_KEY = 'MEYA_PUBLIC_WEBSITE_CACHE_V2';
+const FEATURED_LIMIT = 12;
 
 let allPublishedProducts = [];
 let allPublishedArticles = [];
 let allPublishedFaqs = [];
 
-let activeCategory = 'ALL';
 let activeArticleCategory = 'ALL';
 let activeFaqCategory = 'ALL';
-let activeCatalogNavMode = 'new'; // 'new' | 'all'
-let detectedCategoryKey = null;
 let userHasInteracted = false;
+let pendingCrossPageSection = '';
 
 let lastRenderedAnnouncementsKey = '';
 let lastRenderedProductsKey = '';
@@ -59,20 +58,13 @@ function renderMultilineParagraphs(containerEl, rawText) {
 
 // ================= 精品導覽列作用中狀態與捲動追蹤 =================
 
-function setActiveNavTab(targetId, navMode) {
-  if (navMode) activeCatalogNavMode = navMode;
+function setActiveNavTab(targetId) {
   const effectiveTarget = (targetId === 'top' || !targetId) ? 'catalog' : targetId;
-
-  const navLinks = document.querySelectorAll('.site-nav .nav-link, .mobile-nav .mobile-nav-link');
+  const navLinks = document.querySelectorAll('.site-nav .nav-link[data-scroll-target], .mobile-nav .mobile-nav-link[data-scroll-target]');
   let activeMobileLink = null;
 
   navLinks.forEach(link => {
-    const linkTarget = link.getAttribute('data-scroll-target');
-    const linkNav = link.getAttribute('data-nav');
-    const isMatch = effectiveTarget === 'catalog'
-      ? (linkTarget === 'catalog' && linkNav === activeCatalogNavMode)
-      : (linkTarget === effectiveTarget);
-
+    const isMatch = link.getAttribute('data-scroll-target') === effectiveTarget;
     link.classList.toggle('active', isMatch);
     if (isMatch && link.classList.contains('mobile-nav-link')) {
       activeMobileLink = link;
@@ -96,7 +88,6 @@ function setupHeaderScrollEffects() {
       const scrollY = window.scrollY || window.pageYOffset || 0;
       if (header) header.classList.toggle('scrolled', scrollY > 18);
 
-      // ScrollSpy：依目前視窗位置自動點亮對應分頁
       const probeY = scrollY + 180;
       let currentId = 'catalog';
 
@@ -106,19 +97,112 @@ function setupHeaderScrollEffects() {
       } else {
         for (let i = 0; i < sectionIds.length; i++) {
           const el = document.getElementById(sectionIds[i]);
-          if (el && el.offsetTop <= probeY) {
-            currentId = sectionIds[i];
-          }
+          if (el && el.offsetTop <= probeY) currentId = sectionIds[i];
         }
       }
 
-      setActiveNavTab(currentId, null);
+      setActiveNavTab(currentId);
       ticking = false;
     });
   };
 
   window.addEventListener('scroll', onScroll, { passive: true });
 }
+
+// ================= 首頁 12 件精選輪播控制器 =================
+
+const FeaturedCarousel = {
+  init: function() {
+    const track = document.getElementById('featured-carousel-track');
+    const prevBtn = document.getElementById('btn-carousel-prev');
+    const nextBtn = document.getElementById('btn-carousel-next');
+    if (!track) return;
+
+    if (prevBtn) prevBtn.addEventListener('click', () => this.scrollByPage(-1));
+    if (nextBtn) nextBtn.addEventListener('click', () => this.scrollByPage(1));
+
+    let rafLock = false;
+    track.addEventListener('scroll', () => {
+      if (rafLock) return;
+      rafLock = true;
+      requestAnimationFrame(() => {
+        this.syncControls();
+        rafLock = false;
+      });
+    }, { passive: true });
+
+    window.addEventListener('resize', () => {
+      this.renderDots();
+      this.syncControls();
+    });
+  },
+
+  getPageCount: function() {
+    const track = document.getElementById('featured-carousel-track');
+    if (!track || track.clientWidth <= 0) return 1;
+    const totalSlides = track.querySelectorAll('.carousel-slide').length;
+    if (totalSlides === 0) return 1;
+    const w = window.innerWidth;
+    const perView = w >= 1024 ? 4 : (w >= 720 ? 3 : 2);
+    return Math.max(1, Math.ceil(totalSlides / perView));
+  },
+
+  scrollByPage: function(dir) {
+    const track = document.getElementById('featured-carousel-track');
+    if (!track) return;
+    const stepPx = Math.max(240, track.clientWidth * 0.96);
+    track.scrollBy({ left: dir * stepPx, behavior: 'smooth' });
+  },
+
+  renderDots: function() {
+    const dotsEl = document.getElementById('carousel-dots');
+    const track = document.getElementById('featured-carousel-track');
+    if (!dotsEl || !track) return;
+
+    dotsEl.textContent = '';
+    const pages = this.getPageCount();
+    if (pages <= 1) return;
+
+    for (let i = 0; i < pages; i++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+      dot.setAttribute('aria-label', `切換至第 ${i + 1} 組精選飾品`);
+      dot.addEventListener('click', () => {
+        const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+        const ratio = pages > 1 ? (i / (pages - 1)) : 0;
+        track.scrollTo({ left: Math.round(maxScroll * ratio), behavior: 'smooth' });
+      });
+      dotsEl.appendChild(dot);
+    }
+  },
+
+  syncControls: function() {
+    const track = document.getElementById('featured-carousel-track');
+    const prevBtn = document.getElementById('btn-carousel-prev');
+    const nextBtn = document.getElementById('btn-carousel-next');
+    const dots = document.querySelectorAll('#carousel-dots .carousel-dot');
+    if (!track) return;
+
+    const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+    const hasOverflow = maxScroll > 8;
+
+    if (prevBtn) {
+      prevBtn.style.visibility = hasOverflow ? 'visible' : 'hidden';
+      prevBtn.disabled = track.scrollLeft <= 6;
+    }
+    if (nextBtn) {
+      nextBtn.style.visibility = hasOverflow ? 'visible' : 'hidden';
+      nextBtn.disabled = track.scrollLeft >= maxScroll - 6;
+    }
+
+    if (dots.length > 1 && maxScroll > 0) {
+      const progress = track.scrollLeft / maxScroll;
+      const activeIdx = Math.min(dots.length - 1, Math.round(progress * (dots.length - 1)));
+      dots.forEach((d, idx) => d.classList.toggle('active', idx === activeIdx));
+    }
+  }
+};
 
 // 動態跑馬燈控制器
 const MarqueeRunner = {
@@ -310,9 +394,25 @@ const FrontLightbox = {
 };
 
 function forceScrollTop() {
+  if (pendingCrossPageSection) return;
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
+}
+
+function handleCrossPageSectionJump() {
+  if (!pendingCrossPageSection) return;
+  const targetEl = document.getElementById(pendingCrossPageSection);
+  if (targetEl) {
+    setActiveNavTab(pendingCrossPageSection);
+    setTimeout(() => {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  }
+  pendingCrossPageSection = '';
+  if (history.replaceState) {
+    history.replaceState(null, '', window.location.pathname);
+  }
 }
 
 ['touchstart', 'wheel', 'mousedown'].forEach(evt => {
@@ -323,9 +423,15 @@ window.addEventListener('pageshow', () => { if (!userHasInteracted) forceScrollT
 window.addEventListener('load', () => { if (!userHasInteracted) forceScrollTop(); });
 
 document.addEventListener('DOMContentLoaded', () => {
+  const secParam = new URLSearchParams(window.location.search).get('section') || '';
+  if (['catalog', 'articles', 'faq', 'contact'].includes(secParam)) {
+    pendingCrossPageSection = secParam;
+  }
+
   forceScrollTop();
   MarqueeRunner.bindHover();
   setupHeaderScrollEffects();
+  FeaturedCarousel.init();
   initWebsite();
   bindWebsiteEvents();
 });
@@ -345,8 +451,7 @@ function applyWebsitePayload(data) {
   if (prodKey !== lastRenderedProductsKey) {
     lastRenderedProductsKey = prodKey;
     allPublishedProducts = products;
-    detectAndRenderCategories(allPublishedProducts);
-    applyFiltersAndRender();
+    renderFeaturedCarousel();
   }
 
   const articles = data.articles || [];
@@ -408,13 +513,21 @@ async function initWebsite() {
     if (!hasLocalCache) {
       renderAnnouncements(['is Meya 韓國精品服飾・純銀飾品']);
       document.getElementById('catalog-count').textContent = '商品型錄連線準備中，歡迎直接聯繫官方門市洽詢';
-      document.getElementById('product-grid').innerHTML =
-        '<p style="grid-column: 1 / -1; text-align: center; color: #888; padding: 48px 0; font-size: 14px;">商品型錄準備中，歡迎直接聯繫官方門市洽詢。</p>';
+      const track = document.getElementById('featured-carousel-track');
+      track.textContent = '';
+      const emptyP = document.createElement('p');
+      emptyP.style.cssText = 'width:100%; text-align:center; color:#888; padding:44px 0; font-size:14px;';
+      emptyP.textContent = '商品型錄準備中，歡迎直接聯繫官方門市洽詢。';
+      track.appendChild(emptyP);
       renderArticlesGrid();
       renderFaqAccordion();
     }
   } finally {
-    if (!userHasInteracted) forceScrollTop();
+    if (pendingCrossPageSection) {
+      handleCrossPageSectionJump();
+    } else if (!userHasInteracted) {
+      forceScrollTop();
+    }
   }
 }
 
@@ -438,90 +551,58 @@ function renderAnnouncements(newsList) {
   MarqueeRunner.start(text);
 }
 
-// ================= 商品櫥窗區 =================
+// ================= 首頁 12 件精選飾品輪播 =================
 
-function detectAndRenderCategories(products) {
-  if (!products || products.length === 0) return;
-
-  const sampleKeys = Object.keys(products[0]);
-  detectedCategoryKey = sampleKeys.find(k => ['分類', '類別', '系列', 'category', 'type'].includes(k.toLowerCase())) || null;
-  if (!detectedCategoryKey) return;
-
-  const categories = Array.from(new Set(
-    products.map(p => String(p[detectedCategoryKey] || '').trim()).filter(Boolean)
-  ));
-  if (categories.length <= 1) return;
-
-  let bar = document.getElementById('dynamic-category-bar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.id = 'dynamic-category-bar';
-    bar.className = 'pill-filter-bar';
-    const grid = document.getElementById('product-grid');
-    grid.parentNode.insertBefore(bar, grid);
-  }
-
-  bar.textContent = '';
-  ['ALL', ...categories].forEach(cat => {
-    const btn = document.createElement('button');
-    btn.textContent = cat === 'ALL' ? '全部商品' : cat;
-    btn.className = 'filter-pill-btn' + (cat === activeCategory ? ' active' : '');
-    btn.addEventListener('click', () => {
-      activeCategory = cat;
-      bar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      applyFiltersAndRender();
-    });
-    bar.appendChild(btn);
-  });
-}
-
-function applyFiltersAndRender() {
-  const keyword = (document.getElementById('search-input').value || '').trim().toLowerCase();
-
-  const filtered = allPublishedProducts.filter(p => {
-    if (activeCategory !== 'ALL' && detectedCategoryKey) {
-      if (String(p[detectedCategoryKey] || '').trim() !== activeCategory) return false;
-    }
-    if (!keyword) return true;
-    return Object.keys(p)
-      .filter(k => k !== 'image' && k !== 'images')
-      .some(k => String(p[k] || '').toLowerCase().includes(keyword));
-  });
-
-  renderProducts(filtered);
-}
-
-function getProductGalleryUrls(product) {
-  const list = String(product.images || '')
-    .split(',')
-    .map(u => u.trim())
-    .filter(u => /^https:\/\//i.test(u));
-
-  const cover = String(product.image || '').trim();
-  if (/^https:\/\//i.test(cover) && !list.includes(cover)) {
-    list.unshift(cover);
-  }
-  return list;
-}
-
-function renderProducts(list) {
-  const grid = document.getElementById('product-grid');
+function renderFeaturedCarousel() {
+  const track = document.getElementById('featured-carousel-track');
   const countEl = document.getElementById('catalog-count');
-  grid.textContent = '';
+  const viewAllBtn = document.getElementById('btn-view-all-products');
+  if (!track) return;
 
-  if (!list || list.length === 0) {
-    countEl.textContent = '目前尚無上架商品';
+  const keyword = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const matched = keyword
+    ? allPublishedProducts.filter(p =>
+        Object.keys(p)
+          .filter(k => k !== 'image' && k !== 'images')
+          .some(k => String(p[k] || '').toLowerCase().includes(keyword))
+      )
+    : allPublishedProducts;
+
+  const featuredList = matched.slice(0, FEATURED_LIMIT);
+  track.textContent = '';
+  track.scrollLeft = 0;
+
+  if (viewAllBtn) {
+    if (keyword) {
+      viewAllBtn.href = './products.html?q=' + encodeURIComponent(keyword);
+      viewAllBtn.textContent = `前往所有商品頁查看全部 ${matched.length} 件結果 →`;
+    } else {
+      viewAllBtn.href = './products.html';
+      viewAllBtn.textContent = allPublishedProducts.length > 0
+        ? `瀏覽所有商品（共 ${allPublishedProducts.length} 件）→`
+        : '瀏覽所有商品 →';
+    }
+  }
+
+  if (featuredList.length === 0) {
+    countEl.textContent = keyword ? `找不到符合「${keyword}」的商品` : '目前尚無上架商品';
     const emptyP = document.createElement('p');
-    emptyP.style.cssText = 'grid-column: 1 / -1; text-align: center; color: #888; padding: 44px 0; font-size: 14px;';
-    emptyP.textContent = '全新商品陸續上架中，敬請期待。';
-    grid.appendChild(emptyP);
+    emptyP.style.cssText = 'width:100%; text-align:center; color:#888; padding:44px 0; font-size:14px;';
+    emptyP.textContent = keyword ? '建議更換關鍵字，或點下方按鈕瀏覽完整商品目錄。' : '全新商品陸續上架中，敬請期待。';
+    track.appendChild(emptyP);
+    FeaturedCarousel.renderDots();
+    FeaturedCarousel.syncControls();
     return;
   }
 
-  countEl.textContent = '共 ' + list.length + ' 件商品';
+  countEl.textContent = keyword
+    ? `搜尋「${keyword}」顯示前 ${featuredList.length} 件（共 ${matched.length} 件）`
+    : `左右滑動瀏覽精選推薦 ${featuredList.length} 件`;
 
-  list.forEach((product, idx) => {
+  featuredList.forEach((product, idx) => {
+    const slide = document.createElement('div');
+    slide.className = 'carousel-slide';
+
     const card = document.createElement('div');
     card.className = 'product-item';
     card.addEventListener('click', () => openProductModal(product));
@@ -560,8 +641,25 @@ function renderProducts(list) {
     card.appendChild(skuEl);
     card.appendChild(nameEl);
     card.appendChild(priceEl);
-    grid.appendChild(card);
+    slide.appendChild(card);
+    track.appendChild(slide);
   });
+
+  FeaturedCarousel.renderDots();
+  requestAnimationFrame(() => FeaturedCarousel.syncControls());
+}
+
+function getProductGalleryUrls(product) {
+  const list = String(product.images || '')
+    .split(',')
+    .map(u => u.trim())
+    .filter(u => /^https:\/\//i.test(u));
+
+  const cover = String(product.image || '').trim();
+  if (/^https:\/\//i.test(cover) && !list.includes(cover)) {
+    list.unshift(cover);
+  }
+  return list;
 }
 
 function openProductModal(product) {
@@ -933,25 +1031,24 @@ function bindWebsiteEvents() {
   document.getElementById('btn-search-close').addEventListener('click', () => {
     searchInput.value = '';
     drawer.classList.remove('open');
-    applyFiltersAndRender();
+    renderFeaturedCarousel();
   });
 
-  searchInput.addEventListener('input', applyFiltersAndRender);
+  searchInput.addEventListener('input', renderFeaturedCarousel);
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const kw = searchInput.value.trim();
+      if (kw) window.location.href = './products.html?q=' + encodeURIComponent(kw);
+    }
+  });
 
   document.querySelectorAll('[data-scroll-target]').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       userHasInteracted = true;
 
-      const mode = link.getAttribute('data-nav');
-      if (mode) {
-        document.getElementById('catalog-heading').textContent = mode === 'new' ? '新品上市' : '所有商品';
-        activeCategory = 'ALL';
-        applyFiltersAndRender();
-      }
-
       const targetId = link.getAttribute('data-scroll-target');
-      setActiveNavTab(targetId, mode);
+      setActiveNavTab(targetId);
 
       if (targetId === 'top') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
