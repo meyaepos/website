@@ -208,7 +208,7 @@ body.cart-disabled .btn-add-to-cart {
   padding: 4px 8px;
 }
 
-/* 3. 主視覺橫幅 */
+/* 3. 主視覺橫幅（圖片 1） */
 .hero-section {
   width: 100%;
   overflow: hidden;
@@ -217,7 +217,7 @@ body.cart-disabled .btn-add-to-cart {
 
 .hero-img {
   width: 100%;
-  max-height: 76vh;
+  max-height: 78vh;
   object-fit: cover;
   object-position: center;
   display: block;
@@ -272,24 +272,40 @@ body.cart-disabled .btn-add-to-cart {
 .main-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 64px 24px 88px;
+  padding: 64px 24px 64px;
   scroll-margin-top: 110px;
 }
 
 .section-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 42px;
 }
 
 .section-header h2 {
-  font-size: 22px;
-  font-weight: 400;
+  font-size: 24px;
+  font-weight: 500;
   letter-spacing: 4px;
-  margin-bottom: 8px;
+  color: #2C2C2C;
+  margin-bottom: 6px;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: #888888;
+  margin-bottom: 14px;
+}
+
+.section-divider {
+  width: 34px;
+  height: 1.5px;
+  background-color: #8E8E8E;
+  margin: 0 auto 14px;
 }
 
 .section-header p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-muted);
   letter-spacing: 1px;
 }
@@ -378,7 +394,111 @@ body.cart-disabled .btn-add-to-cart {
   animation: loading 1.5s infinite;
 }
 
-/* 5. 頁尾 */
+/* 5. 品牌形象雙圖專區（圖片 2 完整形象圖 ＋ 圖片 3 左圖右文） */
+.editorial-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 24px 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.editorial-banner-wrap {
+  width: 100%;
+  background-color: #F4F5F8;
+  overflow: hidden;
+}
+
+.editorial-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.brand-story-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  background-color: #F8F8F8;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .brand-story-card {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+.brand-story-media {
+  width: 100%;
+  background-color: #EEF1F6;
+  overflow: hidden;
+}
+
+.brand-story-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.brand-story-content {
+  padding: 40px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+  color: #333333;
+}
+
+@media (min-width: 768px) {
+  .brand-story-content {
+    padding: 56px 52px;
+  }
+}
+
+.brand-story-title {
+  font-size: clamp(20px, 2.2vw, 24px);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #222222;
+  margin-bottom: 22px;
+}
+
+.brand-story-lead {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333333;
+  letter-spacing: 0.8px;
+  margin-bottom: 14px;
+}
+
+.brand-story-text {
+  font-size: 14px;
+  line-height: 1.85;
+  color: #4A4A4A;
+  margin-bottom: 14px;
+}
+
+.brand-story-text strong {
+  color: #222222;
+  font-weight: 700;
+}
+
+.brand-story-tagline {
+  margin-top: 8px;
+  font-size: 14px;
+  letter-spacing: 0.6px;
+  color: #333333;
+}
+
+.brand-story-tagline strong {
+  font-weight: 700;
+  color: #1F1F1F;
+}
+
+/* 6. 頁尾 */
 .site-footer {
   background-color: var(--color-bg-footer);
   color: var(--color-text-main);
@@ -580,7 +700,7 @@ body.cart-disabled .btn-add-to-cart {
   color: #111111;
 }
 
-/* 6. 右下角懸浮社群列 */
+/* 7. 右下角懸浮社群列 */
 .floating-dock {
   position: fixed;
   right: 14px;
@@ -627,7 +747,7 @@ body.cart-disabled .btn-add-to-cart {
 .dock-ig { background: linear-gradient(45deg, #F09433 0%, #E6683C 25%, #DC2743 50%, #CC2366 75%, #BC1888 100%); }
 .dock-top { background-color: #BDBDBD; }
 
-/* 7. 商品細節預覽彈窗 */
+/* 8. 商品細節預覽彈窗 */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -686,7 +806,6 @@ body.cart-disabled .btn-add-to-cart {
   display: block;
 }
 
-/* 彈窗主圖左上角放大提示膠囊（避開右上角關閉鍵與下方縮圖列） */
 .modal-zoom-badge {
   position: absolute;
   top: 12px;
@@ -781,7 +900,7 @@ body.cart-disabled .btn-add-to-cart {
   padding-top: 16px;
 }
 
-/* 8. 前台 2K 高清全螢幕放大燈箱 */
+/* 9. 前台 2K 高清全螢幕放大燈箱 */
 .front-lightbox {
   display: none;
   position: fixed;
