@@ -112,7 +112,7 @@ body.cart-disabled .btn-add-to-cart {
   letter-spacing: 1px;
 }
 
-/* 桌機／平板橫向五大分頁（雙語微標 ＋ 微鑽指示 ＋ 中心展開細金線） */
+/* 桌機／平板橫向五大分頁 */
 .site-nav {
   display: none;
   justify-self: center;
@@ -132,7 +132,6 @@ body.cart-disabled .btn-add-to-cart {
   transition: color 0.28s ease;
 }
 
-/* 上方極細微鑽光點（僅於滑過或作用中時浮現） */
 .site-nav .nav-link::before {
   content: '';
   position: absolute;
@@ -146,7 +145,6 @@ body.cart-disabled .btn-add-to-cart {
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease;
 }
 
-/* 底部中心展開香檳金細線 */
 .site-nav .nav-link::after {
   content: '';
   position: absolute;
@@ -229,7 +227,7 @@ body.cart-disabled .btn-add-to-cart {
 
 .icon-btn svg { width: 19px; height: 19px; }
 
-/* 手機版單行橫向精品滑動分頁列（隱藏醜捲軸、柔和觸控滑動） */
+/* 手機版單行橫向精品滑動分頁列 */
 .mobile-nav {
   display: flex;
   align-items: center;
@@ -242,9 +240,7 @@ body.cart-disabled .btn-add-to-cart {
   scrollbar-width: none;
 }
 
-.mobile-nav::-webkit-scrollbar {
-  display: none;
-}
+.mobile-nav::-webkit-scrollbar { display: none; }
 
 @media (min-width: 480px) and (max-width: 899px) {
   .mobile-nav {
@@ -282,9 +278,7 @@ body.cart-disabled .btn-add-to-cart {
   font-weight: 500;
 }
 
-.mobile-nav .mobile-nav-link.active::after {
-  transform: scaleX(1);
-}
+.mobile-nav .mobile-nav-link.active::after { transform: scaleX(1); }
 
 @media (min-width: 900px) {
   .site-nav { display: flex; }
@@ -423,9 +417,9 @@ body.cart-disabled .btn-add-to-cart {
   border-color: #333333;
 }
 
-/* 4. 商品展示區 */
+/* 4. 首頁精選飾品區（12 件水平輪播） */
 .main-content {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 64px 24px 64px;
   scroll-margin-top: 110px;
@@ -466,26 +460,138 @@ body.cart-disabled .btn-add-to-cart {
   letter-spacing: 1px;
 }
 
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 28px 16px;
+/* 水平輪播外殼與軌道 */
+.carousel-shell {
+  position: relative;
 }
 
-@media (min-width: 768px) {
-  .product-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 36px 24px;
+.carousel-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 2px 8px;
+}
+
+.carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* 手機：2 件並露邊第 3 件提示可右滑 */
+.carousel-slide {
+  flex: 0 0 calc((100% - 16px) / 2.15);
+  scroll-snap-align: start;
+  min-width: 0;
+}
+
+/* 平板：3 件 */
+@media (min-width: 720px) {
+  .carousel-track {
+    gap: 22px;
+  }
+  .carousel-slide {
+    flex: 0 0 calc((100% - 44px) / 3);
   }
 }
 
+/* 桌機：4 件 */
 @media (min-width: 1024px) {
-  .product-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 44px 24px;
+  .carousel-track {
+    gap: 24px;
+  }
+  .carousel-slide {
+    flex: 0 0 calc((100% - 72px) / 4);
   }
 }
 
+.carousel-nav-btn {
+  display: none;
+  position: absolute;
+  top: 38%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #E5DFD5;
+  color: #333333;
+  font-size: 22px;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  z-index: 6;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.carousel-nav-btn:hover:not(:disabled) {
+  background: #333333;
+  color: #FFFFFF;
+  border-color: #333333;
+}
+
+.carousel-nav-btn:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.carousel-prev { left: -16px; }
+.carousel-next { right: -16px; }
+
+@media (min-width: 720px) {
+  .carousel-nav-btn {
+    display: flex;
+  }
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  min-height: 12px;
+}
+
+.carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background-color: #DDD5C9;
+  transition: width 0.25s ease, background-color 0.25s ease;
+}
+
+.carousel-dot.active {
+  width: 22px;
+  background-color: #8E7A63;
+}
+
+.carousel-cta-wrap {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 32px;
+  border: 1px solid #333333;
+  color: #333333;
+  font-size: 13px;
+  letter-spacing: 2px;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.view-all-btn:hover {
+  background-color: #333333;
+  color: #FFFFFF;
+}
+
+/* 商品卡片共用（首頁輪播 ＋ 獨立商品頁） */
 .product-item {
   cursor: pointer;
   display: flex;
@@ -521,6 +627,7 @@ body.cart-disabled .btn-add-to-cart {
   font-weight: 400;
   color: var(--color-text-main);
   margin-bottom: 4px;
+  line-height: 1.45;
 }
 
 .product-price { font-size: 14px; color: #666666; }
@@ -541,6 +648,329 @@ body.cart-disabled .btn-add-to-cart {
   background: linear-gradient(90deg, #F4F4F4 25%, #EAEAEA 50%, #F4F4F4 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
+}
+
+/* 4B. 獨立「所有商品」分頁樣式（products.html） */
+.page-banner {
+  background-color: #F4F3F0;
+  border-bottom: 1px solid #EAE6DF;
+}
+
+.page-banner-inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 28px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.page-banner h1 {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  color: #2B2B2B;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: #888888;
+  letter-spacing: 0.8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumb a:hover {
+  color: #222222;
+}
+
+.shop-shell {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 36px 24px 88px;
+}
+
+.mobile-cat-bar {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.mobile-cat-toggle {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid #DFD9CE;
+  border-radius: 4px;
+  background: #FAF9F7;
+  color: #333333;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-cat-current {
+  font-size: 12px;
+  color: #8C7B6B;
+  font-weight: 500;
+}
+
+.shop-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+/* 左側分類選單（手機預設收合，桌機固定左側 210px） */
+.shop-sidebar {
+  display: none;
+  background: #FAF9F7;
+  border: 1px solid #EDE8E0;
+  border-radius: 6px;
+  padding: 18px 14px;
+}
+
+.shop-sidebar.mobile-open {
+  display: block;
+}
+
+@media (min-width: 960px) {
+  .mobile-cat-bar {
+    display: none;
+  }
+  .shop-layout {
+    grid-template-columns: 215px 1fr;
+    gap: 36px;
+  }
+  .shop-sidebar {
+    display: block;
+    position: sticky;
+    top: 96px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid #EFECE6;
+    border-radius: 0;
+    padding: 4px 18px 24px 0;
+  }
+}
+
+.sidebar-heading {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  color: #8E7A63;
+  padding: 0 6px 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ECE7DF;
+}
+
+.cat-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cat-loading {
+  font-size: 13px;
+  color: #999999;
+  padding: 8px 6px;
+}
+
+.cat-parent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.cat-parent-btn {
+  flex: 1;
+  text-align: left;
+  padding: 8px 6px;
+  font-size: 13.5px;
+  color: #555555;
+  letter-spacing: 0.6px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.cat-parent-btn:hover {
+  color: #1F1C19;
+  background-color: #F6F3EE;
+}
+
+.cat-parent-btn.active {
+  color: #1F1C19;
+  font-weight: 600;
+  background-color: #F3EFE8;
+}
+
+.cat-expand-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  color: #888888;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-expand-btn:hover {
+  background-color: #F3EFE8;
+  color: #222222;
+}
+
+.cat-children {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 6px 14px;
+  border-left: 1px solid #EAE4DB;
+  margin-left: 10px;
+}
+
+.cat-group.expanded .cat-children {
+  display: flex;
+}
+
+.cat-child-btn {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  color: #6B645C;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.cat-child-btn:hover {
+  color: #1F1C19;
+  background-color: #F6F3EE;
+}
+
+.cat-child-btn.active {
+  color: #8E7A63;
+  font-weight: 600;
+  background-color: #F5F1EA;
+}
+
+/* 右側排序列與 4 欄 × 12 列（48 件）格線 */
+.shop-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #EFECE6;
+}
+
+.shop-sort-group {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.shop-sort-btn {
+  position: relative;
+  font-size: 13.5px;
+  letter-spacing: 0.8px;
+  color: #777777;
+  padding: 4px 2px 6px;
+  transition: color 0.2s ease;
+}
+
+.shop-sort-btn:hover,
+.shop-sort-btn.active {
+  color: #1F1C19;
+  font-weight: 500;
+}
+
+.shop-sort-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.5px;
+  background-color: #9E8A73;
+}
+
+.shop-result-summary {
+  font-size: 12.5px;
+  color: #888888;
+  letter-spacing: 0.5px;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px 16px;
+}
+
+@media (min-width: 720px) {
+  .shop-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 34px 22px;
+  }
+}
+
+@media (min-width: 1120px) {
+  .shop-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px 22px;
+  }
+}
+
+/* 底部圓形頁碼器 */
+.shop-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 52px;
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  font-size: 13px;
+  color: #666666;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled):not(.active) {
+  background-color: #F4F1EC;
+  color: #222222;
+}
+
+.page-btn.active {
+  background-color: #6B6660;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.page-ellipsis {
+  color: #999999;
+  font-size: 13px;
+  padding: 0 4px;
 }
 
 /* 5. 品牌形象雙圖專區 */
