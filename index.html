@@ -16,7 +16,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/variables.css">
   <link rel="stylesheet" href="./css/style.css">
 </head>
@@ -30,8 +30,8 @@
     </div>
   </div>
 
-  <!-- 2. 主導覽列（五大分頁：新品上市 / 所有商品 / 批發知識文章 / Q&A / 聯絡我們） -->
-  <header class="site-header">
+  <!-- 2. 主導覽列（韓系精品雙語微標 ＋ 毛玻璃捲動質感） -->
+  <header class="site-header" id="site-header">
     <div class="header-container">
       <a href="#top" class="site-logo" data-scroll-target="top" aria-label="is Meya 首頁">
         <img src="./assets/images/logo.png" alt="Meya" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
@@ -39,11 +39,26 @@
       </a>
 
       <nav class="site-nav" aria-label="主選單">
-        <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
-        <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
-        <a href="#articles" data-scroll-target="articles">批發知識文章</a>
-        <a href="#faq" data-scroll-target="faq">Q&amp;A</a>
-        <a href="#contact" data-scroll-target="contact">聯絡我們</a>
+        <a href="#catalog" class="nav-link active" data-nav="new" data-scroll-target="catalog">
+          <span class="nav-zh">新品上市</span>
+          <span class="nav-en">NEW IN</span>
+        </a>
+        <a href="#catalog" class="nav-link" data-nav="all" data-scroll-target="catalog">
+          <span class="nav-zh">所有商品</span>
+          <span class="nav-en">SHOP ALL</span>
+        </a>
+        <a href="#articles" class="nav-link" data-scroll-target="articles">
+          <span class="nav-zh">批發知識文章</span>
+          <span class="nav-en">JOURNAL</span>
+        </a>
+        <a href="#faq" class="nav-link" data-scroll-target="faq">
+          <span class="nav-zh">Q&amp;A</span>
+          <span class="nav-en">F.A.Q</span>
+        </a>
+        <a href="#contact" class="nav-link" data-scroll-target="contact">
+          <span class="nav-zh">聯絡我們</span>
+          <span class="nav-en">CONTACT</span>
+        </a>
       </nav>
 
       <div class="header-actions">
@@ -69,13 +84,13 @@
       </div>
     </div>
 
-    <!-- 手機版中文導覽列 -->
+    <!-- 手機版單行橫向精品滑動分頁列 -->
     <nav class="mobile-nav" aria-label="行動裝置選單">
-      <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
-      <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
-      <a href="#articles" data-scroll-target="articles">批發知識文章</a>
-      <a href="#faq" data-scroll-target="faq">Q&amp;A</a>
-      <a href="#contact" data-scroll-target="contact">聯絡我們</a>
+      <a href="#catalog" class="mobile-nav-link active" data-nav="new" data-scroll-target="catalog">新品上市</a>
+      <a href="#catalog" class="mobile-nav-link" data-nav="all" data-scroll-target="catalog">所有商品</a>
+      <a href="#articles" class="mobile-nav-link" data-scroll-target="articles">批發知識文章</a>
+      <a href="#faq" class="mobile-nav-link" data-scroll-target="faq">Q&amp;A</a>
+      <a href="#contact" class="mobile-nav-link" data-scroll-target="contact">聯絡我們</a>
     </nav>
 
     <!-- 隱藏式極簡搜尋抽屜 -->
@@ -149,7 +164,7 @@
     </div>
   </section>
 
-  <!-- 6. 批發知識文章專區（點擊卡片展開全文，支援圖文與純文字兩種版型） -->
+  <!-- 6. 批發知識文章專區 -->
   <section id="articles" class="knowledge-section" aria-label="批發知識文章">
     <div class="section-header">
       <h2>批發知識文章</h2>
@@ -161,7 +176,7 @@
     <div id="articles-grid" class="articles-grid"></div>
   </section>
 
-  <!-- 7. 常見問題 Q&A 專區（手風琴點擊展開） -->
+  <!-- 7. 常見問題 Q&A 專區 -->
   <section id="faq" class="faq-section" aria-label="常見問題 Q&A">
     <div class="faq-inner">
       <div class="section-header">
@@ -295,7 +310,7 @@
     </div>
   </div>
 
-  <!-- 11. 批發知識文章閱讀彈窗（支援圖文與純文字兩種版型） -->
+  <!-- 11. 批發知識文章閱讀彈窗 -->
   <div id="article-modal-backdrop" class="modal-backdrop">
     <article class="article-modal" role="dialog" aria-modal="true" aria-labelledby="article-modal-title">
       <button class="modal-close" id="article-modal-close" aria-label="關閉文章">&times;</button>
