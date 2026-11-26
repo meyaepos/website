@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <!-- 2. 主導覽列 -->
+  <!-- 2. 主導覽列（五大分頁：新品上市 / 所有商品 / 批發知識文章 / Q&A / 聯絡我們） -->
   <header class="site-header">
     <div class="header-container">
       <a href="#top" class="site-logo" data-scroll-target="top" aria-label="is Meya 首頁">
@@ -41,6 +41,8 @@
       <nav class="site-nav" aria-label="主選單">
         <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
         <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
+        <a href="#articles" data-scroll-target="articles">批發知識文章</a>
+        <a href="#faq" data-scroll-target="faq">Q&amp;A</a>
         <a href="#contact" data-scroll-target="contact">聯絡我們</a>
       </nav>
 
@@ -71,6 +73,8 @@
     <nav class="mobile-nav" aria-label="行動裝置選單">
       <a href="#catalog" data-nav="new" data-scroll-target="catalog">新品上市</a>
       <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
+      <a href="#articles" data-scroll-target="articles">批發知識文章</a>
+      <a href="#faq" data-scroll-target="faq">Q&amp;A</a>
       <a href="#contact" data-scroll-target="contact">聯絡我們</a>
     </nav>
 
@@ -83,7 +87,7 @@
     </div>
   </header>
 
-  <!-- 3. 圖片 1：頂部滿版主視覺大圖（assets/images/hero.jpg） -->
+  <!-- 3. 圖片 1：頂部滿版主視覺大圖 -->
   <section id="top" class="hero-section">
     <img src="./assets/images/hero.jpg" alt="is Meya 形象視覺" class="hero-img" fetchpriority="high" decoding="async" onerror="this.style.display='none'; document.getElementById('hero-fallback').style.display='flex';">
     <div id="hero-fallback" class="hero-fallback" style="display:none;">
@@ -94,7 +98,7 @@
     </div>
   </section>
 
-  <!-- 4. 商品櫥窗展示區（由資料庫動態呈現上架款式） -->
+  <!-- 4. 商品櫥窗展示區 -->
   <main id="catalog" class="main-content">
     <div class="section-header">
       <h2 id="catalog-heading">精選飾品</h2>
@@ -111,9 +115,8 @@
     </div>
   </main>
 
-  <!-- 5. 品牌形象雙圖專區（圖片 2：完整視覺橫幅 ＋ 圖片 3：左圖右文故事卡） -->
+  <!-- 5. 品牌形象雙圖專區 -->
   <section class="editorial-section" aria-label="品牌美學形象展示">
-    <!-- 圖片 2：完整視覺形象圖（assets/images/banner-mid.jpg） -->
     <div class="editorial-banner-wrap">
       <img
         src="./assets/images/banner-mid.jpg"
@@ -125,7 +128,6 @@
       >
     </div>
 
-    <!-- 圖片 3：左圖右文品牌故事區塊（左側圖片位於根目錄：./brand-story.jpg） -->
     <div class="brand-story-card">
       <div class="brand-story-media">
         <img
@@ -147,7 +149,33 @@
     </div>
   </section>
 
-  <!-- 6. 聯絡我們與頁尾 -->
+  <!-- 6. 批發知識文章專區（點擊卡片展開全文，支援圖文與純文字兩種版型） -->
+  <section id="articles" class="knowledge-section" aria-label="批發知識文章">
+    <div class="section-header">
+      <h2>批發知識文章</h2>
+      <div class="section-subtitle">WHOLESALE JOURNAL</div>
+      <div class="section-divider" aria-hidden="true"></div>
+      <p id="articles-count">飾品選品與批發專欄載入中...</p>
+    </div>
+    <div id="articles-category-bar" class="pill-filter-bar" style="display:none;"></div>
+    <div id="articles-grid" class="articles-grid"></div>
+  </section>
+
+  <!-- 7. 常見問題 Q&A 專區（手風琴點擊展開） -->
+  <section id="faq" class="faq-section" aria-label="常見問題 Q&A">
+    <div class="faq-inner">
+      <div class="section-header">
+        <h2>常見問題 Q&amp;A</h2>
+        <div class="section-subtitle">FREQUENTLY ASKED QUESTIONS</div>
+        <div class="section-divider" aria-hidden="true"></div>
+        <p>點擊問題即可展開詳細說明，若有其他需求歡迎聯繫官方 LINE</p>
+      </div>
+      <div id="faq-category-bar" class="pill-filter-bar" style="display:none;"></div>
+      <div id="faq-accordion" class="faq-accordion"></div>
+    </div>
+  </section>
+
+  <!-- 8. 聯絡我們與頁尾 -->
   <footer id="contact" class="site-footer">
     <div class="footer-top">
       <a href="#top" class="footer-logo" data-scroll-target="top" aria-label="回到頁首">
@@ -160,10 +188,13 @@
         <span class="divider">|</span>
         <a href="#catalog" data-nav="all" data-scroll-target="catalog">所有商品</a>
         <span class="divider">|</span>
+        <a href="#articles" data-scroll-target="articles">批發知識文章</a>
+        <span class="divider">|</span>
+        <a href="#faq" data-scroll-target="faq">Q&amp;A</a>
+        <span class="divider">|</span>
         <a href="#contact" data-scroll-target="contact">聯絡我們</a>
       </div>
 
-      <!-- 置中圓形社群圖示 -->
       <div class="footer-social">
         <a href="https://www.facebook.com/profile.php?id=61586086650529" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 13.5h2.5l1-4H14v-2c0-1.03 0-2 2-2h1.5V2.14c-.326-.043-1.557-.14-2.857-.14C11.928 2 10 3.657 10 6.7v2.8H7v4h3V22h4v-8.5z"/></svg>
@@ -179,7 +210,6 @@
       </div>
     </div>
 
-    <!-- 中段雙欄：左側客服門市資訊 / 右側 Google 地圖 -->
     <div class="footer-info-grid">
       <div class="footer-contact">
         <div class="cs-label">CUSTOMER SERVICE</div>
@@ -215,12 +245,11 @@
       </div>
     </div>
 
-    <!-- 底部版權與條款列 -->
     <div class="footer-bottom">
       <div class="footer-bottom-inner">
         <p>Copyright &copy; 2026 is Meya. All rights reserved.</p>
         <div class="footer-policies">
-          <a href="#contact" data-scroll-target="contact">購物須知</a>
+          <a href="#faq" data-scroll-target="faq">常見問題</a>
           <span>/</span>
           <a href="#contact" data-scroll-target="contact">服務條款</a>
           <span>/</span>
@@ -230,7 +259,7 @@
     </div>
   </footer>
 
-  <!-- 7. 右下角懸浮社群與回到頂端列 -->
+  <!-- 9. 右下角懸浮社群與回到頂端列 -->
   <div class="floating-dock" aria-label="快速聯絡按鈕">
     <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" class="dock-btn dock-line" title="LINE 官方帳號">
       <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd">
@@ -248,7 +277,7 @@
     </button>
   </div>
 
-  <!-- 8. 商品細節預覽彈窗 -->
+  <!-- 10. 商品細節預覽彈窗 -->
   <div id="product-modal-backdrop" class="modal-backdrop">
     <div class="product-modal">
       <button class="modal-close" id="modal-close-btn" aria-label="關閉視窗">&times;</button>
@@ -264,6 +293,28 @@
         <p class="modal-note">如需洽詢款式、門市試穿或現貨狀況，請提供上方商品編號聯繫 <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" style="text-decoration:underline; color:#333333; font-weight:500;">官方 LINE</a> 或來電洽詢。</p>
       </div>
     </div>
+  </div>
+
+  <!-- 11. 批發知識文章閱讀彈窗（支援圖文與純文字兩種版型） -->
+  <div id="article-modal-backdrop" class="modal-backdrop">
+    <article class="article-modal" role="dialog" aria-modal="true" aria-labelledby="article-modal-title">
+      <button class="modal-close" id="article-modal-close" aria-label="關閉文章">&times;</button>
+      <div id="article-modal-cover-wrap" class="article-modal-cover-wrap" style="display:none;">
+        <img id="article-modal-cover" src="" alt="">
+      </div>
+      <div class="article-modal-body">
+        <div class="article-modal-meta">
+          <span id="article-modal-cat" class="article-cat-pill"></span>
+          <span id="article-modal-date" class="article-date"></span>
+        </div>
+        <h3 id="article-modal-title" class="article-modal-title"></h3>
+        <div id="article-modal-content" class="article-modal-content"></div>
+        <div class="article-modal-footer">
+          <span>想進一步了解批發方案或預約選品？</span>
+          <a href="https://lin.ee/7gVn9gX" target="_blank" rel="noopener noreferrer" class="price-inquiry-link">聯繫官方 LINE ↗</a>
+        </div>
+      </div>
+    </article>
   </div>
 
   <script src="./js/config.js"></script>
