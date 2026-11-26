@@ -3,7 +3,7 @@
  * 防護：
  * 1. 所有受保護 API 全面改走 POST JSON Body，杜絕 Session Token 暴露於 URL Query String
  * 2. 登出時主動呼叫後端 adminLogout 撤銷憑證
- * 3. 移除免密鑰開發測試提示，並強化 escapeHtml (含單引號) 與圖片協定檢查
+ * 3. 強化 escapeHtml (含單引號) 與圖片 https:// 協定檢查
  */
 window.CORE_PRODUCT_KEYS = ['id', 'name', 'price', '條碼', '庫存數量', '商品狀態', '更新時間'];
 
@@ -13,6 +13,8 @@ window.AdminState = {
   productHeaders: [...window.CORE_PRODUCT_KEYS],
   rawFolderNames: [],
   announcements: [],
+  articles: [],
+  faqs: [],
   errors: []
 };
 
@@ -23,6 +25,7 @@ window.AdminCore = {
     if (window.AdminProducts) window.AdminProducts.init();
     if (window.AdminMediaUpload) window.AdminMediaUpload.init();
     if (window.AdminExcel) window.AdminExcel.init();
+    if (window.AdminContent) window.AdminContent.init();
     if (window.AdminLabels) window.AdminLabels.init();
     if (window.AdminSite) window.AdminSite.init();
 
@@ -146,7 +149,6 @@ window.AdminCore = {
 
   lockAndLogout: async function() {
     const token = this.getSessionToken();
-    // 主動通知後端從快取註銷憑證，防止殘留憑證遭重放
     if (token && typeof CONFIG !== 'undefined' && CONFIG.GAS_API_URL) {
       try {
         await fetch(CONFIG.GAS_API_URL, {
@@ -160,6 +162,8 @@ window.AdminCore = {
     AdminState.products = [];
     AdminState.rawFolderNames = [];
     AdminState.announcements = [];
+    AdminState.articles = [];
+    AdminState.faqs = [];
     AdminState.errors = [];
 
     document.getElementById('admin-app').classList.remove('unlocked');
@@ -169,9 +173,6 @@ window.AdminCore = {
     document.getElementById('login-token-input').focus();
   },
 
-  /**
-   * 【安全通道】保留 apiGet 介面相容各子模組，但底層統一改由 POST Body 傳送憑證與參數，避免 Token 洩漏於 URL
-   */
   apiGet: async function(action, extraParams = {}) {
     return this.apiPost(action, extraParams);
   },
@@ -229,6 +230,8 @@ window.AdminCore = {
     AdminState.rawFolderNames = data.rawFolderNames || [];
     AdminState.productHeaders = data.productHeaders || [...window.CORE_PRODUCT_KEYS];
     AdminState.announcements = data.announcements || [];
+    AdminState.articles = data.articles || [];
+    AdminState.faqs = data.faqs || [];
     AdminState.errors = data.errors || [];
 
     const folderPairs = AdminState.rawFolderNames.map(name => ({
@@ -258,6 +261,7 @@ window.AdminCore = {
     this.updateKpis();
     if (window.AdminProducts) window.AdminProducts.renderTable(true);
     if (window.AdminExcel) window.AdminExcel.renderExportOptions(data.exportSheets || []);
+    if (window.AdminContent) window.AdminContent.renderAll();
     if (window.AdminLabels) window.AdminLabels.syncData(data.config || {}, data.labelQueue || [], data.labelDbSource || '');
     if (window.AdminSite) window.AdminSite.renderAll(data.config || {});
   },
@@ -297,9 +301,6 @@ window.AdminCore = {
     errBadge.style.display = openErrors > 0 ? 'inline-block' : 'none';
   },
 
-  /**
-   * 完整 5 字元 HTML 跳脫（含單雙引號，防範 XSS）
-   */
   escapeHtml: function(str) {
     return String(str === null || str === undefined ? '' : str)
       .replace(/&/g, '&amp;')
@@ -309,9 +310,6 @@ window.AdminCore = {
       .replace(/'/g, '&#39;');
   },
 
-  /**
-   * 圖片網址協定白名單檢查（僅允許 https:// 或本機預覽 data:image/，阻擋 javascript: 注入）
-   */
   sanitizeImageUrl: function(url) {
     const clean = String(url || '').trim();
     if (/^https:\/\//i.test(clean) || /^data:image\/(jpeg|png|webp|gif);base64,/i.test(clean)) {
