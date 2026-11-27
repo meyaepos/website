@@ -14,7 +14,7 @@ body.cart-disabled .cart-icon, body.cart-disabled .btn-add-to-cart { display: no
 .marquee-content { display: inline-block; white-space: nowrap; animation: none !important; transform: translate3d(100vw, 0, 0); will-change: transform; }
 #marquee-content-clone { display: none !important; }
 
-/* 2. 主導覽列（韓系毛玻璃雙語微標 ＋ 微鑽細金線） */
+/* 2. 主導覽列（桌機 ＋ 手機統一韓系雙語微標、微鑽光點與香檳金細線） */
 .site-header { background-color: rgba(255, 255, 255, 0.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid rgba(217, 210, 197, 0.55); position: sticky; top: 0; z-index: 100; transition: background-color 0.3s ease, box-shadow 0.3s ease; }
 .site-header.scrolled { background-color: rgba(255, 255, 255, 0.88); box-shadow: 0 6px 24px rgba(45, 38, 30, 0.05); }
 .header-container { max-width: 1280px; margin: 0 auto; padding: 14px 36px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; transition: padding 0.3s ease; }
@@ -38,14 +38,21 @@ body.cart-disabled .cart-icon, body.cart-disabled .btn-add-to-cart { display: no
 .icon-btn:hover { background-color: #F6F3EE; color: #111111; }
 .icon-btn svg { width: 19px; height: 19px; }
 
-/* 手機橫向滑動分頁列與搜尋抽屜 */
-.mobile-nav { display: flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 0 14px; border-top: 1px solid rgba(235, 230, 222, 0.75); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+/* 手機版精品雙語導覽列（完整容納 5 分頁不切字 ＋ 微鑽光點 ＋ 漸層香檳金線） */
+.mobile-nav { display: flex; align-items: center; justify-content: flex-start; gap: 4px; padding: 3px 8px 0; border-top: 1px solid rgba(235, 230, 222, 0.78); background-color: rgba(255, 255, 255, 0.72); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .mobile-nav::-webkit-scrollbar { display: none; }
-.mobile-nav .mobile-nav-link { position: relative; flex-shrink: 0; padding: 11px 10px 10px; font-size: 13px; letter-spacing: 1.2px; color: #6B645C; white-space: nowrap; transition: color 0.25s ease; }
-.mobile-nav .mobile-nav-link::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; background-color: #9E8A73; transform: scaleX(0); transform-origin: center; transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
-.mobile-nav .mobile-nav-link.active { color: #1F1C19; font-weight: 500; }
+.mobile-nav .mobile-nav-link { position: relative; flex-shrink: 0; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding: 7px 5px 8px; color: #5C554E; white-space: nowrap; transition: color 0.28s ease; }
+.mobile-nav .mobile-nav-link::before { content: ''; position: absolute; top: 1px; left: 50%; width: 3.5px; height: 3.5px; background-color: #B6A38C; transform: translateX(-50%) rotate(45deg) scale(0); opacity: 0; transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease; }
+.mobile-nav .mobile-nav-link::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 0; height: 1.5px; background: linear-gradient(90deg, rgba(182, 163, 140, 0.35), #9E8A73, rgba(182, 163, 140, 0.35)); transform: scaleX(0); transform-origin: center; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.mobile-nav .nav-zh { font-size: 12px; font-weight: 400; letter-spacing: 0.6px; line-height: 1.25; transition: color 0.28s ease; }
+.mobile-nav .nav-en { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 8.5px; font-weight: 500; letter-spacing: 1.3px; color: #ACA296; margin-top: 2px; line-height: 1; transition: color 0.28s ease; }
+.mobile-nav .mobile-nav-link.active { color: #1F1C19; }
+.mobile-nav .mobile-nav-link.active .nav-zh { font-weight: 500; }
+.mobile-nav .mobile-nav-link.active .nav-en { color: #8E7A63; }
+.mobile-nav .mobile-nav-link.active::before { transform: translateX(-50%) rotate(45deg) scale(1); opacity: 1; }
 .mobile-nav .mobile-nav-link.active::after { transform: scaleX(1); }
-@media (min-width: 480px) and (max-width: 859px) { .mobile-nav { justify-content: center; gap: 14px; } }
+@media (min-width: 360px) and (max-width: 539px) { .mobile-nav { justify-content: space-evenly; gap: 2px; padding: 3px 6px 0; } }
+@media (min-width: 540px) and (max-width: 859px) { .mobile-nav { justify-content: center; gap: 22px; padding: 3px 16px 0; } .mobile-nav .nav-zh { font-size: 13px; letter-spacing: 1.2px; } .mobile-nav .nav-en { font-size: 9px; letter-spacing: 1.8px; } }
 @media (min-width: 860px) { .site-nav { display: flex; } .mobile-nav { display: none; } }
 @media (max-width: 859px) { .header-container, .site-header.scrolled .header-container { padding: 10px 18px; grid-template-columns: 1fr auto; } .logo-script { font-size: 38px; } }
 .search-drawer { display: none; border-top: 1px solid var(--color-border); background: rgba(255, 255, 255, 0.98); }
@@ -68,7 +75,7 @@ body.cart-disabled .cart-icon, body.cart-disabled .btn-add-to-cart { display: no
 .filter-pill-btn { padding: 6px 18px; border-radius: 20px; font-size: 13px; letter-spacing: 1px; border: 1px solid #D9D2C5; background-color: #FFFFFF; color: #333333; transition: 0.25s; }
 .filter-pill-btn.active { background-color: #333333; color: #FFFFFF; border-color: #333333; }
 
-/* 4. 首頁精選飾品區（12 件水平輪播）與共用商品卡 */
+/* 4. 首頁精選飾品區（12 件水平輪播）與共用商品卡（直式／橫式原圖自適應零裁切） */
 .main-content { max-width: 1240px; margin: 0 auto; padding: 64px 24px; scroll-margin-top: 110px; }
 .section-header { text-align: center; margin-bottom: 40px; }
 .section-header h2 { font-size: 24px; font-weight: 500; letter-spacing: 4px; color: #2C2C2C; margin-bottom: 6px; }
@@ -93,15 +100,15 @@ body.cart-disabled .cart-icon, body.cart-disabled .btn-add-to-cart { display: no
 .view-all-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 32px; border: 1px solid #333333; color: #333333; font-size: 13px; letter-spacing: 2px; transition: background-color 0.25s ease, color 0.25s ease; }
 .view-all-btn:hover { background-color: #333333; color: #FFFFFF; }
 .product-item { cursor: pointer; display: flex; flex-direction: column; min-width: 0; }
-.product-img-wrap { width: 100%; aspect-ratio: 3 / 4; background-color: #F7F5F2; border: 1px solid rgba(232, 226, 216, 0.65); overflow: hidden; margin-bottom: 12px; }
-.product-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.55s ease; }
+.product-img-wrap { width: 100%; aspect-ratio: 1 / 1; background-color: #FFFFFF; border: 1px solid #EFEAE2; padding: 6px; overflow: hidden; margin-bottom: 12px; }
+.product-img-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; transition: transform 0.55s ease; }
 .product-item:hover .product-img-wrap img { transform: scale(1.04); }
 .product-sku { font-size: 11px; color: #9A9288; letter-spacing: 1px; margin-bottom: 3px; }
 .product-name { font-size: 14px; font-weight: 400; color: var(--color-text-main); margin-bottom: 5px; line-height: 1.45; }
 .product-price { font-size: 14px; font-weight: 500; color: #4A433C; }
 .product-price.price-inquiry { font-size: 12px; font-weight: 400; color: #8C7B6B; letter-spacing: 0.8px; }
 @keyframes loading { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-.loading-state { aspect-ratio: 3 / 4; background: linear-gradient(90deg, #F4F4F4 25%, #EAEAEA 50%, #F4F4F4 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
+.loading-state { aspect-ratio: 1 / 1; background: linear-gradient(90deg, #F4F4F4 25%, #EAEAEA 50%, #F4F4F4 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
 
 /* 4B. 獨立「所有商品」與政策頁共用頁首／目錄區劃 */
 .page-banner { background: linear-gradient(180deg, #FAF8F5 0%, #F4F0EA 100%); border-bottom: 1px solid #EAE4DB; }
@@ -251,14 +258,14 @@ body.cart-disabled .cart-icon, body.cart-disabled .btn-add-to-cart { display: no
 .dock-ig { background: linear-gradient(45deg, #F09433 0%, #E6683C 25%, #DC2743 50%, #CC2366 75%, #BC1888 100%); }
 .dock-top { background-color: #BDBDBD; }
 
-/* 10. 商品彈窗與文章閱讀彈窗 */
+/* 10. 商品彈窗（直式／橫式原圖自適應）與文章閱讀彈窗 */
 .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
 .modal-backdrop.open { display: flex; }
-.product-modal { background: #FFFFFF; max-width: 820px; width: 100%; max-height: 92vh; border-radius: 4px; overflow-y: auto; display: grid; grid-template-columns: 1fr; position: relative; }
-@media (min-width: 640px) { .product-modal { grid-template-columns: 1fr 1fr; overflow: hidden; } }
+.product-modal { background: #FFFFFF; max-width: 860px; width: 100%; max-height: 92vh; border-radius: 4px; overflow-y: auto; display: grid; grid-template-columns: 1fr; position: relative; }
 .modal-close { position: absolute; top: 12px; right: 16px; font-size: 24px; color: var(--color-text-main); z-index: 10; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.85); display: flex; align-items: center; justify-content: center; }
-.modal-img-box { position: relative; background: #F6F6F6; aspect-ratio: 3 / 4; overflow: hidden; }
-.modal-img-box > img#modal-img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; display: block; }
+.modal-img-box { position: relative; background: #FAF8F5; display: flex; align-items: center; justify-content: center; min-height: 280px; padding: 16px 16px 72px; overflow: hidden; }
+.modal-img-box > img#modal-img { width: auto; height: auto; max-width: 100%; max-height: 52vh; object-fit: contain; cursor: zoom-in; display: block; }
+@media (min-width: 640px) { .product-modal { grid-template-columns: 1.05fr 1fr; overflow: hidden; } .modal-img-box { min-height: 460px; } .modal-img-box > img#modal-img { max-height: 68vh; } }
 .modal-zoom-badge { position: absolute; top: 12px; left: 12px; z-index: 5; padding: 5px 11px; border-radius: 20px; background: rgba(30, 30, 30, 0.68); color: #FFFFFF; font-size: 11px; letter-spacing: 0.8px; display: inline-flex; align-items: center; gap: 4px; cursor: zoom-in; backdrop-filter: blur(4px); }
 .modal-zoom-badge:hover { background: rgba(20, 20, 20, 0.9); }
 .modal-info-box { padding: 32px 28px; display: flex; flex-direction: column; justify-content: center; }
